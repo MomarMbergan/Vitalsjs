@@ -501,6 +501,7 @@ $(document).ready(function() {
 });
      document.getElementById('showascii').addEventListener('click', () => {
             var alleqs = document.getElementById('alleqs');
+alleqs.style.display="block";
             html2pdf().from(alleqs).save();
  });
     </script>
