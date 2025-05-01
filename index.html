@@ -499,7 +499,10 @@ $(document).ready(function() {
         showImage(currentIndex);
     });
 });
-
+     document.getElementById('showascii').addEventListener('click', () => {
+            var alleqs = document.getElementById('alleqs');
+            html2pdf().from(alleqs).save();
+ });
     </script>
 
 <script>
