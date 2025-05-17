@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>NeuroSky EEG Realtime Chart</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f7f7f7;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    canvas {
+      background: white;
+      border: 1px solid #ccc;
+      margin-top: 20px;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .chart-container {
+      position: relative;
+      height: 300px;
+      width: 100%;
+    }
+    .metrics {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .metric-card {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      min-width: 120px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .metric-value {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 5px 0;
+    }
+    .metric-label {
+      color: #666;
+      font-size: 14px;
+    }
+    button {
+      background: #4285f4;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #3367d6;
+    }
+    .status {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .connected {
+      background: #e6f4ea;
+      color: #0d652d;
+    }
+    .disconnected {
+      background: #fce8e6;
+      color: #d93025;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>NeuroSky EEG Data Visualization</h1>
+    <p>Visualize brainwave data in real-time from your NeuroSky headset</p>
+    
+    <button id="connectBtn">CONNECT DEVICE</button>
+    <div id="status" class="status disconnected">Disconnected</div>
+    
+    <div class="metrics">
+      <div class="metric-card">
+        <div class="metric-label">Attention</div>
+        <div class="metric-value" id="attention">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Meditation</div>
+        <div class="metric-value" id="meditation">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Signal Quality</div>
+        <div class="metric-value" id="signal">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Delta (0.5-2.75Hz)</div>
+        <div class="metric-value" id="delta">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Theta (3.5-6.75Hz)</div>
+        <div class="metric-value" id="theta">0</div>
+      </div>
+    </div>
+    
+    <div class="chart-container">
+      <canvas id="eegChart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    // Chart setup
+    const ctx = document.getElementById('eegChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array(100).fill(''),
+        datasets: [{
+          label: 'EEG Raw Data',
+          data: Array(100).fill(0),
+          borderColor: 'rgb(75, 192, 192)',
+          tension: 0.1,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            min: 0,
+            max: 255
+          }
+        },
+        animation: {
+          duration: 0
+        }
+      }
+    });
+
+    // EEG Data Parser for NeuroSky
+    class NeuroSkyParser {
+      constructor(callback) {
+        this.callback = callback;
+        this.buffer = new Uint8Array(0);
+      }
+
+      parse(data) {
+        // Append new data to buffer
+        const newBuffer = new Uint8Array(this.buffer.length + data.byteLength);
+        newBuffer.set(this.buffer, 0);
+        newBuffer.set(new Uint8Array(data), this.buffer.length);
+        this.buffer = newBuffer;
+
+        // Process complete packets
+        while (this.buffer.length >= 2) {
+          const payloadLength = this.buffer[1];
+          if (this.buffer.length >= payloadLength + 2) {
+            const packet = this.buffer.slice(0, payloadLength + 2);
+            this.processPacket(packet);
+            this.buffer = this.buffer.slice(payloadLength + 2);
+          } else {
+            break;
+          }
+        }
+      }
+
+      processPacket(packet) {
+        if (packet[0] !== 0xAA || packet[1] !== packet.length - 2) {
+          console.error('Invalid packet');
+          return;
+        }
+
+        let i = 2;
+        while (i < packet.length) {
+          const code = packet[i++];
+          const length = packet[i++];
+          const value = packet.slice(i, i + length);
+          i += length;
+
+          this.parseDataRow(code, length, value);
+        }
+      }
+
+      parseDataRow(code, length, value) {
+        switch (code) {
+          case 0x02: // POOR_SIGNAL
+            this.callback({ type: 'signal', value: value[0] });
+            break;
+          case 0x04: // ATTENTION
+            this.callback({ type: 'attention', value: value[0] });
+            break;
+          case 0x05: // MEDITATION
+            this.callback({ type: 'meditation', value: value[0] });
+            break;
+          case 0x80: // RAW_EEG
+            const rawValue = (value[0] << 8) | value[1];
+            this.callback({ type: 'raw', value: rawValue });
+            break;
+          case 0x83: // ASIC_EEG_POWER
+            this.parseEegPower(value);
+            break;
+        }
+      }
+
+      parseEegPower(data) {
+        const bands = [
+          'delta', 'theta', 'lowAlpha', 'highAlpha',
+          'lowBeta', 'highBeta', 'lowGamma', 'midGamma'
+        ];
+        
+        const view = new DataView(data.buffer);
+        const eegPower = {};
+        
+        for (let i = 0; i < bands.length; i++) {
+          eegPower[bands[i]] = view.getUint32(i * 4, true);
+        }
+        
+        this.callback({ type: 'eegPower', value: eegPower });
+      }
+    }
+
+    // Bluetooth connection handler
+    document.getElementById('connectBtn').addEventListener('click', async () => {
+      try {
+        const btn = document.getElementById('connectBtn');
+        btn.disabled = true;
+        btn.textContent = 'Connecting...';
+        
+        const status = document.getElementById('status');
+        status.className = 'status';
+        status.textContent = 'Searching for device...';
+        
+        // Request Bluetooth device
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ name: 'MindWave Mobile' }],
+          optionalServices: [0xffe0, 0xff0f]
+        });
+        
+        status.textContent = 'Connecting to device...';
+        const server = await device.gatt.connect();
+        
+        status.textContent = 'Getting service...';
+        const service = await server.getPrimaryService(0xff0f);
+        
+        status.textContent = 'Getting characteristic...';
+        const characteristic = await service.getCharacteristic(0xfffc);
+        
+        status.textContent = 'Connected! Receiving data...';
+        status.className = 'status connected';
+        btn.textContent = 'DISCONNECT';
+        btn.disabled = false;
+        
+        // Set up disconnect handler
+        device.addEventListener('gattserverdisconnected', () => {
+          status.textContent = 'Disconnected';
+          status.className = 'status disconnected';
+          btn.textContent = 'CONNECT DEVICE';
+        });
+        
+        // Set up data parser
+        const parser = new NeuroSkyParser((data) => {
+          switch (data.type) {
+            case 'raw':
+              updateChart(data.value);
+              break;
+            case 'attention':
+              document.getElementById('attention').textContent = data.value;
+              break;
+            case 'meditation':
+              document.getElementById('meditation').textContent = data.value;
+              break;
+            case 'signal':
+              document.getElementById('signal').textContent = data.value;
+              break;
+            case 'eegPower':
+              document.getElementById('delta').textContent = Math.round(data.value.delta / 1000000);
+              document.getElementById('theta').textContent = Math.round(data.value.theta / 1000000);
+              break;
+          }
+        });
+        
+        // Start notifications
+        characteristic.startNotifications();
+        characteristic.addEventListener('characteristicvaluechanged', (event) => {
+          parser.parse(event.target.value.buffer);
+        });
+        
+        // Add disconnect functionality to button
+        btn.onclick = () => {
+          device.gatt.disconnect();
+        };
+        
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('status').textContent = `Error: ${error.message}`;
+        document.getElementById('status').className = 'status disconnected';
+        document.getElementById('connectBtn').textContent = 'CONNECT DEVICE';
+        document.getElementById('connectBtn').disabled = false;
+      }
+    });
+
+    // Chart update function
+    function updateChart(value) {
+      chart.data.datasets[0].data.push(value);
+      if (chart.data.datasets[0].data.length > 100) {
+        chart.data.datasets[0].data.shift();
+      }
+      chart.update();
+    }
+
+    // Check if Web Bluetooth is supported
+    if (!navigator.bluetooth) {
+      document.getElementById('status').textContent = 'Web Bluetooth API not supported in this browser. Try Chrome or Edge.';
+      document.getElementById('connectBtn').disabled = true;
+    }
+  </script>
+</body>
+</html>
