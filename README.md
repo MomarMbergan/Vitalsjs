@@ -1,4 +1,4 @@
-# Biometric Security Countermeasures 
+# Biometric Security Methodologies.
 # Signal and Image Processing.
-# Remote Health Diagnostic - Anti-Virus Scan.
+# Health Diagnostic - Anti-Virus Scan.
 
