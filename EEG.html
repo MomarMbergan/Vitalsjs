@@ -95,6 +95,35 @@ socket.addEventListener('close', () => {
 });
 
     <div id="status" class="status disconnected">Disconnected</div>
+    // Request a Bluetooth device
+navigator.bluetooth.requestDevice({
+  acceptAllDevices: true, // Or specify filters for specific devices
+  optionalServices: ['battery_service'] // Specify services you want to access
+})
+.then(device => {
+  console.log(`Connected to device: ${device.name}`);
+  return device.gatt.connect(); // Connect to the device
+})
+.then(server => {
+  // Access a specific service
+  return server.getPrimaryService('battery_service');
+})
+.then(service => {
+  // Access a specific characteristic
+  return service.getCharacteristic('battery_level');
+})
+.then(characteristic => {
+  // Read the value of the characteristic
+  return characteristic.readValue();
+})
+.then(value => {
+  const batteryLevel = value.getUint8(0); // Extract battery level
+  console.log(`Battery Level: ${batteryLevel}%`);
+})
+.catch(error => {
+  console.error('Error:', error);
+});
+
     
     <div class="metrics">
       <div class="metric-card">
