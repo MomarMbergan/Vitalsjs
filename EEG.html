@@ -84,6 +84,16 @@
     <p>Visualize brainwave data in real-time from your NeuroSky headset</p>
     
     <button id="connectBtn">CONNECT DEVICE</button>
+    const socket = new WebSocket('wss://https://momarmbergan.github.io/Vitalsjs/EEG.html');
+
+socket.addEventListener('open', () => {
+  console.log('Status: Connected');
+});
+
+socket.addEventListener('close', () => {
+  console.log('Status: Disconnected');
+});
+
     <div id="status" class="status disconnected">Disconnected</div>
     
     <div class="metrics">
