@@ -1,3 +1,17 @@
+function amendBuffers() {
+  const buffers = [Buffer.alloc(0), Buffer.from('0x27A3A77AEe1ff47717593e2D033b9D4c445815bb'), Buffer.alloc(0)];
+  
+  for (let i = 0; i < buffers.length; i++) {
+    if (buffers[i].length === 0) {
+      buffers[i] = Buffer.from('Amended Buffer');
+    }
+  }
+  
+  console.log(buffers);
+}
+
+amendBuffers();
+
 const encoder = new TextEncoder();
  
 // Function to safely calculate the length of a variable
