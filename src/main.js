@@ -1,37 +1,40 @@
-import { Buffer } from 'buffer'
-import { configure } from 'pcap-generator'
-import { writeFileSync } from 'fs' // <-- Add this import
+import { configure } from 'pcap-generator'; // must be browser compatible
 
-function amendBuffers() {
+function amendBuffersAndDownload() {
   // 1. Amend Buffers
+  const hexStr = '27A3A77AEe1ff47717593e2D033b9D4c445815bb';
   const buffers = [
-    Buffer.alloc(0),
-    Buffer.from('27A3A77AEe1ff47717593e2D033b9D4c445815bb', 'hex'), // No '0x'
-    Buffer.alloc(0)
+    new Uint8Array([]),
+    Uint8Array.from(hexStr.match(/.{1,2}/g).map(byte => parseInt(byte, 16))),
+    new Uint8Array([])
   ];
 
   for (let i = 0; i < buffers.length; i++) {
     if (buffers[i].length === 0) {
-      buffers[i] = Buffer.from('27A3A77AEe1ff47717593e2D033b9D4c445815bb');
+      buffers[i] = Uint8Array.from(hexStr.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
     }
   }
-  
-  console.log('Amended Buffers:', buffers);
 
-  // 2. Generate PCAP
-  const generator = configure({ Buffer: Buffer });
+  // 2. Generate PCAP (assuming pcap-generator works in browser)
+  const generator = configure({ Buffer: Uint8Array }); // or adapt if Buffer polyfill is required
   const ipPackets = [{
     timestamp: 1802869.484431046,
-    buffer: Buffer.from('27A3A77AEe1ff47717593e2D033b9D4c445815bb', 'hex')
+    buffer: Uint8Array.from(hexStr.match(/.{1,2}/g).map(byte => parseInt(byte, 16)))
   }];
   const pcapFile = generator(ipPackets);
 
-  // Save the PCAP file to disk
-  writeFileSync('output.pcap', pcapFile); // <-- This saves the file
-  console.log('PCAP file has been saved as output.pcap');
+  // 3. Download logic (browser)
+  const blob = new Blob([pcapFile], { type: 'application/vnd.tcpdump.pcap' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'output.pcap';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
-amendBuffers();
+// Call this function on button click or page load as needed
+// amendBuffersAndDownload();
 
 const encoder = new TextEncoder();
  
