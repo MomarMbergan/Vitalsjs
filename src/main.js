@@ -1,30 +1,30 @@
-import { configure } from 'pcap-generator'; // must be browser compatible
+// If using pcap-generator in the browser, you need to include it via <script> and use the global pcapGenerator.
+// If it is available as a module and supports browsers, you can use import as below in a <script type="module"> block.
+import { configure } from 'pcap-generator'; // Only works if your build tool and pcap-generator support browser import
 
 function amendBuffersAndDownload() {
   // 1. Amend Buffers
   const hexStr = '27A3A77AEe1ff47717593e2D033b9D4c445815bb';
-  const buffers = [
+  let buffers = [
     new Uint8Array([]),
     Uint8Array.from(hexStr.match(/.{1,2}/g).map(byte => parseInt(byte, 16))),
     new Uint8Array([])
   ];
-
   for (let i = 0; i < buffers.length; i++) {
     if (buffers[i].length === 0) {
       buffers[i] = Uint8Array.from(hexStr.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
     }
   }
 
-  // 2. Generate PCAP (assuming pcap-generator works in browser)
-  const generator = configure({ Buffer: Uint8Array }); // or adapt if Buffer polyfill is required
-  const ipPackets = [{
-    timestamp: 1802869.484431046,
-    buffer: Uint8Array.from(hexStr.match(/.{1,2}/g).map(byte => parseInt(byte, 16)))
-  }];
+  // 2. Generate PCAP
+  const generator = configure({ Buffer: Uint8Array }); // Or window.pcapGenerator.configure for browser global
+  const ipPackets = buffers.map(buf => ({
+    timestamp: Date.now() / 1000,
+    buffer: buf
+  }));
   const pcapFile = generator(ipPackets);
 
-  // 3. Download logic (browser)
- function downloadPCAP(pcapFile) {
+  // 3. Download logic
   const blob = new Blob([pcapFile], { type: 'application/vnd.tcpdump.pcap' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
@@ -32,24 +32,12 @@ function amendBuffersAndDownload() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  URL.revokeObjectURL(link.href); // Optional: clean up the object URL
+  URL.revokeObjectURL(link.href);
 }
 
-// Call this function on button click or page load as needed
-// amendBuffersAndDownload();
-function amendBuffersAndDownload() {
-  // your logic for downloading PCAP
-}
-
-// This attaches the click event to the button
-  document.getElementById('amendBuffersAndDownload').addEventListener('click', function() {
-  downloadPCAP(pcapFile); // make sure pcapFile is defined and contains your data
-});
+// Attach the click event when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-  document.getElementById('amendBuffersAndDownload').addEventListener('click', function() {
-    amendBuffersAndDownload();
-  });
-});
+  document.getElementById('amendBuffersAndDownload').addEventListener('click', amendBuffersAndDownload);
 });
 
 const encoder = new TextEncoder();
