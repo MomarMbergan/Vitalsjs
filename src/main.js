@@ -35,6 +35,11 @@ function amendBuffersAndDownload() {
 
 // Call this function on button click or page load as needed
 // amendBuffersAndDownload();
+function amendBuffersAndDownload() {
+  // your logic for downloading PCAP
+}
+
+// This attaches the click event to the button
 document.getElementById('downloadButton').addEventListener('click', function() {
     amendBuffersAndDownload();
 });
