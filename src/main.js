@@ -35,6 +35,9 @@ function amendBuffersAndDownload() {
 
 // Call this function on button click or page load as needed
 // amendBuffersAndDownload();
+document.getElementById('downloadButton').addEventListener('click', function() {
+    amendBuffersAndDownload();
+});
 
 const encoder = new TextEncoder();
  
