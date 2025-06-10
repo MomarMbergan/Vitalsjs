@@ -24,6 +24,7 @@ function amendBuffersAndDownload() {
   const pcapFile = generator(ipPackets);
 
   // 3. Download logic (browser)
+ function downloadPCAP(pcapFile) {
   const blob = new Blob([pcapFile], { type: 'application/vnd.tcpdump.pcap' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
@@ -31,6 +32,7 @@ function amendBuffersAndDownload() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(link.href); // Optional: clean up the object URL
 }
 
 // Call this function on button click or page load as needed
@@ -40,6 +42,9 @@ function amendBuffersAndDownload() {
 }
 
 // This attaches the click event to the button
+  document.getElementById('amendBuffersAndDownload').addEventListener('click', function() {
+  downloadPCAP(pcapFile); // make sure pcapFile is defined and contains your data
+});
 document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('amendBuffersAndDownload').addEventListener('click', function() {
     amendBuffersAndDownload();
