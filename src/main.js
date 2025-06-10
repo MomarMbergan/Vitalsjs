@@ -1,6 +1,6 @@
-// Top-level imports (Node.js ESM or CommonJS)
 import { Buffer } from 'buffer'
 import { configure } from 'pcap-generator'
+import { writeFileSync } from 'fs' // <-- Add this import
 
 function amendBuffers() {
   // 1. Amend Buffers
@@ -21,12 +21,14 @@ function amendBuffers() {
   // 2. Generate PCAP
   const generator = configure({ Buffer: Buffer });
   const ipPackets = [{
-    timestamp: 1802869.484431046, // microseconds
-    buffer: Buffer.from('27A3A77AEe1ff47717593e2D033b9D4c445815bb', 'hex') // No '0x'
+    timestamp: 1802869.484431046,
+    buffer: Buffer.from('27A3A77AEe1ff47717593e2D033b9D4c445815bb', 'hex')
   }];
   const pcapFile = generator(ipPackets);
 
-  console.log('This here is your pcap file in hex:', pcapFile.toString('hex'));
+  // Save the PCAP file to disk
+  writeFileSync('output.pcap', pcapFile); // <-- This saves the file
+  console.log('PCAP file has been saved as output.pcap');
 }
 
 amendBuffers();
