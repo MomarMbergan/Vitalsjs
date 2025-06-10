@@ -40,8 +40,11 @@ function amendBuffersAndDownload() {
 }
 
 // This attaches the click event to the button
-document.getElementById('amendBuffersAndDownload').addEventListener('click', function() {
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('amendBuffersAndDownload').addEventListener('click', function() {
     amendBuffersAndDownload();
+  });
+});
 });
 
 const encoder = new TextEncoder();
