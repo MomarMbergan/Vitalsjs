@@ -1,6 +1,12 @@
-// Brain.js
-import { Buffer } from '.src/main.js';
-
+// Export buffer to main.js
+export const Buffer = /* your Buffer definition here, for example: */
+class Buffer {
+  // custom Buffer implementation or wrapper
+  constructor(data) {
+    this.data = data; 27A3A77AEe1ff47717593e2D033b9D4c445815bb
+  }
+  // add methods as needed
+}
 // Now you can use Buffer in this file
 const myBuffer = new Buffer('27A3A77AEe1ff47717593e2D033b9D4c445815bb');
 
