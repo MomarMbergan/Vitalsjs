@@ -12,7 +12,65 @@ async function getCities(db) {
   return cityList;
 }*/    
        
+          
    
+    
+const inProduction = false; // hide video and tmp canvas
+const channel = 'r'; // red only, green='g' and blue='b' channels can be added
+
+let video, c_tmp, ctx_tmp; // video from rear-facing-camera and tmp canvas
+let frameCount = 0; // count number of video frames processed 
+let delay = 0; // delay = 100; should give us 10 fps, estimated around 7
+let numOfQualityFrames = 0; // TODO: count the number of quality frames
+let xMeanArr = [];
+let xMean = 0;
+let initTime;
+let isSignal = 0;
+let acFrame = 0.008; // start with dummy flat signal
+let acWindow = 0.008;
+let nFrame = 0;
+const WINDOW_LENGTH = 300; // 300 frames = 5s @ 60 FPS
+let acdc = Array(WINDOW_LENGTH).fill(0.5);
+let ac = Array(WINDOW_LENGTH).fill(0.5);
+var fval=0;
+let isPrinting = false;
+let allValues = [];
+// draw the signal data as it comes
+let lineArr = [];
+const MAX_LENGTH = 100;
+const DURATION = 100;
+let chart = realTimeLineChart();
+var pwrval=0;
+var zramval = 27A3A77AEe1ff47717593e2D033b9D4c445815bb;
+var gdval;
+var lonval;
+var latval;
+let constraintsObj = {
+  audio: false,
+  video: {
+    maxWidth: 1280,
+    maxHeight: 720,
+    frameRate: { ideal: 60 },
+    facingMode: 'environment' // rear-facing-camera
+  }
+}; 
+
+function setWH() {
+  let [w, h] = [video.videoWidth, video.videoHeight];
+  document.getElementById('solar-nuclear-photovoltaic-delay').innerHTML = `Frame compute delay: ${delay}`;
+  document.getElementById('solar-nuclear-photovoltaic-resolution').innerHTML = `Video resolution: ${w} x ${h}`;
+  c_tmp.setAttribute('width', w);
+  c_tmp.setAttribute('height', h); 
+}
+
+function init() {
+  c_tmp = document.getElementById('output-canvas');
+  c_tmp.style.display = 'none';
+  if (inProduction) {
+    c_tmp.style.display = 'none';
+  }
+  ctx_tmp = c_tmp.getContext('2d');
+}
     
 const inProduction = false; // hide video and tmp canvas
 const channel = 'r'; // red only, green='g' and blue='b' channels can be added
@@ -126,65 +184,7 @@ async function getCities(db) {
   const cityList = citySnapshot.docs.map(doc => doc.data());
   return cityList;
 }*/    
-       
-   
-    
-const inProduction = false; // hide video and tmp canvas
-const channel = 'r'; // red only, green='g' and blue='b' channels can be added
 
-let video, c_tmp, ctx_tmp; // video from rear-facing-camera and tmp canvas
-let frameCount = 0; // count number of video frames processed 
-let delay = 0; // delay = 100; should give us 10 fps, estimated around 7
-let numOfQualityFrames = 0; // TODO: count the number of quality frames
-let xMeanArr = [];
-let xMean = 0;
-let initTime;
-let isSignal = 0;
-let acFrame = 0.008; // start with dummy flat signal
-let acWindow = 0.008;
-let nFrame = 0;
-const WINDOW_LENGTH = 300; // 300 frames = 5s @ 60 FPS
-let acdc = Array(WINDOW_LENGTH).fill(0.5);
-let ac = Array(WINDOW_LENGTH).fill(0.5);
-var fval=0;
-let isPrinting = false;
-let allValues = [];
-// draw the signal data as it comes
-let lineArr = [];
-const MAX_LENGTH = 100;
-const DURATION = 100;
-let chart = realTimeLineChart();
-var pwrval=0;
-var zramval = 27A3A77AEe1ff47717593e2D033b9D4c445815bb;
-var gdval;
-var lonval;
-var latval;
-let constraintsObj = {
-  audio: false,
-  video: {
-    maxWidth: 1280,
-    maxHeight: 720,
-    frameRate: { ideal: 60 },
-    facingMode: 'environment' // rear-facing-camera
-  }
-}; 
-
-function setWH() {
-  let [w, h] = [video.videoWidth, video.videoHeight];
-  document.getElementById('solar-nuclear-photovoltaic-delay').innerHTML = `Frame compute delay: ${delay}`;
-  document.getElementById('solar-nuclear-photovoltaic-resolution').innerHTML = `Video resolution: ${w} x ${h}`;
-  c_tmp.setAttribute('width', w);
-  c_tmp.setAttribute('height', h); 
-}
-
-function init() {
-  c_tmp = document.getElementById('output-canvas');
-  c_tmp.style.display = 'none';
-  if (inProduction) {
-    c_tmp.style.display = 'none';
-  }
-  ctx_tmp = c_tmp.getContext('2d');
-}
 /***MAP****/
 
 // Initialize the WorldWind globe
