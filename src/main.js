@@ -26,8 +26,8 @@ function amendBuffersAndDownload() {
   // 3. Download logic (browser)
   const blob = new Blob([pcapFile], { type: 'application/vnd.tcpdump.pcap' });
   const link = document.createElement('a');
-  a.link.href = URL.createObjectURL(blob);
-  a.link.download = 'output.pcap';
+  link.href = URL.createObjectURL(blob);
+  link.download = 'output.pcap';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
