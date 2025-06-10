@@ -40,7 +40,7 @@ function amendBuffersAndDownload() {
 }
 
 // This attaches the click event to the button
-document.getElementById('downloadButton').addEventListener('click', function() {
+document.getElementById('amendBuffersAndDownload').addEventListener('click', function() {
     amendBuffersAndDownload();
 });
 
