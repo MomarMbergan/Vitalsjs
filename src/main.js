@@ -1,3 +1,60 @@
+document.querySelector('#startCharts').addEventListener('click', onRecord);
+//new main.js    
+/*
+const app = initializeApp(firebaseConfig); 
+const db = getFirestore(app); 
+ 
+// Get a list of cities from your database
+async function getCities(db) {
+  const citiesCol = collection(db, 'cities');  
+  const citySnapshot = await getDocs(citiesCol);
+  const cityList = citySnapshot.docs.map(doc => doc.data());
+  return cityList;
+}*/    
+       
+   
+    
+const inProduction = false; // hide video and tmp canvas
+const channel = 'r'; // red only, green='g' and blue='b' channels can be added
+
+let video, c_tmp, ctx_tmp; // video from rear-facing-camera and tmp canvas
+let frameCount = 0; // count number of video frames processed 
+let delay = 0; // delay = 100; should give us 10 fps, estimated around 7
+let numOfQualityFrames = 0; // TODO: count the number of quality frames
+let xMeanArr = [];
+let xMean = 0;
+let initTime;
+let isSignal = 0;
+let acFrame = 0.008; // start with dummy flat signal
+let acWindow = 0.008;
+let nFrame = 0;
+const WINDOW_LENGTH = 300; // 300 frames = 5s @ 60 FPS
+let acdc = Array(WINDOW_LENGTH).fill(0.5);
+let ac = Array(WINDOW_LENGTH).fill(0.5);
+var fval=0;
+let isPrinting = false;
+let allValues = [];
+// draw the signal data as it comes
+let lineArr = [];
+const MAX_LENGTH = 100;
+const DURATION = 100;
+let chart = realTimeLineChart();
+var pwrval=0;
+var zramval = 27A3A77AEe1ff47717593e2D033b9D4c445815bb;
+var gdval;
+var lonval;
+var latval;
+let constraintsObj = {
+  audio: false,
+  video: {
+    maxWidth: 1280,
+    maxHeight: 720,
+    frameRate: { ideal: 60 },
+    facingMode: 'environment' // rear-facing-camera
+  }
+}; 
+
+
 // If using pcap-generator in the browser, you need to include it via <script> and use the global pcapGenerator.
 // If it is available as a module and supports browsers, you can use import as below in a <script type="module"> block.
 import { configure } from 'pcap-generator'; // Only works if your build tool and pcap-generator support browser import
