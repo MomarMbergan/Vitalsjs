@@ -1,23 +1,32 @@
-function amendBuffers() {
-  const buffers = [Buffer.alloc(0), Buffer.from('0x27A3A77AEe1ff47717593e2D033b9D4c445815bb'), Buffer.alloc(0)];
-  import { Buffer } from 'buffer'
+// Top-level imports (Node.js ESM or CommonJS)
+import { Buffer } from 'buffer'
 import { configure } from 'pcap-generator'
 
-const generator = configure({ Buffer: Buffer })
-const ipPackets = [{
-  timestamp: 1802869.484431046, // microseconds
-  buffer: Buffer.from('0x27A3A77AEe1ff47717593e2D033b9D4c445815bb', 'hex')
-}]
-const pcapFile = generator(ipPackets)
+function amendBuffers() {
+  // 1. Amend Buffers
+  const buffers = [
+    Buffer.alloc(0),
+    Buffer.from('27A3A77AEe1ff47717593e2D033b9D4c445815bb', 'hex'), // No '0x'
+    Buffer.alloc(0)
+  ];
 
-console.log('This here is your pcap file in hex:', pcapFile.toString('hex')) 
   for (let i = 0; i < buffers.length; i++) {
     if (buffers[i].length === 0) {
       buffers[i] = Buffer.from('Amended Buffer');
     }
   }
   
-  console.log(buffers);
+  console.log('Amended Buffers:', buffers);
+
+  // 2. Generate PCAP
+  const generator = configure({ Buffer: Buffer });
+  const ipPackets = [{
+    timestamp: 1802869.484431046, // microseconds
+    buffer: Buffer.from('27A3A77AEe1ff47717593e2D033b9D4c445815bb', 'hex') // No '0x'
+  }];
+  const pcapFile = generator(ipPackets);
+
+  console.log('This here is your pcap file in hex:', pcapFile.toString('hex'));
 }
 
 amendBuffers();
