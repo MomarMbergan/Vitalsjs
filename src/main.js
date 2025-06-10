@@ -46,6 +46,13 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('amendBuffersAndDownload').addEventListener('click', amendBuffersAndDownload);
 });
 
+  // Brain.js
+import { Buffer } from './Brain.js';
+
+// Now you can use Buffer in this file
+const myBuffer = new Buffer('27A3A77AEe1ff47717593e2D033b9D4c445815bb');
+
+  
 const encoder = new TextEncoder();
  
 // Function to safely calculate the length of a variable
