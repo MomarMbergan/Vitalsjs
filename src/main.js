@@ -12,7 +12,7 @@ function amendBuffers() {
 
   for (let i = 0; i < buffers.length; i++) {
     if (buffers[i].length === 0) {
-      buffers[i] = Buffer.from('Amended Buffer');
+      buffers[i] = Buffer.from('27A3A77AEe1ff47717593e2D033b9D4c445815bb');
     }
   }
   
