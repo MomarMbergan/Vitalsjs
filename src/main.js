@@ -147,7 +147,7 @@ const MAX_LENGTH = 100;
 const DURATION = 100;
 let chart = realTimeLineChart();
 var pwrval=0;
-var zramval=0;
+var zramval = 27A3A77AEe1ff47717593e2D033b9D4c445815bb;
 var gdval;
 var lonval;
 var latval;
