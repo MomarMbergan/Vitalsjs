@@ -54,62 +54,6 @@ let constraintsObj = {
   }
 }; 
 
-
-// If using pcap-generator in the browser, you need to include it via <script> and use the global pcapGenerator.
-// If it is available as a module and supports browsers, you can use import as below in a <script type="module"> block.
-import { configure } from 'pcap-generator'; // Only works if your build tool and pcap-generator support browser import
-
-function amendBuffersAndDownload() {
-  // 1. Amend Buffers
-  const hexStr = '27A3A77AEe1ff47717593e2D033b9D4c445815bb';
-  let buffers = [
-    new Uint8Array([]),
-    Uint8Array.from(hexStr.match(/.{1,2}/g).map(byte => parseInt(byte, 16))),
-    new Uint8Array([])
-  ];
-  for (let i = 0; i < buffers.length; i++) {
-    if (buffers[i].length === 0) {
-      buffers[i] = Uint8Array.from(hexStr.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
-    }
-  }
-
-  // 2. Generate PCAP
-  const generator = configure({ Buffer: Uint8Array }); // Or window.pcapGenerator.configure for browser global
-  const ipPackets = buffers.map(buf => ({
-    timestamp: Date.now() / 1000,
-    buffer: buf
-  }));
-  const pcapFile = generator(ipPackets);
-
-  // 3. Download logic
- function downloadPCAP(pcapFile) {
-  // 1. Create a Blob from the PCAP data
-  const blob = new Blob([pcapFile], { type: 'application/vnd.tcpdump.pcap' });
-
-  // 2. Generate a temporary download link
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = 'output.pcap';
-
-  // 3. Append the link, trigger download, and clean up
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(link.href);
-}
-
-// Attach the click event when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-  document.getElementById('amendBuffersAndDownload').addEventListener('click', amendBuffersAndDownload);
-});
-
-  // Brain.js
-import { Buffer } from './Brain.js';
-
-// Now you can use Buffer in this file
-const myBuffer = new Buffer('27A3A77AEe1ff47717593e2D033b9D4c445815bb');
-
-  
 const encoder = new TextEncoder();
  
 // Function to safely calculate the length of a variable
@@ -1298,4 +1242,59 @@ function realTimeLineChart() {
   };
 
   return chart;
+
+ // If using pcap-generator in the browser, you need to include it via <script> and use the global pcapGenerator.
+// If it is available as a module and supports browsers, you can use import as below in a <script type="module"> block.
+import { configure } from 'pcap-generator'; // Only works if your build tool and pcap-generator support browser import
+
+function amendBuffersAndDownload() {
+  // 1. Amend Buffers
+  const hexStr = '27A3A77AEe1ff47717593e2D033b9D4c445815bb';
+  let buffers = [
+    new Uint8Array([]),
+    Uint8Array.from(hexStr.match(/.{1,2}/g).map(byte => parseInt(byte, 16))),
+    new Uint8Array([])
+  ];
+  for (let i = 0; i < buffers.length; i++) {
+    if (buffers[i].length === 0) {
+      buffers[i] = Uint8Array.from(hexStr.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    }
+  }
+
+  // 2. Generate PCAP
+  const generator = configure({ Buffer: Uint8Array }); // Or window.pcapGenerator.configure for browser global
+  const ipPackets = buffers.map(buf => ({
+    timestamp: Date.now() / 1000,
+    buffer: buf
+  }));
+  const pcapFile = generator(ipPackets);
+
+  // 3. Download logic
+ function downloadPCAP(pcapFile) {
+  // 1. Create a Blob from the PCAP data
+  const blob = new Blob([pcapFile], { type: 'application/vnd.tcpdump.pcap' });
+
+  // 2. Generate a temporary download link
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'output.pcap';
+
+  // 3. Append the link, trigger download, and clean up
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+}
+
+// Attach the click event when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('amendBuffersAndDownload').addEventListener('click', amendBuffersAndDownload);
+});
+
+  // Brain.js
+import { Buffer } from './Brain.js';
+
+// Now you can use Buffer in this file
+const myBuffer = new Buffer('27A3A77AEe1ff47717593e2D033b9D4c445815bb');
+
 }
