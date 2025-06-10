@@ -25,10 +25,16 @@ function amendBuffersAndDownload() {
   const pcapFile = generator(ipPackets);
 
   // 3. Download logic
+ function downloadPCAP(pcapFile) {
+  // 1. Create a Blob from the PCAP data
   const blob = new Blob([pcapFile], { type: 'application/vnd.tcpdump.pcap' });
+
+  // 2. Generate a temporary download link
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = 'output.pcap';
+
+  // 3. Append the link, trigger download, and clean up
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
