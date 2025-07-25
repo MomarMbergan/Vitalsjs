@@ -1,7 +1,7 @@
 document.getElementById('startCharts').addEventListener('click', onRecord); // Prevents the default link action
     // Your code to open or start something here
-    alert('Start clicked!'); // Example action
-});
+  //  alert('Start clicked!'); // Example action
+//});
 document.querySelector('#startCharts').addEventListener('click', onRecord);
 //new main.js    
 /*
