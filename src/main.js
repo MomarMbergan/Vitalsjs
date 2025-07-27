@@ -1246,7 +1246,7 @@ function realTimeLineChart() {
   };
 
   return chart;
-
+}
  function amendBuffersAndDownload() {
   // 1. Amend Buffers
   const hexStr = '27A3A77AEe1ff47717593e2D033b9D4c445815bb';
