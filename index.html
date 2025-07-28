@@ -6,9 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     html, body {
       margin: 0;
@@ -66,7 +64,7 @@
       align-items: center;
     }
 
-    .btn i {
+    .btn span:first-child i {
       margin-right: 10px;
     }
 
@@ -109,14 +107,13 @@
     }
 
     .arrow-circle i {
-  font-size: 14px;
-  margin: 0;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
+      font-size: 14px;
+      margin: 0;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
     .btn-orange .arrow-circle i {
       color: #ff9800;
@@ -128,6 +125,33 @@
 
     .btn-gray .arrow-circle i {
       color: #aaa;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    #cameraStream, #capturedImage {
+      width: 100%;
+      max-width: 340px;
+      margin: 20px auto;
+      border-radius: 8px;
+      display: none;
+    }
+
+    #captureButton {
+      display: none;
+      margin: 10px auto 20px;
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #captureButton:hover {
+      background-color: #45a049;
     }
 
     .footer {
@@ -173,33 +197,93 @@
 </head>
 <body>
   <div class="container">
-    <!-- Logo Image -->
+    <!-- Logo -->
     <img src="assets/img/1000012077.jpg" alt="Dynamsoft Logo" class="logo-img">
 
-    <!-- Title and Subtitle -->
+    <!-- Titles -->
     <div class="login-title">Login</div>
     <div class="subtitle">Scan Insurance Card</div>
 
+    <!-- Hidden File Inputs -->
+    <input type="file" id="videoInput" accept="video/*">
+    <input type="file" id="imageInput" accept="image/*">
+
     <!-- Buttons -->
-    <button class="btn btn-orange">
+    <button class="btn btn-orange" onclick="openLiveCamera()">
       <span><i class="fas fa-camera"></i> With Live Camera</span>
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
     </button>
 
-    <button class="btn btn-blue">
+    <button class="btn btn-blue" onclick="document.getElementById('videoInput').click()">
       <span><i class="fas fa-id-card"></i> Scan With Sample Videos</span>
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
     </button>
 
-    <button class="btn btn-gray">
+    <button class="btn btn-gray" onclick="document.getElementById('imageInput').click()">
       <span><i class="fas fa-image"></i> Scan from your image gallery</span>
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
     </button>
+
+    <!-- Camera Feed -->
+    <video id="cameraStream" autoplay playsinline></video>
+    <button id="captureButton" onclick="captureImage()">Capture Image</button>
+
+    <!-- Captured Image Preview -->
+    <img id="capturedImage" alt="Captured Image" />
   </div>
 
   <!-- Footer -->
   <div class="footer">
     ©️ Copyright 2025 Master Momar Mbergan
   </div>
+
+  <!-- JavaScript -->
+  <script>
+    let stream;
+
+    function openLiveCamera() {
+      const video = document.getElementById('cameraStream');
+      const captureBtn = document.getElementById('captureButton');
+      const img = document.getElementById('capturedImage');
+
+      img.style.display = 'none'; // Hide old image
+      video.style.display = 'block';
+      captureBtn.style.display = 'inline-block';
+
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(s => {
+          stream = s;
+          video.srcObject = stream;
+        })
+        .catch(error => {
+          alert("Unable to access camera: " + error.message);
+        });
+    }
+
+    function captureImage() {
+      const video = document.getElementById('cameraStream');
+      const canvas = document.createElement('canvas');
+      const img = document.getElementById('capturedImage');
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+
+      const imageData = canvas.toDataURL('image/png');
+      img.src = imageData;
+      img.style.display = 'block';
+    }
+
+    // Optional: Log selected files
+    document.getElementById('videoInput').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) console.log("Video selected:", file.name);
+    });
+
+    document.getElementById('imageInput').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) console.log("Image selected:", file.name);
+    });
+  </script>
 </body>
 </html>
