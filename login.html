@@ -272,6 +272,7 @@
         // Launch MRZ scanner
         result = await mrzscanner.launch(file);
         console.log("MRZ Result from gallery image:", result);
+        runTesseractOCR(file);
       } catch (err) {
         console.warn("MRZ scan failed, falling back to Tesseract OCR...");
         runTesseractOCR(file);
