@@ -238,11 +238,14 @@
   </div>
 
   <!-- JavaScript -->
-<script src="./dist/mrz-scanner.bundle.js"></script>
+<script src="./dist/mrz-scanner.bundle.js"></script>>
   <script>
     const scanWithCameraButton = document.getElementById("scanWithCameraButton");
       const scanWithSampleImgButton = document.getElementById("desktop-view");
       const scanWithGalleryButton = document.getElementById("results-view");
+
+      let result = null;
+      let firstLoad = true;
 
     const mrzscanner = new Dynamsoft.MRZScanner({
         license:
