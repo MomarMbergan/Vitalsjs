@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Biometric Network</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+      background-color: #ffffff;
+      color: #000000;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .container {
+      text-align: center;
+      width: 100%;
+      max-width: 400px;
+      padding: 20px;
+      margin: auto;
+    }
+
+    .logo-img {
+      width: 50%;
+      object-fit: contain;
+    }
+
+    .login-title {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 10px 0 5px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 30px;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 20px;
+      margin: 10px auto;
+      border: none;
+      border-radius: 5px;
+      width: 100%;
+      max-width: 340px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .btn span {
+      display: flex;
+      align-items: center;
+    }
+
+    .btn span:first-child i {
+      margin-right: 10px;
+    }
+
+    .btn-orange {
+      background-color: #ff9800;
+      color: #fff;
+    }
+
+    .btn-orange:hover {
+      background-color: #e68900;
+    }
+
+    .btn-blue {
+      background-color: #3c8dbc;
+      color: #fff;
+    }
+
+    .btn-blue:hover {
+      background-color: #327fa3;
+    }
+
+    .btn-gray {
+      background-color: #555;
+      color: #fff;
+    }
+
+    .btn-gray:hover {
+      background-color: #444;
+    }
+
+    .arrow-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background-color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 10px;
+    }
+
+    .arrow-circle i {
+      font-size: 14px;
+      margin: 0;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-orange .arrow-circle i {
+      color: #ff9800;
+    }
+
+    .btn-blue .arrow-circle i {
+      color: #3c8dbc;
+    }
+
+    .btn-gray .arrow-circle i {
+      color: #aaa;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    #cameraStream, #capturedImage {
+      width: 100%;
+      max-width: 340px;
+      margin: 20px auto;
+      border-radius: 8px;
+      display: none;
+    }
+
+    #captureButton {
+      display: none;
+      margin: 10px auto 20px;
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #captureButton:hover {
+      background-color: #45a049;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 14px;
+      color: #666;
+      padding: 15px 10px;
+      background-color: #f4f4f4;
+    }
+
+    @media (max-width: 480px) {
+      .logo-img {
+        width: 50%;
+      }
+
+      .login-title {
+        font-size: 20px;
+      }
+
+      .subtitle {
+        font-size: 14px;
+      }
+
+      .btn {
+        padding: 12px 15px;
+        font-size: 14px;
+      }
+
+      .arrow-circle {
+        width: 28px;
+        height: 28px;
+      }
+
+      .arrow-circle i {
+        font-size: 12px;
+      }
+
+      .footer {
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Logo -->
+    <img src="assets/img/1000012077.jpg" alt="Dynamsoft Logo" class="logo-img">
+
+    <!-- Titles -->
+    <div class="login-title">Login</div>
+    <div class="subtitle">Scan Insurance Card</div>
+
+    <!-- Hidden File Inputs -->
+    <input type="file" id="videoInput" accept="video/*">
+    <input type="file" id="imageInput" accept="image/*">
+
+    <!-- Buttons -->
+    <button class="btn btn-orange" onclick="openLiveCamera()">
+      <span><i class="fas fa-camera"></i> With Live Camera</span>
+      <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
+    </button>
+
+    <button class="btn btn-blue" onclick="document.getElementById('videoInput').click()">
+      <span><i class="fas fa-id-card"></i> Scan With Sample Videos</span>
+      <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
+    </button>
+
+    <button class="btn btn-gray" onclick="document.getElementById('imageInput').click()">
+      <span><i class="fas fa-image"></i> Scan from your image gallery</span>
+      <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
+    </button>
+
+    <!-- Camera Feed -->
+    <video id="cameraStream" autoplay playsinline></video>
+    <button id="captureButton" onclick="captureImage()">Capture Image</button>
+
+    <!-- Captured Image Preview -->
+    <img id="capturedImage" alt="Captured Image" />
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    ©️ Copyright 2025 Master Momar Mbergan
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    let stream;
+
+    function openLiveCamera() {
+      const video = document.getElementById('cameraStream');
+      const captureBtn = document.getElementById('captureButton');
+      const img = document.getElementById('capturedImage');
+
+      img.style.display = 'none'; // Hide old image
+      video.style.display = 'block';
+      captureBtn.style.display = 'inline-block';
+
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(s => {
+          stream = s;
+          video.srcObject = stream;
+        })
+        .catch(error => {
+          alert("Unable to access camera: " + error.message);
+        });
+    }
+
+    function captureImage() {
+      const video = document.getElementById('cameraStream');
+      const canvas = document.createElement('canvas');
+      const img = document.getElementById('capturedImage');
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+
+      const imageData = canvas.toDataURL('image/png');
+      img.src = imageData;
+      img.style.display = 'block';
+    }
+
+    // Optional: Log selected files
+   document.getElementById('imageInput').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith("image/")) {
+      const img = document.getElementById('capturedImage');
+      img.src = URL.createObjectURL(file);
+      img.style.display = 'block';
+    }
+  });
+
+  document.getElementById('videoInput').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith("video/")) return;
+
+    const video = document.createElement('video');
+    video.src = URL.createObjectURL(file);
+    video.muted = true;
+    video.playsInline = true;
+    video.crossOrigin = "anonymous";
+
+    video.addEventListener('loadeddata', () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+
+      const imageURL = canvas.toDataURL('image/png');
+      const img = document.getElementById('capturedImage');
+      img.src = imageURL;
+      img.style.display = 'block';
+    });
+
+    video.load();
+  });
+  </script>
+</body>
+</html>
