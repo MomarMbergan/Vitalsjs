@@ -209,27 +209,22 @@
     <input type="file" id="imageInput" accept="image/*">
 
     <!-- Buttons -->
-    <button class="btn btn-orange" id="scanWithCameraButton">
+    <button class="btn btn-orange scan-with-camera" >
       <span><i class="fas fa-camera"></i> With Live Camera</span>
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
     </button>
 
-    <button class="btn btn-blue" onclick="document.getElementById('videoInput').click()">
+    <button class="btn btn-blue scan-with-sample-image">
       <span><i class="fas fa-id-card"></i> Scan With Sample Videos</span>
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
     </button>
 
-    <button class="btn btn-gray" onclick="document.getElementById('imageInput').click()">
+    <button class="btn btn-gray scan-with-image-gallery" >
       <span><i class="fas fa-image"></i> Scan from your image gallery</span>
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
     </button>
 
-    <!-- Camera Feed -->
-    <video id="cameraStream" autoplay playsinline></video>
-    <button id="captureButton" onclick="captureImage()">Capture Image</button>
 
-    <!-- Captured Image Preview -->
-    <img id="capturedImage" alt="Captured Image" />
   </div>
 
   <!-- Footer -->
@@ -240,9 +235,9 @@
   <!-- JavaScript -->
 <script src="./dist/mrz-scanner.bundle.js"></script>>
   <script>
-    const scanWithCameraButton = document.getElementById("scanWithCameraButton");
-      const scanWithSampleImgButton = document.getElementById("desktop-view");
-      const scanWithGalleryButton = document.getElementById("results-view");
+    const scanWithCameraButton = document.querySelector(".scan-with-camera");
+      const scanWithSampleImgButton = document.querySelector(".scan-with-sample-image");
+      const scanWithGalleryButton = document.querySelector(".scan-with-image-gallery");
 
       let result = null;
       let firstLoad = true;
