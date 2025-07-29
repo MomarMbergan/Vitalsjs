@@ -209,7 +209,7 @@
     <input type="file" id="imageInput" accept="image/*">
 
     <!-- Buttons -->
-    <button class="btn btn-orange" onclick="openLiveCamera()">
+    <button class="btn btn-orange" id="scanWithCameraButton">
       <span><i class="fas fa-camera"></i> With Live Camera</span>
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
     </button>
@@ -239,75 +239,100 @@
 
   <!-- JavaScript -->
   <script>
-    let stream;
+    const scanWithCameraButton = document.getElementById("mobile-viewscanWithCameraButton");
+      const scanWithSampleImgButton = document.getElementById("desktop-view");
+      const scanWithGalleryButton = document.getElementById("results-view");
 
-    function openLiveCamera() {
-      const video = document.getElementById('cameraStream');
-      const captureBtn = document.getElementById('captureButton');
-      const img = document.getElementById('capturedImage');
+    const mrzscanner = new Dynamsoft.MRZScanner({
+        license:
+          "DLS2eyJoYW5kc2hha2VDb2RlIjoiMTA0MzI5ODU4LU1UQTBNekk1T0RVNExYZGxZaTFVY21saGJGQnliMm8iLCJtYWluU2VydmVyVVJMIjoiaHR0cHM6Ly9tZGxzLmR5bmFtc29mdG9ubGluZS5jb20iLCJvcmdhbml6YXRpb25JRCI6IjEwNDMyOTg1OCIsInN0YW5kYnlTZXJ2ZXJVUkwiOiJodHRwczovL3NkbHMuZHluYW1zb2Z0b25saW5lLmNvbSIsImNoZWNrQ29kZSI6MTczNDA3NjY3M30=",
+        resultViewConfig: {
+          toolbarButtonsConfig: {
+            done: {
+              label: "Return Home",
+            },
+          },
+        },
+        scannerViewConfig: {
+          cameraEnhancerUIPath: "./dist/mrz-scanner.ui.html",
+        },
+        templateFilePath: "./dist/mrz-scanner.template.json",
+      });
 
-      img.style.display = 'none'; // Hide old image
-      video.style.display = 'block';
-      captureBtn.style.display = 'inline-block';
+      // Scan with camera
+      scanWithCameraButton.addEventListener("click", async function () {
+        mobileView.style.display = "none";
+        desktopView.style.display = "none";
 
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(s => {
-          stream = s;
-          video.srcObject = stream;
-        })
-        .catch(error => {
-          alert("Unable to access camera: " + error.message);
-        });
-    }
+        try {
+          // Launch the scanner and wait for the result
+          result = await mrzscanner.launch();
+          console.log(result);
 
-    function captureImage() {
-      const video = document.getElementById('cameraStream');
-      const canvas = document.createElement('canvas');
-      const img = document.getElementById('capturedImage');
+          detectDeviceAndSetView(); // Return to appropriate view based on device
+        } catch (error) {
+          console.error("Error scanning:", error);
+          detectDeviceAndSetView();
+        }
+      });
 
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
+      // Scan with sample image (Passport)
+      scanWithSampleImgButton.addEventListener("click", async function () {
+        mobileView.style.display = "none";
+        desktopView.style.display = "none";
 
-      const imageData = canvas.toDataURL('image/png');
-      img.src = imageData;
-      img.style.display = 'block';
-    }
+        try {
+          // Launch the scanner and wait for the result
+          result = await mrzscanner.launch(null, "virtual1");
+          console.log(result);
 
-    // Optional: Log selected files
-   document.getElementById('imageInput').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (file && file.type.startsWith("image/")) {
-      const img = document.getElementById('capturedImage');
-      img.src = URL.createObjectURL(file);
-      img.style.display = 'block';
-    }
-  });
+          detectDeviceAndSetView(); // Return to appropriate view based on device
+        } catch (error) {
+          console.error("Error scanning:", error);
+          detectDeviceAndSetView();
+        }
+      });
 
-  document.getElementById('videoInput').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file || !file.type.startsWith("video/")) return;
+      const fileInput = document.getElementById("initialFile");
+      // Scan with gallery
+      scanWithGalleryButton.addEventListener("click", function () {
+        fileInput.click();
+      });
+      fileInput.addEventListener("change", async function () {
+        mobileView.style.display = "none";
+        desktopView.style.display = "none";
 
-    const video = document.createElement('video');
-    video.src = URL.createObjectURL(file);
-    video.muted = true;
-    video.playsInline = true;
-    video.crossOrigin = "anonymous";
+        const files = Array.from(this.files || []);
 
-    video.addEventListener('loadeddata', () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
+        if (files.length) {
+          try {
+            let fileToProcess = files[0];
 
-      const imageURL = canvas.toDataURL('image/png');
-      const img = document.getElementById('capturedImage');
-      img.src = imageURL;
-      img.style.display = 'block';
-    });
+            // Handle PDF conversion if needed
+            if (fileToProcess.type === "application/pdf") {
+              fileToProcess = await convertPDFToImage(fileToProcess);
+            }
 
-    video.load();
-  });
+            const result = await mrzscanner.launch(fileToProcess);
+          } catch (error) {
+            console.error("Error processing file:", error);
+          }
+        }
+
+        detectDeviceAndSetView();
+        this.value = "";
+      });
+
+      // Desktop proceed button handler
+      desktopProceedButton.addEventListener("click", async function () {
+        desktopView.style.display = "none";
+        mobileView.style.display = "flex";
+
+        firstLoad = false;
+      });
+
+
+    
   </script>
 </body>
 </html>
