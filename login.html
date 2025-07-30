@@ -340,6 +340,8 @@
       ocrResultDiv.innerText = "Images stored in cache.\nCard extraction will happen later.";
       console.log("Cached front image:", imageCache.front);
       console.log("Cached back image:", imageCache.back);
+      runTesseractOCR(imageCache.front, "Front");
+      runTesseractOCR(imageCache.back, "Back");
     });
 
     // Direct user click required for this one too
