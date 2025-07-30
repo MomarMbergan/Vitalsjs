@@ -355,25 +355,32 @@
   }
 }
 
-
-
-    function runTesseractOCR(file, label = "Image") {
-  const reader = new FileReader();
-  reader.onload = function () {
-    Tesseract.recognize(reader.result, 'eng', {
+function runTesseractOCR(input, label = "Image") {
+  const processImage = (dataURL) => {
+    Tesseract.recognize(dataURL, 'eng', {
       logger: m => console.log(`[${label}]`, m)
     }).then(({ data: { text } }) => {
       console.log(`[${label}] OCR Text:`, text);
-
-      // Append result instead of replacing
       ocrResultDiv.innerText += `\n----- ${label.toUpperCase()} OCR Result -----\n${text.trim()}\n`;
     }).catch(err => {
       console.error(`[${label}] OCR error:`, err);
       ocrResultDiv.innerText += `\n[${label}] Failed to extract text.\n`;
     });
   };
-  reader.readAsDataURL(file);
+
+  if (typeof input === "string") {
+    // It's already a data URL
+    processImage(input);
+  } else if (input instanceof Blob) {
+    const reader = new FileReader();
+    reader.onload = () => processImage(reader.result);
+    reader.readAsDataURL(input);
+  } else {
+    console.warn(`[${label}] Invalid input for OCR`);
+    ocrResultDiv.innerText += `\n[${label}] Invalid input for OCR.\n`;
+  }
 }
+
 
   </script>
 </body>
