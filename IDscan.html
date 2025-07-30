@@ -51,6 +51,7 @@
   <div class="split-container">
     <!-- Left: vpnskynet.com/# -->
     <iframe
+      id="skynetFrame"
       class="split-left"
       src="https://vpnskynet.com/#"
       allow="camera; microphone"
@@ -68,5 +69,33 @@
       title="VPN Skynet Dual Lens"
     ></iframe>
   </div>
+  <script>
+    // When the left iframe loads, try to trigger "Start" button click inside vpnskynet.com/#
+    document.getElementById('skynetFrame').addEventListener('load', function() {
+      // Attempt to click the "Start" button inside the iframe
+      // This only works if both parent and child are same origin (vpnskynet.com)
+      try {
+        const skynetWin = document.getElementById('skynetFrame').contentWindow;
+        // Wait for DOM to be ready in the iframe and then click the start button
+        skynetWin.postMessage({ action: "autoStart" }, "https://vpnskynet.com");
+      } catch (e) {
+        // Fails for cross-origin, so only works if both pages are same domain
+        // If you control vpnskynet.com/#, add a message listener to click Start
+        // See below for code to add on vpnskynet.com/# page:
+      }
+    });
+
+    // If you also want to trigger after explicit permissions (browser), you must do that from inside the iframe
+    // See below for code to add to vpnskynet.com/# page:
+    /*
+      window.addEventListener('message', function(event) {
+        if (event.origin === "https://vpnskynet.com" && event.data.action === "autoStart") {
+          // Find and click the "Start" button
+          var startBtn = document.querySelector('button, input[type="button"], .start-button, #start, [data-action="start"]');
+          if (startBtn) startBtn.click();
+        }
+      });
+    */
+  </script>
 </body>
 </html>
