@@ -74,6 +74,29 @@
       margin-right: 10px;
     }
 
+    /* Updated colors for requested buttons */
+    .btn-red {
+      background-color: #e53935;
+      color: #fff;
+    }
+    .btn-red:hover {
+      background-color: #b71c1c;
+    }
+    .btn-yellow {
+      background-color: #fbc02d;
+      color: #000;
+    }
+    .btn-yellow:hover {
+      background-color: #f9a825;
+    }
+    .btn-green {
+      background-color: #43a047;
+      color: #fff;
+    }
+    .btn-green:hover {
+      background-color: #388e3c;
+    }
+
     .btn-orange {
       background-color: #ff9800;
       color: #fff;
@@ -116,14 +139,21 @@
       font-size: 14px;
     }
 
+    .btn-red .arrow-circle i {
+      color: #e53935;
+    }
+    .btn-yellow .arrow-circle i {
+      color: #fbc02d;
+    }
+    .btn-green .arrow-circle i {
+      color: #43a047;
+    }
     .btn-orange .arrow-circle i {
       color: #ff9800;
     }
-
     .btn-blue .arrow-circle i {
       color: #3c8dbc;
     }
-
     .btn-gray .arrow-circle i {
       color: #aaa;
     }
@@ -192,22 +222,26 @@
     <input type="file" id="videoInput" accept="video/*">
     <input type="file" id="imageInput" accept="image/*">
 
-    <button class="btn btn-orange scan-with-camera">
+    <!-- Button 1: With Live Camera (Red) -->
+    <button class="btn btn-red scan-with-camera">
       <span><i class="fas fa-camera"></i> With Live Camera</span>
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
     </button>
 
+    <!-- Button 2: Scan Card Both Sides (Orange, left as is) -->
     <button class="btn btn-orange" id="scan-two-sides-btn">
       <span><i class="fas fa-camera"></i> Tap to Scan Card (Both Sides)</span>
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
     </button>
 
-    <button class="btn btn-blue scan-with-sample-image">
+    <!-- Button 3: Scan With Sample Videos (Yellow) -->
+    <button class="btn btn-yellow scan-with-sample-image">
       <span><i class="fas fa-id-card"></i> Scan With Sample Videos</span>
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
     </button>
 
-    <button class="btn btn-gray scan-with-image-gallery">
+    <!-- Button 4: Scan From Image Gallery (Green) -->
+    <button class="btn btn-green scan-with-image-gallery">
       <span><i class="fas fa-image"></i> Scan from your image gallery</span>
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
     </button>
