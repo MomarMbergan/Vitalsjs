@@ -312,32 +312,43 @@
       });
     }
 
-    scanTwoSidesBtn.addEventListener("click", async () => {
-      try {
-        alert("Capture FRONT side of card");
-        const front = await captureImage("Front");
-        imageCache.front = front;
+    scanTwoSidesBtn.addEventListener("click", () => {
+  const inputFront = document.createElement("input");
+  inputFront.type = "file";
+  inputFront.accept = "image/*";
+  inputFront.capture = "environment";
 
-        alert("Capture BACK side of card");
-        const back = await captureImage("Back");
-        imageCache.back = back;
+  inputFront.onchange = () => {
+    const front = inputFront.files[0];
+    if (!front) return alert("Front capture cancelled.");
 
-        alert("Both images captured successfully. Redirecting to main page...");
-        // Simulate redirection after capture
-        setTimeout(() => {
-          ocrResultDiv.innerText = "Images stored in cache.\nCard extraction will happen later.";
-          console.log("Cached front image:", imageCache.front);
-          console.log("Cached back image:", imageCache.back);
-        }, 1000);
-      } catch (err) {
-        console.error(err);
-        alert("Image capture failed or canceled.");
-      }
-    });
+    imageCache.front = front;
 
-   
+    const inputBack = document.createElement("input");
+    inputBack.type = "file";
+    inputBack.accept = "image/*";
+    inputBack.capture = "environment";
 
-    
+    inputBack.onchange = () => {
+      const back = inputBack.files[0];
+      if (!back) return alert("Back capture cancelled.");
+
+      imageCache.back = back;
+
+      ocrResultDiv.innerText = "Images stored in cache.\nCard extraction will happen later.";
+      console.log("Cached front image:", imageCache.front);
+      console.log("Cached back image:", imageCache.back);
+    };
+
+    // Must be directly triggered by the user interaction chain
+    alert("Now capture the BACK of the card");
+    inputBack.click();
+  };
+
+  alert("First capture the FRONT of the card");
+  inputFront.click(); // Must be triggered immediately on user click
+});
+
 
     function runTesseractOCR(file) {
       const reader = new FileReader();
