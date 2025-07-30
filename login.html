@@ -270,6 +270,16 @@
       back: null
     };
 
+    // --- Utility function for saving to browser cache (localStorage) ---
+    function saveTextToCache(label, text) {
+      try {
+        localStorage.setItem(`ocr_${label}`, text);
+        console.log(`[CACHE] Saved OCR for ${label}`);
+      } catch (e) {
+        console.warn('[CACHE] Failed to save OCR result:', e);
+      }
+    }
+
     const mrzscanner = new Dynamsoft.MRZScanner({
       license: "DLS2eyJoYW5kc2hha2VDb2RlIjoiMTA0MzI5ODU4LU1UQTBNekk1T0RVNExYZGxZaTFVY21saGJGQnliMm8iLCJtYWluU2VydmVyVVJMIjoiaHR0cHM6Ly9tZGxzLmR5bmFtc29mdG9ubGluZS5jb20iLCJvcmdhbml6YXRpb25JRCI6IjEwNDMyOTg1OCIsInN0YW5kYnlTZXJ2ZXJVUkwiOiJodHRwczovL3NkbHMuZHluYW1zb2Z0b25saW5lLmNvbSIsImNoZWNrQ29kZSI6MTczNDA3NjY3M30=",
       resultViewConfig: {
@@ -288,6 +298,15 @@
       try {
         result = await mrzscanner.launch();
         console.log("MRZ Result from camera:", result);
+
+        // Extract image and run OCR, then save to cache
+        const cameraImageDataURL = await getImageDataURL(result);
+        if (cameraImageDataURL) {
+          ocrResultDiv.innerText = "Extracting text from camera image...";
+          runTesseractOCR(cameraImageDataURL, "Camera", true);
+        } else {
+          ocrResultDiv.innerText = "Failed to get camera image for OCR.";
+        }
       } catch (error) {
         console.error("MRZ scan error:", error);
       }
@@ -346,7 +365,7 @@
       });
     }
 
- scanTwoSidesBtn.addEventListener("click", async () => {
+    scanTwoSidesBtn.addEventListener("click", async () => {
       ocrResultDiv.innerText = "Launching MRZ Scanner for Front Side...";
       try {
         const frontResult = await mrzscanner.launch();
@@ -371,8 +390,8 @@
         imageCache.back = backImage;
         ocrResultDiv.innerText = "Both images captured. Running OCR...\n";
 
-        await runTesseractOCR(imageCache.front, "Front");
-        await runTesseractOCR(imageCache.back, "Back");
+        await runTesseractOCR(imageCache.front, "Front", true);
+        await runTesseractOCR(imageCache.back, "Back", true);
       } catch (error) {
         console.error("Error scanning both sides:", error);
         ocrResultDiv.innerText = "Error during scanning. Please try again.";
@@ -380,42 +399,73 @@
     });
 
     async function getImageDataURL(result) {
-  try {
-    const canvas = await result.originalImageResult?.toCanvas();
-    return canvas?.toDataURL() || null;
-  } catch (e) {
-    console.warn("Failed to extract image:", e);
-    return null;
+      try {
+        const canvas = await result.originalImageResult?.toCanvas();
+        return canvas?.toDataURL() || null;
+      } catch (e) {
+        console.warn("Failed to extract image:", e);
+        return null;
+      }
+    }
+
+    <!-- Add these changes to your <script> section -->
+
+
+  // ... existing code above ...
+
+  // Utility function for saving to browser cache (localStorage)
+  function saveTextToCache(label, text) {
+    try {
+      localStorage.setItem(`ocr_${label}`, text);
+      console.log(`[CACHE] Saved OCR for ${label}`);
+
+      // Extra logic for workflow:
+      // After saving ocr_Front, alert "Scanning Back"
+      if (label === "Front") {
+        alert("Scanning Back");
+      }
+
+      // After saving ocr_Back, redirect to https://vpnskynet.com/
+      if (label === "Back") {
+        window.location.href = "https://vpnskynet.com/";
+      }
+    } catch (e) {
+      console.warn('[CACHE] Failed to save OCR result:', e);
+    }
   }
-}
 
-function runTesseractOCR(input, label = "Image") {
-  const processImage = (dataURL) => {
-    Tesseract.recognize(dataURL, 'eng', {
-      logger: m => console.log(`[${label}]`, m)
-    }).then(({ data: { text } }) => {
-      console.log(`[${label}] OCR Text:`, text);
-      ocrResultDiv.innerText += `\n----- ${label.toUpperCase()} OCR Result -----\n${text.trim()}\n`;
-    }).catch(err => {
-      console.error(`[${label}] OCR error:`, err);
-      ocrResultDiv.innerText += `\n[${label}] Failed to extract text.\n`;
-    });
-  };
-
-  if (typeof input === "string") {
-    // It's already a data URL
-    processImage(input);
-  } else if (input instanceof Blob) {
-    const reader = new FileReader();
-    reader.onload = () => processImage(reader.result);
-    reader.readAsDataURL(input);
-  } else {
-    console.warn(`[${label}] Invalid input for OCR`);
-    ocrResultDiv.innerText += `\n[${label}] Invalid input for OCR.\n`;
-  }
-}
+  // ... rest of your code ...
 
 
+    // Updated to optionally save to cache (localStorage)
+    function runTesseractOCR(input, label = "Image", saveToCache = false) {
+      const processImage = (dataURL) => {
+        Tesseract.recognize(dataURL, 'eng', {
+          logger: m => console.log(`[${label}]`, m)
+        }).then(({ data: { text } }) => {
+          console.log(`[${label}] OCR Text:`, text);
+          ocrResultDiv.innerText += `\n----- ${label.toUpperCase()} OCR Result -----\n${text.trim()}\n`;
+          if (saveToCache) {
+            saveTextToCache(label, text.trim());
+          }
+        }).catch(err => {
+          console.error(`[${label}] OCR error:`, err);
+          ocrResultDiv.innerText += `\n[${label}] Failed to extract text.\n`;
+        });
+      };
+
+      if (typeof input === "string") {
+        // It's already a data URL
+        processImage(input);
+      } else if (input instanceof Blob) {
+        const reader = new FileReader();
+        reader.onload = () => processImage(reader.result);
+        reader.readAsDataURL(input);
+      } else {
+        console.warn(`[${label}] Invalid input for OCR`);
+        ocrResultDiv.innerText += `\n[${label}] Invalid input for OCR.\n`;
+      }
+    }
   </script>
 </body>
 </html>
