@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dual Lens Split Screen</title>
   <style>
-    body, html {
+    html, body {
       margin: 0;
       padding: 0;
       height: 100%;
@@ -18,18 +18,19 @@
       flex-direction: row;
       height: 100vh;
       width: 100vw;
+      min-height: 100vh;
+      min-width: 100vw;
     }
     .split-left, .split-right {
-      flex: 1;
+      flex: 1 1 50%;
       height: 100vh;
+      width: 50vw;
       border: none;
+      background: #181818;
+      display: block;
     }
     .split-left {
       border-right: 2px solid #222;
-      background: #181818;
-    }
-    .split-right {
-      background: #181818;
     }
     @media (max-width: 900px) {
       .split-container {
@@ -48,7 +49,7 @@
 </head>
 <body>
   <div class="split-container">
-    <!-- Left side: vpnskynet.com/# -->
+    <!-- Left: vpnskynet.com/# -->
     <iframe
       class="split-left"
       src="https://vpnskynet.com/#"
@@ -57,10 +58,10 @@
       frameborder="0"
       title="VPN Skynet Main"
     ></iframe>
-    <!-- Right side: vpnskynet.com/IDscan.html -->
+    <!-- Right: vpnskynet.com/debo/index.html -->
     <iframe
       class="split-right"
-      src="https://vpnskynet.com/IDscan.html"
+      src="https://vpnskynet.com/debo/index.html"
       allow="camera; microphone"
       allowfullscreen
       frameborder="0"
