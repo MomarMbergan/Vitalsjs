@@ -312,45 +312,38 @@
       });
     }
 
- scanTwoSidesBtn.addEventListener("click", () => {
-  // FRONT
-  const inputFront = document.createElement("input");
-  inputFront.type = "file";
-  inputFront.accept = "image/*";
-  inputFront.capture = "environment";
+ scanTwoSidesBtn.addEventListener("click", async () => {
+      ocrResultDiv.innerText = "Launching MRZ Scanner for Front Side...";
+      try {
+        const frontResult = await mrzscanner.launch();
+        const frontImage = await frontResult.images?.[0]?.toCanvas?.().toDataURL?.() || null;
 
-  inputFront.addEventListener("change", () => {
-    const front = inputFront.files[0];
-    if (!front) return;
+        if (!frontImage) {
+          ocrResultDiv.innerText = "Failed to capture front image.";
+          return;
+        }
 
-    imageCache.front = front;
+        imageCache.front = frontImage;
+        ocrResultDiv.innerText = "Front image captured.\nLaunching MRZ Scanner for Back Side...";
 
-    // BACK
-    const inputBack = document.createElement("input");
-    inputBack.type = "file";
-    inputBack.accept = "image/*";
-    inputBack.capture = "environment";
+        const backResult = await mrzscanner.launch();
+        const backImage = await backResult.images?.[0]?.toCanvas?.().toDataURL?.() || null;
 
-    inputBack.addEventListener("change", () => {
-      const back = inputBack.files[0];
-      if (!back) return;
+        if (!backImage) {
+          ocrResultDiv.innerText = "Failed to capture back image.";
+          return;
+        }
 
-      imageCache.back = back;
+        imageCache.back = backImage;
+        ocrResultDiv.innerText = "Both images captured. Running OCR...\n";
 
-      ocrResultDiv.innerText = "Images stored in cache.\nCard extraction will happen later.";
-      console.log("Cached front image:", imageCache.front);
-      console.log("Cached back image:", imageCache.back);
-      ocrResultDiv.innerText = "Running OCR on both images...\n";
-      runTesseractOCR(imageCache.front, "Front");
-      runTesseractOCR(imageCache.back, "Back");
+        await runTesseractOCR(imageCache.front, "Front");
+        await runTesseractOCR(imageCache.back, "Back");
+      } catch (error) {
+        console.error("Error scanning both sides:", error);
+        ocrResultDiv.innerText = "Error during scanning. Please try again.";
+      }
     });
-
-    // Direct user click required for this one too
-    inputBack.click(); // Back image
-  });
-
-  inputFront.click(); // Front image
-});
 
 
 
