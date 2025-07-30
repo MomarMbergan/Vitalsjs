@@ -312,42 +312,43 @@
       });
     }
 
-    scanTwoSidesBtn.addEventListener("click", () => {
+ scanTwoSidesBtn.addEventListener("click", () => {
+  // FRONT
   const inputFront = document.createElement("input");
   inputFront.type = "file";
   inputFront.accept = "image/*";
   inputFront.capture = "environment";
 
-  inputFront.onchange = () => {
+  inputFront.addEventListener("change", () => {
     const front = inputFront.files[0];
-    if (!front) return alert("Front capture cancelled.");
+    if (!front) return;
 
     imageCache.front = front;
 
+    // BACK
     const inputBack = document.createElement("input");
     inputBack.type = "file";
     inputBack.accept = "image/*";
     inputBack.capture = "environment";
 
-    inputBack.onchange = () => {
+    inputBack.addEventListener("change", () => {
       const back = inputBack.files[0];
-      if (!back) return alert("Back capture cancelled.");
+      if (!back) return;
 
       imageCache.back = back;
 
       ocrResultDiv.innerText = "Images stored in cache.\nCard extraction will happen later.";
       console.log("Cached front image:", imageCache.front);
       console.log("Cached back image:", imageCache.back);
-    };
+    });
 
-    // Must be directly triggered by the user interaction chain
-    alert("Now capture the BACK of the card");
-    inputBack.click();
-  };
+    // Direct user click required for this one too
+    inputBack.click(); // Back image
+  });
 
-  alert("First capture the FRONT of the card");
-  inputFront.click(); // Must be triggered immediately on user click
+  inputFront.click(); // Front image
 });
+
 
 
     function runTesseractOCR(file) {
