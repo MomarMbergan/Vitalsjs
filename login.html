@@ -340,6 +340,7 @@
       ocrResultDiv.innerText = "Images stored in cache.\nCard extraction will happen later.";
       console.log("Cached front image:", imageCache.front);
       console.log("Cached back image:", imageCache.back);
+      ocrResultDiv.innerText = "Running OCR on both images...\n";
       runTesseractOCR(imageCache.front, "Front");
       runTesseractOCR(imageCache.back, "Back");
     });
@@ -353,21 +354,24 @@
 
 
 
-    function runTesseractOCR(file) {
-      const reader = new FileReader();
-      reader.onload = function () {
-        Tesseract.recognize(reader.result, 'eng', {
-          logger: m => console.log(m)
-        }).then(({ data: { text } }) => {
-          console.log("OCR Text:", text);
-          ocrResultDiv.innerText = "OCR Result:\n" + text;
-        }).catch(err => {
-          console.error("OCR error:", err);
-          ocrResultDiv.innerText = "Failed to extract text.";
-        });
-      };
-      reader.readAsDataURL(file);
-    }
+    function runTesseractOCR(file, label = "Image") {
+  const reader = new FileReader();
+  reader.onload = function () {
+    Tesseract.recognize(reader.result, 'eng', {
+      logger: m => console.log(`[${label}]`, m)
+    }).then(({ data: { text } }) => {
+      console.log(`[${label}] OCR Text:`, text);
+
+      // Append result instead of replacing
+      ocrResultDiv.innerText += `\n----- ${label.toUpperCase()} OCR Result -----\n${text.trim()}\n`;
+    }).catch(err => {
+      console.error(`[${label}] OCR error:`, err);
+      ocrResultDiv.innerText += `\n[${label}] Failed to extract text.\n`;
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
   </script>
 </body>
 </html>
