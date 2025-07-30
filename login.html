@@ -316,7 +316,7 @@
       ocrResultDiv.innerText = "Launching MRZ Scanner for Front Side...";
       try {
         const frontResult = await mrzscanner.launch();
-        const frontImage = await frontResult.images?.[0]?.toCanvas?.().toDataURL?.() || null;
+        const frontImage = await getImageDataURL(frontResult);
 
         if (!frontImage) {
           ocrResultDiv.innerText = "Failed to capture front image.";
@@ -327,7 +327,7 @@
         ocrResultDiv.innerText = "Front image captured.\nLaunching MRZ Scanner for Back Side...";
 
         const backResult = await mrzscanner.launch();
-        const backImage = await backResult.images?.[0]?.toCanvas?.().toDataURL?.() || null;
+        const backImage = await getImageDataURL(backResult);
 
         if (!backImage) {
           ocrResultDiv.innerText = "Failed to capture back image.";
@@ -344,6 +344,16 @@
         ocrResultDiv.innerText = "Error during scanning. Please try again.";
       }
     });
+
+    async function getImageDataURL(result) {
+  try {
+    const canvas = await result.originalImageResult?.toCanvas();
+    return canvas?.toDataURL() || null;
+  } catch (e) {
+    console.warn("Failed to extract image:", e);
+    return null;
+  }
+}
 
 
 
