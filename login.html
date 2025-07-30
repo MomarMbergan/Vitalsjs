@@ -197,6 +197,11 @@
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
     </button>
 
+    <button class="btn btn-orange" id="scan-two-sides-btn">
+      <span><i class="fas fa-camera"></i> Tap to Scan Card (Both Sides)</span>
+      <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
+    </button>
+
     <button class="btn btn-blue scan-with-sample-image">
       <span><i class="fas fa-id-card"></i> Scan With Sample Videos</span>
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
@@ -207,7 +212,7 @@
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
     </button>
 
-    <input type="file" id="initialFile" accept="image/png,image/jpeg" />
+    <input type="file" id="initialFile" accept="image/*" />
 
     <div id="ocr-result"></div>
   </div>
@@ -223,6 +228,7 @@
     const scanWithGalleryButton = document.querySelector(".scan-with-image-gallery");
     const fileInput = document.getElementById("initialFile");
     const ocrResultDiv = document.getElementById("ocr-result");
+    const scanTwoSidesBtn = document.getElementById("scan-two-sides-btn");
 
     let result = null;
 
@@ -282,6 +288,53 @@
     });
 
     // OCR fallback using Tesseract
+    async function captureImage(label) {
+      return new Promise((resolve, reject) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.capture = "environment";
+
+        input.onchange = () => {
+          const file = input.files[0];
+          if (file) {
+            resolve(file);
+          } else {
+            reject(`${label} image capture canceled`);
+          }
+        };
+
+        input.click();
+      });
+    }
+
+    scanTwoSidesBtn.addEventListener("click", async () => {
+      try {
+        alert("Capture FRONT side of card");
+        const front = await captureImage("Front");
+        imageCache.front = front;
+
+        alert("Capture BACK side of card");
+        const back = await captureImage("Back");
+        imageCache.back = back;
+
+        alert("Both images captured successfully. Redirecting to main page...");
+        // Simulate redirection after capture
+        setTimeout(() => {
+          ocrResultDiv.innerText = "Images stored in cache.\nCard extraction will happen later.";
+          console.log("Cached front image:", imageCache.front);
+          console.log("Cached back image:", imageCache.back);
+        }, 1000);
+      } catch (err) {
+        console.error(err);
+        alert("Image capture failed or canceled.");
+      }
+    });
+
+   
+
+    
+
     function runTesseractOCR(file) {
       const reader = new FileReader();
       reader.onload = function () {
@@ -291,8 +344,8 @@
           console.log("OCR Text:", text);
           ocrResultDiv.innerText = "OCR Result:\n" + text;
         }).catch(err => {
-          console.error("Tesseract.js error:", err);
-          ocrResultDiv.innerText = "Failed to extract text via OCR.";
+          console.error("OCR error:", err);
+          ocrResultDiv.innerText = "Failed to extract text.";
         });
       };
       reader.readAsDataURL(file);
