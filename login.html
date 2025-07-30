@@ -231,6 +231,10 @@
     const scanTwoSidesBtn = document.getElementById("scan-two-sides-btn");
 
     let result = null;
+    let imageCache = {
+      front: null,
+      back: null
+    };
 
     const mrzscanner = new Dynamsoft.MRZScanner({
       license: "DLS2eyJoYW5kc2hha2VDb2RlIjoiMTA0MzI5ODU4LU1UQTBNekk1T0RVNExYZGxZaTFVY21saGJGQnliMm8iLCJtYWluU2VydmVyVVJMIjoiaHR0cHM6Ly9tZGxzLmR5bmFtc29mdG9ubGluZS5jb20iLCJvcmdhbml6YXRpb25JRCI6IjEwNDMyOTg1OCIsInN0YW5kYnlTZXJ2ZXJVUkwiOiJodHRwczovL3NkbHMuZHluYW1zb2Z0b25saW5lLmNvbSIsImNoZWNrQ29kZSI6MTczNDA3NjY3M30=",
