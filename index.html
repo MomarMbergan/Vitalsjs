@@ -6,7 +6,84 @@
 	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
 -->   
 <html> 
-   
+   <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vitalsjs App</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <!-- Add the custom font via @font-face -->
+    <style>
+        @font-face {
+            font-family: 'Astroz Trial';
+            src: url('assets/css/Astroz Trial.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        /* Button at top-right */
+        #fontChangeBtn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            padding: 10px 18px;
+            background: #00F0FF;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.13);
+            transition: background 0.2s;
+        }
+        #fontChangeBtn.active {
+            background: #fff;
+            color: #00F0FF;
+            border: 1px solid #00F0FF;
+        }
+
+        /* Camera flip button at bottom-center */
+        #flipCameraBtn {
+            position: fixed;
+            left: 50%;
+            bottom: 28px;
+            transform: translateX(-50%);
+            z-index: 1000;
+            padding: 13px 28px;
+            background: #fff;
+            color: #111;
+            border: 2px solid #eee;
+            border-radius: 32px;
+            font-size: 1.1em;
+            cursor: pointer;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.11);
+            transition: background 0.2s, color 0.2s;
+        }
+        #flipCameraBtn.active {
+            background: #00F0FF;
+            color: #fff;
+        }
+
+        /* If font is changed, apply to body */
+        body.custom-font {
+            font-family: 'Astroz Trial', Arial, sans-serif !important;
+            color: #00F0FF !important;
+            transition: color 0.3s, font-family 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <!-- Your existing HTML content goes here -->
+
+    <!-- Font Change Button -->
+    <button id="fontChangeBtn" type="button">Change Font</button>
+    <!-- Camera Flip Button -->
+    <button id="flipCameraBtn" type="button">Flip Camera</button>
+
+    <!-- Place the script at the end of body for best performance -->
+    <script src="assets/js/custom-buttons.js"></script>
+</body>
+</html>
 
 <title>Biometric Network</title>
 <meta charset="utf-8" />
