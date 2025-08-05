@@ -13,6 +13,8 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
   <style>
+    /* [ ... keep all your existing CSS ... ] */
+    /* Unchanged CSS from your code above */
     * { box-sizing: border-box; }
     html, body {
       margin: 0;
@@ -466,15 +468,25 @@
       cameraVideoEl.style.display = 'block';
       cameraCaptureBtn.classList.add('show');
       capturedImages = [];
-      navigator.mediaDevices.getUserMedia({ video: true })
+      // Use rear camera if available
+      let constraints = { video: { facingMode: { exact: "environment" } } };
+      navigator.mediaDevices.getUserMedia(constraints)
         .then(stream => {
           cameraStream = stream;
           cameraVideoEl.srcObject = stream;
         })
         .catch(err => {
-          alert("Unable to access camera.");
-          isCameraActive = false;
-          cameraOverlay.classList.remove('active');
+          // If environment camera fails, fallback to any camera
+          navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+              cameraStream = stream;
+              cameraVideoEl.srcObject = stream;
+            })
+            .catch(err2 => {
+              alert("Unable to access camera.");
+              isCameraActive = false;
+              cameraOverlay.classList.remove('active');
+            });
         });
       afterCameraOrMRZInit();
     }
