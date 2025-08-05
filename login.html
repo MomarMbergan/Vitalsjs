@@ -230,7 +230,6 @@
       background-color: #f9a825;
     }
 
-    /* Camera capture (shutter) button */
     #camera-capture-btn {
       position: fixed;
       bottom: 28px;
@@ -426,7 +425,7 @@
     const cameraVideoEl = document.getElementById("camera-video-el");
 
     let imageCache = { front: null, back: null };
-
+    let capturedImages = [];
     let cameraStream = null;
     let isCameraActive = false;
     let currentImageLabel = 'Front';
@@ -458,6 +457,7 @@
     }
     submitBtn.addEventListener("click", saveAllOCRTextAndRedirect);
 
+    // Camera capture flow for taking 2 images and submitting both to OCR
     function showCameraOverlay(label) {
       if (isCameraActive) return;
       isCameraActive = true;
@@ -465,6 +465,7 @@
       cameraOverlay.classList.add('active');
       cameraVideoEl.style.display = 'block';
       cameraCaptureBtn.classList.add('show');
+      capturedImages = [];
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
           cameraStream = stream;
@@ -498,19 +499,23 @@
       const ctx = canvas.getContext('2d');
       ctx.drawImage(cameraVideoEl, 0, 0, canvas.width, canvas.height);
       canvas.toBlob(function(blob) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `insurance_${currentImageLabel.toLowerCase()}_${Date.now()}.jpg`;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-        }, 300);
+        capturedImages.push(blob);
+        if (capturedImages.length === 1) {
+          alert("Front image captured. Now capture Back image.");
+        }
+        if (capturedImages.length < 2) {
+          // Prompt for second image
+          // Keep camera open for second capture
+          return;
+        }
+        // Got both images, close camera and run OCR on both
+        closeCameraOverlay();
+        // OCR both images as Front and Back
+        const labels = ['Front', 'Back'];
+        for (let i = 0; i < capturedImages.length; i++) {
+          runTesseractOCR(capturedImages[i], labels[i], true);
+        }
       }, 'image/jpeg', 0.92);
-      closeCameraOverlay();
     });
 
     scanWithCameraButton.addEventListener("click", async function () {
@@ -531,7 +536,6 @@
       templateFilePath: "./dist/mrz-scanner.template.json"
     });
 
-    // Remove "Powered by Dynamsoft" after MRZ is launched
     const originalMRZLaunch = mrzscanner.launch.bind(mrzscanner);
     mrzscanner.launch = async function(...args) {
       const result = await originalMRZLaunch(...args);
@@ -548,23 +552,18 @@
       const files = Array.from(this.files);
       if (files.length === 0) return;
 
-      // Only allow max 2 images for Front and Back
       if (files.length > 2) {
         alert('Please select only 2 images (Front and Back)');
         this.value = "";
         return;
       }
 
-      // OCR both images, label as "Front" and "Back"
       const labels = ['Front', 'Back'];
       for (let i = 0; i < files.length; i++) {
         try {
-          // Launch MRZ scanner (optional, but fallback to Tesseract anyway)
           try {
             await mrzscanner.launch(files[i]);
-          } catch (err) {
-            // Ignore MRZ error for gallery, fallback to Tesseract
-          }
+          } catch (err) {}
           runTesseractOCR(files[i], labels[i] || `Image${i + 1}`, true);
         } catch (err) {
           ocrResultDiv.innerText += `\n[${labels[i] || `Image${i + 1}`}] Submit Both Front and Back 1 by 1 then Authenticate.\n`;
@@ -595,7 +594,6 @@
           }
         }).catch(err => {
           console.error(`[${label}] OCR error:`, err);
-          // Update error message as requested
           ocrResultDiv.innerText += `\nSubmit Both Front and Back 1 by 1 then Authenticate.\n`;
         });
       };
