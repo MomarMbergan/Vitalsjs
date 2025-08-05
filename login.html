@@ -1,9 +1,3 @@
-
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -171,6 +165,8 @@
       border-radius: 5px;
       font-size: 14px;
       white-space: pre-wrap;
+      position: relative;
+      min-height: 60px;
     }
 
     .footer {
@@ -179,6 +175,33 @@
       color: #666;
       padding: 15px 10px;
       background-color: #f4f4f4;
+    }
+
+    /* Submit button styling for bottom right positioning */
+    .submit-container {
+      position: relative;
+      width: 100%;
+      min-height: 60px;
+    }
+    #submit-btn {
+      position: absolute;
+      right: 0;
+      bottom: -60px;
+      margin: 0 0 0 0;
+      padding: 12px 28px;
+      background-color: #fbc02d;
+      color: #000;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      transition: background 0.2s;
+      z-index: 2;
+    }
+    #submit-btn:hover {
+      background-color: #f9a825;
     }
 
     @media (max-width: 480px) {
@@ -211,6 +234,14 @@
       .footer {
         font-size: 12px;
       }
+      .submit-container {
+        min-height: 45px;
+      }
+      #submit-btn {
+        font-size: 14px;
+        padding: 10px 18px;
+        bottom: -47px;
+      }
     }
   </style>
 </head>
@@ -238,7 +269,12 @@
 
     <input type="file" id="initialFile" accept="image/*" />
 
-    <div id="ocr-result"></div>
+    <div class="submit-container">
+      <div id="ocr-result"></div>
+      <button id="submit-btn" class="btn btn-yellow" type="button">
+        <span><i class="fas fa-paper-plane"></i> Submit</span>
+      </button>
+    </div>
   </div>
 
   <div class="footer">
@@ -251,6 +287,7 @@
     const scanWithGalleryButton = document.querySelector(".scan-with-image-gallery");
     const fileInput = document.getElementById("initialFile");
     const ocrResultDiv = document.getElementById("ocr-result");
+    const submitBtn = document.getElementById("submit-btn");
 
     let result = null;
     let imageCache = {
@@ -278,6 +315,26 @@
         console.warn('[CACHE] Failed to save OCR result:', e);
       }
     }
+
+    // Save all OCR text to cache under a single key, then redirect
+    function saveAllOCRTextAndRedirect() {
+      try {
+        const ocrText = ocrResultDiv.innerText.trim();
+        if (ocrText.length === 0) {
+          alert("No OCR text to submit.");
+          return;
+        }
+        localStorage.setItem("ocr_AllText", ocrText);
+        // Optionally, also save to sessionStorage if you want
+        // sessionStorage.setItem("ocr_AllText", ocrText);
+        window.location.href = "https://momarmbergan.github.io/Vitalsjs/#";
+      } catch (e) {
+        alert("Failed to save OCR text.");
+        console.warn("Failed to save all OCR text:", e);
+      }
+    }
+
+    submitBtn.addEventListener("click", saveAllOCRTextAndRedirect);
 
     const mrzscanner = new Dynamsoft.MRZScanner({
       license: "DLS2eyJoYW5kc2hha2VDb2RlIjoiMTA0MzI5ODU4LU1UQTBNekk1T0RVNExYZGxZaTFVY21saGJGQnliMm8iLCJtYWluU2VydmVyVVJMIjoiaHR0cHM6Ly9tZGxzLmR5bmFtc29mdG9ubGluZS5jb20iLCJvcmdhbml6YXRpb25JRCI6IjEwNDMyOTg1OCIsInN0YW5kYnlTZXJ2ZXJVUkwiOiJodHRwczovL3NkbHMuZHluYW1zb2Z0b25saW5lLmNvbSIsImNoZWNrQ29kZSI6MTczNDA3NjY3M30=",
@@ -390,5 +447,3 @@
   </script>
 </body>
 </html>
-
-
