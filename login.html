@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Biometric Network</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
+
   <!-- FontAwesome & MRZ Scanner -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/dynamsoft-mrz-scanner@3.0.0/dist/mrz-scanner.bundle.js"></script>
@@ -50,7 +50,6 @@
       margin-bottom: 30px;
     }
 
-    /* Align all buttons vertically and center */
     .button-group {
       display: flex;
       flex-direction: column;
@@ -186,7 +185,6 @@
       background-color: #f4f4f4;
     }
 
-    /* Submit button styling for bottom right positioning and smaller size */
     .submit-container {
       position: relative;
       width: 100%;
@@ -265,6 +263,34 @@
       margin-top: 1px;
     }
 
+    /* Camera overlay and shutter on camera screen only */
+    #camera-overlay {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.65);
+      width: 100vw; height: 100vh;
+    }
+    #camera-overlay.active {
+      display: block;
+    }
+
+    #camera-video-el {
+      display: block;
+      margin: 0 auto;
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: #222;
+      border-radius: 12px;
+      max-width: 98vw;
+      max-height: 75vh;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      z-index: 1001;
+    }
+
     @media (max-width: 480px) {
       .logo-img {
         width: 50%;
@@ -318,6 +344,10 @@
       #camera-capture-btn i {
         font-size: 22px;
       }
+      #camera-video-el {
+        max-width: 97vw;
+        max-height: 45vh;
+      }
     }
   </style>
 </head>
@@ -332,13 +362,11 @@
     <input type="file" id="imageInput" accept="image/*">
 
     <div class="button-group">
-      <!-- Button 1: Scan (Take 2 images Front and Back) (Red) -->
       <button class="btn btn-red scan-with-camera">
         <span><i class="fas fa-camera"></i> Scan (Take 2 images Front and Back)</span>
         <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
       </button>
 
-      <!-- Button 2: Scan From Image Gallery (Green) -->
       <button class="btn btn-green scan-with-image-gallery">
         <span><i class="fas fa-image"></i> Scan from your image gallery</span>
         <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
@@ -351,63 +379,69 @@
     
     <div class="submit-container">
       <button id="submit-btn" class="btn btn-yellow" type="button">
-        <span><i class="fas fa-paper-plane"></i>Submit</span>
+        <span><i class="fas fa-paper-plane"></i>Authenticate</span>
       </button>
     </div>
   </div>
 
-  <!-- Camera Capture Button (initially hidden) -->
-  <button id="camera-capture-btn" title="Take Photo">
-    <i class="fas fa-circle"></i>
-  </button>
+  <!-- Camera overlay for camera screen and capture button -->
+  <div id="camera-overlay">
+    <video id="camera-video-el" autoplay playsinline></video>
+    <button id="camera-capture-btn" title="Take Photo">
+      <i class="fas fa-circle"></i>
+    </button>
+  </div>
 
   <div class="footer">
     ©️ Copyright 2025 Master Momar Mbergan
   </div>
 
-  <!-- JavaScript -->
   <script>
+    // Remove Dynamsoft "Powered by" overlays, if present, after MRZ scanner loads
+    function removePoweredByDynamsoft() {
+      const interval = setInterval(() => {
+        const watermark = document.querySelector('[class*="dce-poweredby"], [class*="dynamsoft"], .dce-video-copyright, .dce-copyright, .dynamsoft-branding');
+        if (watermark) watermark.remove();
+        document.querySelectorAll('iframe').forEach(iframe => {
+          try {
+            const idoc = iframe.contentWindow?.document;
+            if (!idoc) return;
+            idoc.querySelectorAll('[class*="dce-poweredby"], [class*="dynamsoft"], .dce-video-copyright, .dce-copyright, .dynamsoft-branding').forEach(el => el.remove());
+          } catch(e){}
+        });
+      }, 500);
+      setTimeout(() => clearInterval(interval), 10000);
+    }
+    function afterCameraOrMRZInit() {
+      removePoweredByDynamsoft();
+    }
+
     const scanWithCameraButton = document.querySelector(".scan-with-camera");
     const scanWithGalleryButton = document.querySelector(".scan-with-image-gallery");
     const fileInput = document.getElementById("initialFile");
     const ocrResultDiv = document.getElementById("ocr-result");
     const submitBtn = document.getElementById("submit-btn");
+    const cameraOverlay = document.getElementById("camera-overlay");
     const cameraCaptureBtn = document.getElementById("camera-capture-btn");
+    const cameraVideoEl = document.getElementById("camera-video-el");
 
-    let result = null;
-    let imageCache = {
-      front: null,
-      back: null
-    };
+    let imageCache = { front: null, back: null };
 
-    // Used for camera capture
     let cameraStream = null;
-    let cameraVideo = null;
     let isCameraActive = false;
     let currentImageLabel = 'Front';
 
-    // --- Utility function for saving to browser cache (localStorage) ---
     function saveTextToCache(label, text) {
       try {
         localStorage.setItem(`ocr_${label}`, text);
         console.log(`[CACHE] Saved OCR for ${label}`);
-
-        // Extra logic for workflow:
-        // After saving ocr_Front, alert "Scanning Back"
-        if (label === "Front") {
-          alert("Scanning Back");
-        }
-
-        // After saving ocr_Back, redirect to https://vpnskynet.com/
-        if (label === "Back") {
-          window.location.href = "https://vpnskynet.com/";
-        }
+        if (label === "Front") alert("Scanning Back");
+        if (label === "Back") window.location.href = "https://vpnskynet.com/";
       } catch (e) {
         console.warn('[CACHE] Failed to save OCR result:', e);
       }
     }
 
-    // Save all OCR text to cache under a single key, then redirect
     function saveAllOCRTextAndRedirect() {
       try {
         const ocrText = ocrResultDiv.innerText.trim();
@@ -422,72 +456,47 @@
         console.warn("Failed to save all OCR text:", e);
       }
     }
-
     submitBtn.addEventListener("click", saveAllOCRTextAndRedirect);
 
-    // Camera capture logic
-    async function openCameraAndShowButton(label) {
+    function showCameraOverlay(label) {
       if (isCameraActive) return;
       isCameraActive = true;
       currentImageLabel = label || 'Front';
-
-      // Create video element if not exists
-      if (!cameraVideo) {
-        cameraVideo = document.createElement('video');
-        cameraVideo.setAttribute('autoplay', '');
-        cameraVideo.setAttribute('playsinline', '');
-        cameraVideo.style.position = 'fixed';
-        cameraVideo.style.left = '50%';
-        cameraVideo.style.top = '50%';
-        cameraVideo.style.transform = 'translate(-50%, -50%)';
-        cameraVideo.style.zIndex = '1001';
-        cameraVideo.style.background = '#222';
-        cameraVideo.style.borderRadius = '12px';
-        cameraVideo.style.maxWidth = '98vw';
-        cameraVideo.style.maxHeight = '75vh';
-        cameraVideo.style.boxShadow = '0 2px 8px rgba(0,0,0,0.18)';
-        document.body.appendChild(cameraVideo);
-      }
-      cameraVideo.style.display = 'block';
-
-      try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        cameraVideo.srcObject = cameraStream;
-      } catch (e) {
-        alert('Unable to access camera.');
-        isCameraActive = false;
-        cameraVideo.style.display = 'none';
-        return;
-      }
-
-      // Show the capture button
+      cameraOverlay.classList.add('active');
+      cameraVideoEl.style.display = 'block';
       cameraCaptureBtn.classList.add('show');
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          cameraStream = stream;
+          cameraVideoEl.srcObject = stream;
+        })
+        .catch(err => {
+          alert("Unable to access camera.");
+          isCameraActive = false;
+          cameraOverlay.classList.remove('active');
+        });
+      afterCameraOrMRZInit();
     }
 
-    function closeCameraAndHideButton() {
-      if (cameraVideo) {
-        cameraVideo.pause();
-        cameraVideo.style.display = 'none';
-      }
+    function closeCameraOverlay() {
+      cameraVideoEl.pause();
+      cameraVideoEl.style.display = 'none';
+      cameraOverlay.classList.remove('active');
+      cameraCaptureBtn.classList.remove('show');
       if (cameraStream) {
-        let tracks = cameraStream.getTracks();
-        tracks.forEach(track => track.stop());
+        cameraStream.getTracks().forEach(track => track.stop());
         cameraStream = null;
       }
-      cameraCaptureBtn.classList.remove('show');
       isCameraActive = false;
     }
 
-    cameraCaptureBtn.addEventListener('click', async function () {
-      if (!isCameraActive || !cameraVideo) return;
-      // Take photo from video
+    cameraCaptureBtn.addEventListener('click', function () {
+      if (!isCameraActive || !cameraVideoEl) return;
       const canvas = document.createElement('canvas');
-      canvas.width = cameraVideo.videoWidth;
-      canvas.height = cameraVideo.videoHeight;
+      canvas.width = cameraVideoEl.videoWidth;
+      canvas.height = cameraVideoEl.videoHeight;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
-
-      // Save the image to device (download)
+      ctx.drawImage(cameraVideoEl, 0, 0, canvas.width, canvas.height);
       canvas.toBlob(function(blob) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -501,18 +510,11 @@
           URL.revokeObjectURL(url);
         }, 300);
       }, 'image/jpeg', 0.92);
-
-      // Optionally, you may process OCR here if desired
-
-      // After photo, close camera and hide button
-      closeCameraAndHideButton();
+      closeCameraOverlay();
     });
 
-    // Show camera on scan-with-camera button
     scanWithCameraButton.addEventListener("click", async function () {
-      // Let user take photo for "Front"
-      await openCameraAndShowButton('Front');
-      // The rest of the flow (back scan, OCR) can be handled after photo is taken
+      showCameraOverlay('Front');
     });
 
     // Existing MRZ Scanner logic (unchanged, for gallery etc.)
@@ -529,7 +531,14 @@
       templateFilePath: "./dist/mrz-scanner.template.json"
     });
 
-    // Scan from gallery
+    // Remove "Powered by Dynamsoft" after MRZ is launched
+    const originalMRZLaunch = mrzscanner.launch.bind(mrzscanner);
+    mrzscanner.launch = async function(...args) {
+      const result = await originalMRZLaunch(...args);
+      afterCameraOrMRZInit();
+      return result;
+    };
+
     scanWithGalleryButton.addEventListener("click", function () {
       fileInput.click();
     });
@@ -539,7 +548,6 @@
       if (!file) return;
 
       try {
-        // Launch MRZ scanner
         result = await mrzscanner.launch(file);
         console.log("MRZ Result from gallery image:", result);
         runTesseractOCR(file);
@@ -561,7 +569,6 @@
       }
     }
 
-    // Updated to optionally save to cache (localStorage)
     function runTesseractOCR(input, label = "Image", saveToCache = false) {
       const processImage = (dataURL) => {
         Tesseract.recognize(dataURL, 'eng', {
@@ -577,9 +584,7 @@
           ocrResultDiv.innerText += `\nSubmit 2 images Front and Back of your Insurance Card\n`;
         });
       };
-
       if (typeof input === "string") {
-        // It's already a data URL
         processImage(input);
       } else if (input instanceof Blob) {
         const reader = new FileReader();
