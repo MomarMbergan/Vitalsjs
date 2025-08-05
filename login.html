@@ -50,6 +50,454 @@
       margin-bottom: 30px;
     }
 
+    /* Align all buttons vertically and center */
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 13px 18px;
+      border: none;
+      border-radius: 5px;
+      width: 92%;
+      max-width: 320px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin: 0 auto;
+      box-sizing: border-box;
+    }
+
+    .btn span {
+      display: flex;
+      align-items: center;
+    }
+
+    .btn span:first-child i {
+      margin-right: 10px;
+    }
+
+    .btn-red {
+      background-color: #e53935;
+      color: #fff;
+    }
+    .btn-red:hover {
+      background-color: #b71c1c;
+    }
+    .btn-yellow {
+      background-color: #fbc02d;
+      color: #000;
+    }
+    .btn-yellow:hover {
+      background-color: #f9a825;
+    }
+    .btn-green {
+      background-color: #43a047;
+      color: #fff;
+    }
+    .btn-green:hover {
+      background-color: #388e3c;
+    }
+
+    .btn-orange {
+      background-color: #ff9800;
+      color: #fff;
+    }
+    .btn-orange:hover {
+      background-color: #e68900;
+    }
+
+    .btn-blue {
+      background-color: #3c8dbc;
+      color: #fff;
+    }
+    .btn-blue:hover {
+      background-color: #327fa3;
+    }
+
+    .btn-gray {
+      background-color: #555;
+      color: #fff;
+    }
+    .btn-gray:hover {
+      background-color: #444;
+    }
+
+    .arrow-circle {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background-color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 10px;
+    }
+
+    .arrow-circle i {
+      font-size: 13px;
+    }
+
+    .btn-red .arrow-circle i {
+      color: #e53935;
+    }
+    .btn-yellow .arrow-circle i {
+      color: #fbc02d;
+    }
+    .btn-green .arrow-circle i {
+      color: #43a047;
+    }
+    .btn-orange .arrow-circle i {
+      color: #ff9800;
+    }
+    .btn-blue .arrow-circle i {
+      color: #3c8dbc;
+    }
+    .btn-gray .arrow-circle i {
+      color: #aaa;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    #ocr-result {
+      margin-top: 20px;
+      padding: 10px;
+      background: #f7f7f7;
+      border-radius: 5px;
+      font-size: 14px;
+      white-space: pre-wrap;
+      min-height: 60px;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 14px;
+      color: #666;
+      padding: 15px 10px;
+      background-color: #f4f4f4;
+    }
+
+    /* Submit button styling for bottom right positioning and smaller size */
+    .submit-container {
+      position: relative;
+      width: 100%;
+      min-height: 40px;
+      height: 40px;
+      margin-top: 14px;
+      margin-bottom: 0;
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-end;
+    }
+    #submit-btn {
+      position: relative;
+      right: 0;
+      bottom: 0;
+      padding: 6px 20px;
+      background-color: #fbc02d;
+      color: #000;
+      border: none;
+      border-radius: 5px;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      transition: background 0.2s;
+      z-index: 2;
+      min-width: 90px;
+      min-height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #submit-btn span {
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+    }
+    #submit-btn i {
+      font-size: 13px;
+      margin-right: 6px;
+    }
+    #submit-btn:hover {
+      background-color: #f9a825;
+    }
+
+    @media (max-width: 480px) {
+      .logo-img {
+        width: 50%;
+      }
+
+      .login-title {
+        font-size: 20px;
+      }
+
+      .subtitle {
+        font-size: 14px;
+      }
+
+      .btn {
+        padding: 10px 10px;
+        font-size: 14px;
+        max-width: 95vw;
+      }
+
+      .arrow-circle {
+        width: 24px;
+        height: 24px;
+      }
+
+      .arrow-circle i {
+        font-size: 11px;
+      }
+
+      .footer {
+        font-size: 12px;
+      }
+      .submit-container {
+        min-height: 36px;
+        height: 36px;
+      }
+      #submit-btn {
+        font-size: 12px;
+        padding: 5px 14px;
+        min-width: 70px;
+        min-height: 24px;
+      }
+      #submit-btn i {
+        font-size: 11px;
+        margin-right: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="assets/img/1000012077.jpg" alt="Dynamsoft Logo" class="logo-img">
+
+    <div class="login-title">Login</div>
+    <div class="subtitle">Scan Insurance Card</div>
+
+    <input type="file" id="videoInput" accept="video/*">
+    <input type="file" id="imageInput" accept="image/*">
+
+    <div class="button-group">
+      <!-- Button 1: Scan (Take 2 images Front and Back) (Red) -->
+      <button class="btn btn-red scan-with-camera">
+        <span><i class="fas fa-camera"></i> Scan (Take 2 images Front and Back)</span>
+        <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
+      </button>
+
+      <!-- Button 2: Scan From Image Gallery (Green) -->
+      <button class="btn btn-green scan-with-image-gallery">
+        <span><i class="fas fa-image"></i> Scan from your image gallery</span>
+        <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
+      </button>
+    </div>
+
+    <input type="file" id="initialFile" accept="image/*" />
+
+    <div id="ocr-result"></div>
+    
+    <div class="submit-container">
+      <button id="submit-btn" class="btn btn-yellow" type="button">
+        <span><i class="fas fa-paper-plane"></i>Submit</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="footer">
+    ©️ Copyright 2025 Master Momar Mbergan
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    const scanWithCameraButton = document.querySelector(".scan-with-camera");
+    const scanWithGalleryButton = document.querySelector(".scan-with-image-gallery");
+    const fileInput = document.getElementById("initialFile");
+    const ocrResultDiv = document.getElementById("ocr-result");
+    const submitBtn = document.getElementById("submit-btn");
+
+    let result = null;
+    let imageCache = {
+      front: null,
+      back: null
+    };
+
+    // --- Utility function for saving to browser cache (localStorage) ---
+    function saveTextToCache(label, text) {
+      try {
+        localStorage.setItem(`ocr_${label}`, text);
+        console.log(`[CACHE] Saved OCR for ${label}`);
+
+        // Extra logic for workflow:
+        // After saving ocr_Front, alert "Scanning Back"
+        if (label === "Front") {
+          alert("Scanning Back");
+        }
+
+        // After saving ocr_Back, redirect to https://vpnskynet.com/
+        if (label === "Back") {
+          window.location.href = "https://vpnskynet.com/";
+        }
+      } catch (e) {
+        console.warn('[CACHE] Failed to save OCR result:', e);
+      }
+    }
+
+    // Save all OCR text to cache under a single key, then redirect
+    function saveAllOCRTextAndRedirect() {
+      try {
+        const ocrText = ocrResultDiv.innerText.trim();
+        if (ocrText.length === 0) {
+          alert("No OCR text to submit.");
+          return;
+        }
+        localStorage.setItem("ocr_AllText", ocrText);
+        window.location.href = "https://momarmbergan.github.io/Vitalsjs/#";
+      } catch (e) {
+        alert("Failed to save OCR text.");
+        console.warn("Failed to save all OCR text:", e);
+      }
+    }
+
+    submitBtn.addEventListener("click", saveAllOCRTextAndRedirect);
+
+    const mrzscanner = new Dynamsoft.MRZScanner({
+      license: "DLS2eyJoYW5kc2hha2VDb2RlIjoiMTA0MzI5ODU4LU1UQTBNekk1T0RVNExYZGxZaTFVY21saGJGQnliMm8iLCJtYWluU2VydmVyVVJMIjoiaHR0cHM6Ly9tZGxzLmR5bmFtc29mdG9ubGluZS5jb20iLCJvcmdhbml6YXRpb25JRCI6IjEwNDMyOTg1OCIsInN0YW5kYnlTZXJ2ZXJVUkwiOiJodHRwczovL3NkbHMuZHluYW1zb2Z0b25saW5lLmNvbSIsImNoZWNrQ29kZSI6MTczNDA3NjY3M30=",
+      resultViewConfig: {
+        toolbarButtonsConfig: {
+          done: { label: "Return Home" }
+        }
+      },
+      scannerViewConfig: {
+        cameraEnhancerUIPath: "./dist/mrz-scanner.ui.html",
+      },
+      templateFilePath: "./dist/mrz-scanner.template.json"
+    });
+
+    // Scan (Take 2 images Front and Back)
+    scanWithCameraButton.addEventListener("click", async function () {
+      ocrResultDiv.innerText = "Launching MRZ Scanner for Front Side...";
+      try {
+        const frontResult = await mrzscanner.launch();
+        const frontImage = await getImageDataURL(frontResult);
+
+        if (!frontImage) {
+          ocrResultDiv.innerText = "Failed to capture front image.";
+          return;
+        }
+
+        imageCache.front = frontImage;
+        ocrResultDiv.innerText = "Front image captured.\nLaunching MRZ Scanner for Back Side...";
+
+        const backResult = await mrzscanner.launch();
+        const backImage = await getImageDataURL(backResult);
+
+        if (!backImage) {
+          ocrResultDiv.innerText = "Failed to capture back image.";
+          return;
+        }
+
+        imageCache.back = backImage;
+        ocrResultDiv.innerText = "Both images captured. Running OCR...\n";
+
+        await runTesseractOCR(imageCache.front, "Front", true);
+        await runTesseractOCR(imageCache.back, "Back", true);
+      } catch (error) {
+        console.error("Error scanning both sides:", error);
+        ocrResultDiv.innerText = "Error during scanning. Please try again.";
+      }
+    });
+
+    // Scan from gallery
+    scanWithGalleryButton.addEventListener("click", function () {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener("change", async function () {
+      const file = this.files[0];
+      if (!file) return;
+
+      try {
+        // Launch MRZ scanner
+        result = await mrzscanner.launch(file);
+        console.log("MRZ Result from gallery image:", result);
+        runTesseractOCR(file);
+      } catch (err) {
+        console.warn("MRZ scan failed, falling back to Tesseract OCR...");
+        runTesseractOCR(file);
+      }
+
+      this.value = "";
+    });
+
+    async function getImageDataURL(result) {
+      try {
+        const canvas = await result.originalImageResult?.toCanvas();
+        return canvas?.toDataURL() || null;
+      } catch (e) {
+        console.warn("Failed to extract image:", e);
+        return null;
+      }
+    }
+
+    // Updated to optionally save to cache (localStorage)
+    function runTesseractOCR(input, label = "Image", saveToCache = false) {
+      const processImage = (dataURL) => {
+        Tesseract.recognize(dataURL, 'eng', {
+          logger: m => console.log(`[${label}]`, m)
+        }).then(({ data: { text } }) => {
+          console.log(`[${label}] OCR Text:`, text);
+          ocrResultDiv.innerText += `\n----- ${label.toUpperCase()} OCR Result -----\n${text.trim()}\n`;
+          if (saveToCache) {
+            saveTextToCache(label, text.trim());
+          }
+        }).catch(err => {
+          console.error(`[${label}] OCR error:`, err);
+          ocrResultDiv.innerText += `\n[${label}] Failed to extract text.\n`;
+        });
+      };
+
+      if (typeof input === "string") {
+        // It's already a data URL
+        processImage(input);
+      } else if (input instanceof Blob) {
+        const reader = new FileReader();
+        reader.onload = () => processImage(reader.result);
+        reader.readAsDataURL(input);
+      } else {
+        console.warn(`[${label}] Invalid input for OCR`);
+        ocrResultDiv.innerText += `\n[${label}] Invalid input for OCR.\n`;
+      }
+    }
+  </script>
+</body>
+</html>      width: 50%;
+      object-fit: contain;
+    }
+
+    .login-title {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 10px 0 5px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 30px;
+    }
+
     .btn {
       display: flex;
       align-items: center;
@@ -447,3 +895,4 @@
   </script>
 </body>
 </html>
+
