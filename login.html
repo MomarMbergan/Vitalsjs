@@ -1,3 +1,9 @@
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -74,7 +80,6 @@
       margin-right: 10px;
     }
 
-    /* Updated colors for requested buttons */
     .btn-red {
       background-color: #e53935;
       color: #fff;
@@ -101,7 +106,6 @@
       background-color: #ff9800;
       color: #fff;
     }
-
     .btn-orange:hover {
       background-color: #e68900;
     }
@@ -110,7 +114,6 @@
       background-color: #3c8dbc;
       color: #fff;
     }
-
     .btn-blue:hover {
       background-color: #327fa3;
     }
@@ -119,7 +122,6 @@
       background-color: #555;
       color: #fff;
     }
-
     .btn-gray:hover {
       background-color: #444;
     }
@@ -222,25 +224,13 @@
     <input type="file" id="videoInput" accept="video/*">
     <input type="file" id="imageInput" accept="image/*">
 
-    <!-- Button 1: With Live Camera (Red) -->
+    <!-- Button 1: Scan (Take 2 images Front and Back) (Red) -->
     <button class="btn btn-red scan-with-camera">
-      <span><i class="fas fa-camera"></i> With Live Camera</span>
+      <span><i class="fas fa-camera"></i> Scan (Take 2 images Front and Back)</span>
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
     </button>
 
-    <!-- Button 2: Scan Card Both Sides (Orange, left as is) -->
-    <button class="btn btn-orange" id="scan-two-sides-btn">
-      <span><i class="fas fa-camera"></i> Tap to Scan Card (Both Sides)</span>
-      <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
-    </button>
-
-    <!-- Button 3: Scan With Sample Videos (Yellow) -->
-    <button class="btn btn-yellow scan-with-sample-image">
-      <span><i class="fas fa-id-card"></i> Scan With Sample Videos</span>
-      <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
-    </button>
-
-    <!-- Button 4: Scan From Image Gallery (Green) -->
+    <!-- Button 2: Scan From Image Gallery (Green) -->
     <button class="btn btn-green scan-with-image-gallery">
       <span><i class="fas fa-image"></i> Scan from your image gallery</span>
       <span class="arrow-circle"><i class="fas fa-arrow-right"></i></span>
@@ -258,11 +248,9 @@
   <!-- JavaScript -->
   <script>
     const scanWithCameraButton = document.querySelector(".scan-with-camera");
-    const scanWithSampleImgButton = document.querySelector(".scan-with-sample-image");
     const scanWithGalleryButton = document.querySelector(".scan-with-image-gallery");
     const fileInput = document.getElementById("initialFile");
     const ocrResultDiv = document.getElementById("ocr-result");
-    const scanTwoSidesBtn = document.getElementById("scan-two-sides-btn");
 
     let result = null;
     let imageCache = {
@@ -275,6 +263,17 @@
       try {
         localStorage.setItem(`ocr_${label}`, text);
         console.log(`[CACHE] Saved OCR for ${label}`);
+
+        // Extra logic for workflow:
+        // After saving ocr_Front, alert "Scanning Back"
+        if (label === "Front") {
+          alert("Scanning Back");
+        }
+
+        // After saving ocr_Back, redirect to https://vpnskynet.com/
+        if (label === "Back") {
+          window.location.href = "https://vpnskynet.com/";
+        }
       } catch (e) {
         console.warn('[CACHE] Failed to save OCR result:', e);
       }
@@ -293,79 +292,8 @@
       templateFilePath: "./dist/mrz-scanner.template.json"
     });
 
-    // Scan with live camera
+    // Scan (Take 2 images Front and Back)
     scanWithCameraButton.addEventListener("click", async function () {
-      try {
-        result = await mrzscanner.launch();
-        console.log("MRZ Result from camera:", result);
-
-        // Extract image and run OCR, then save to cache
-        const cameraImageDataURL = await getImageDataURL(result);
-        if (cameraImageDataURL) {
-          ocrResultDiv.innerText = "Extracting text from camera image...";
-          runTesseractOCR(cameraImageDataURL, "Camera", true);
-        } else {
-          ocrResultDiv.innerText = "Failed to get camera image for OCR.";
-        }
-      } catch (error) {
-        console.error("MRZ scan error:", error);
-      }
-    });
-
-    // Scan with sample image
-    scanWithSampleImgButton.addEventListener("click", async function () {
-      try {
-        result = await mrzscanner.launch(null, "virtual1");
-        console.log("MRZ Result from sample:", result);
-      } catch (error) {
-        console.error("Sample scan error:", error);
-      }
-    });
-
-    // Scan from gallery
-    scanWithGalleryButton.addEventListener("click", function () {
-      fileInput.click();
-    });
-
-    fileInput.addEventListener("change", async function () {
-      const file = this.files[0];
-      if (!file) return;
-
-      try {
-        // Launch MRZ scanner
-        result = await mrzscanner.launch(file);
-        console.log("MRZ Result from gallery image:", result);
-        runTesseractOCR(file);
-      } catch (err) {
-        console.warn("MRZ scan failed, falling back to Tesseract OCR...");
-        runTesseractOCR(file);
-      }
-
-      this.value = "";
-    });
-
-    // OCR fallback using Tesseract
-    async function captureImage(label) {
-      return new Promise((resolve, reject) => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = "image/*";
-        input.capture = "environment";
-
-        input.onchange = () => {
-          const file = input.files[0];
-          if (file) {
-            resolve(file);
-          } else {
-            reject(`${label} image capture canceled`);
-          }
-        };
-
-        input.click();
-      });
-    }
-
-    scanTwoSidesBtn.addEventListener("click", async () => {
       ocrResultDiv.innerText = "Launching MRZ Scanner for Front Side...";
       try {
         const frontResult = await mrzscanner.launch();
@@ -398,6 +326,28 @@
       }
     });
 
+    // Scan from gallery
+    scanWithGalleryButton.addEventListener("click", function () {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener("change", async function () {
+      const file = this.files[0];
+      if (!file) return;
+
+      try {
+        // Launch MRZ scanner
+        result = await mrzscanner.launch(file);
+        console.log("MRZ Result from gallery image:", result);
+        runTesseractOCR(file);
+      } catch (err) {
+        console.warn("MRZ scan failed, falling back to Tesseract OCR...");
+        runTesseractOCR(file);
+      }
+
+      this.value = "";
+    });
+
     async function getImageDataURL(result) {
       try {
         const canvas = await result.originalImageResult?.toCanvas();
@@ -407,35 +357,6 @@
         return null;
       }
     }
-
-    <!-- Add these changes to your <script> section -->
-
-
-  // ... existing code above ...
-
-  // Utility function for saving to browser cache (localStorage)
-  function saveTextToCache(label, text) {
-    try {
-      localStorage.setItem(`ocr_${label}`, text);
-      console.log(`[CACHE] Saved OCR for ${label}`);
-
-      // Extra logic for workflow:
-      // After saving ocr_Front, alert "Scanning Back"
-      if (label === "Front") {
-        alert("Scanning Back");
-      }
-
-      // After saving ocr_Back, redirect to https://vpnskynet.com/
-      if (label === "Back") {
-        window.location.href = "https://vpnskynet.com/";
-      }
-    } catch (e) {
-      console.warn('[CACHE] Failed to save OCR result:', e);
-    }
-  }
-
-  // ... rest of your code ...
-
 
     // Updated to optionally save to cache (localStorage)
     function runTesseractOCR(input, label = "Image", saveToCache = false) {
@@ -469,3 +390,5 @@
   </script>
 </body>
 </html>
+
+
