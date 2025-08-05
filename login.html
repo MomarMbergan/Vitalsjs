@@ -232,6 +232,39 @@
       background-color: #f9a825;
     }
 
+    /* Camera capture (shutter) button */
+    #camera-capture-btn {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: #fff;
+      border: 4px solid #eee;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1002;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.14);
+      cursor: pointer;
+      outline: none;
+      transition: box-shadow 0.2s;
+      opacity: 0;
+      pointer-events: none;
+    }
+    #camera-capture-btn.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    #camera-capture-btn i {
+      color: #444;
+      font-size: 32px;
+      margin-left: 1px;
+      margin-top: 1px;
+    }
+
     @media (max-width: 480px) {
       .logo-img {
         width: 50%;
@@ -277,6 +310,14 @@
         font-size: 11px;
         margin-right: 4px;
       }
+      #camera-capture-btn {
+        width: 48px;
+        height: 48px;
+        border-width: 3px;
+      }
+      #camera-capture-btn i {
+        font-size: 22px;
+      }
     }
   </style>
 </head>
@@ -315,6 +356,11 @@
     </div>
   </div>
 
+  <!-- Camera Capture Button (initially hidden) -->
+  <button id="camera-capture-btn" title="Take Photo">
+    <i class="fas fa-circle"></i>
+  </button>
+
   <div class="footer">
     ©️ Copyright 2025 Master Momar Mbergan
   </div>
@@ -326,12 +372,19 @@
     const fileInput = document.getElementById("initialFile");
     const ocrResultDiv = document.getElementById("ocr-result");
     const submitBtn = document.getElementById("submit-btn");
+    const cameraCaptureBtn = document.getElementById("camera-capture-btn");
 
     let result = null;
     let imageCache = {
       front: null,
       back: null
     };
+
+    // Used for camera capture
+    let cameraStream = null;
+    let cameraVideo = null;
+    let isCameraActive = false;
+    let currentImageLabel = 'Front';
 
     // --- Utility function for saving to browser cache (localStorage) ---
     function saveTextToCache(label, text) {
@@ -372,6 +425,97 @@
 
     submitBtn.addEventListener("click", saveAllOCRTextAndRedirect);
 
+    // Camera capture logic
+    async function openCameraAndShowButton(label) {
+      if (isCameraActive) return;
+      isCameraActive = true;
+      currentImageLabel = label || 'Front';
+
+      // Create video element if not exists
+      if (!cameraVideo) {
+        cameraVideo = document.createElement('video');
+        cameraVideo.setAttribute('autoplay', '');
+        cameraVideo.setAttribute('playsinline', '');
+        cameraVideo.style.position = 'fixed';
+        cameraVideo.style.left = '50%';
+        cameraVideo.style.top = '50%';
+        cameraVideo.style.transform = 'translate(-50%, -50%)';
+        cameraVideo.style.zIndex = '1001';
+        cameraVideo.style.background = '#222';
+        cameraVideo.style.borderRadius = '12px';
+        cameraVideo.style.maxWidth = '98vw';
+        cameraVideo.style.maxHeight = '75vh';
+        cameraVideo.style.boxShadow = '0 2px 8px rgba(0,0,0,0.18)';
+        document.body.appendChild(cameraVideo);
+      }
+      cameraVideo.style.display = 'block';
+
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        cameraVideo.srcObject = cameraStream;
+      } catch (e) {
+        alert('Unable to access camera.');
+        isCameraActive = false;
+        cameraVideo.style.display = 'none';
+        return;
+      }
+
+      // Show the capture button
+      cameraCaptureBtn.classList.add('show');
+    }
+
+    function closeCameraAndHideButton() {
+      if (cameraVideo) {
+        cameraVideo.pause();
+        cameraVideo.style.display = 'none';
+      }
+      if (cameraStream) {
+        let tracks = cameraStream.getTracks();
+        tracks.forEach(track => track.stop());
+        cameraStream = null;
+      }
+      cameraCaptureBtn.classList.remove('show');
+      isCameraActive = false;
+    }
+
+    cameraCaptureBtn.addEventListener('click', async function () {
+      if (!isCameraActive || !cameraVideo) return;
+      // Take photo from video
+      const canvas = document.createElement('canvas');
+      canvas.width = cameraVideo.videoWidth;
+      canvas.height = cameraVideo.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+
+      // Save the image to device (download)
+      canvas.toBlob(function(blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `insurance_${currentImageLabel.toLowerCase()}_${Date.now()}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 300);
+      }, 'image/jpeg', 0.92);
+
+      // Optionally, you may process OCR here if desired
+
+      // After photo, close camera and hide button
+      closeCameraAndHideButton();
+    });
+
+    // Show camera on scan-with-camera button
+    scanWithCameraButton.addEventListener("click", async function () {
+      // Let user take photo for "Front"
+      await openCameraAndShowButton('Front');
+      // The rest of the flow (back scan, OCR) can be handled after photo is taken
+    });
+
+    // Existing MRZ Scanner logic (unchanged, for gallery etc.)
     const mrzscanner = new Dynamsoft.MRZScanner({
       license: "DLS2eyJoYW5kc2hha2VDb2RlIjoiMTA0MzI5ODU4LU1UQTBNekk1T0RVNExYZGxZaTFVY21saGJGQnliMm8iLCJtYWluU2VydmVyVVJMIjoiaHR0cHM6Ly9tZGxzLmR5bmFtc29mdG9ubGluZS5jb20iLCJvcmdhbml6YXRpb25JRCI6IjEwNDMyOTg1OCIsInN0YW5kYnlTZXJ2ZXJVUkwiOiJodHRwczovL3NkbHMuZHluYW1zb2Z0b25saW5lLmNvbSIsImNoZWNrQ29kZSI6MTczNDA3NjY3M30=",
       resultViewConfig: {
@@ -382,45 +526,7 @@
       scannerViewConfig: {
         cameraEnhancerUIPath: "./dist/mrz-scanner.ui.html",
       },
-      templateFilePath: "./dist/mrz-scanner.template.json",
-      // Add the tipText config here to replace the default tip
-      tipText: {
-        // This property is not standard in the MRZScanner API, but let's handle the replacement inside the error rendering code below if needed
-      }
-    });
-
-    // Scan (Take 2 images Front and Back)
-    scanWithCameraButton.addEventListener("click", async function () {
-      ocrResultDiv.innerText = "Launching MRZ Scanner for Front Side...";
-      try {
-        const frontResult = await mrzscanner.launch();
-        const frontImage = await getImageDataURL(frontResult);
-
-        if (!frontImage) {
-          ocrResultDiv.innerText = "Failed to capture front image.";
-          return;
-        }
-
-        imageCache.front = frontImage;
-        ocrResultDiv.innerText = "Front image captured.\nLaunching MRZ Scanner for Back Side...";
-
-        const backResult = await mrzscanner.launch();
-        const backImage = await getImageDataURL(backResult);
-
-        if (!backImage) {
-          ocrResultDiv.innerText = "Failed to capture back image.";
-          return;
-        }
-
-        imageCache.back = backImage;
-        ocrResultDiv.innerText = "Both images captured. Running OCR...\n";
-
-        await runTesseractOCR(imageCache.front, "Front", true);
-        await runTesseractOCR(imageCache.back, "Back", true);
-      } catch (error) {
-        console.error("Error scanning both sides:", error);
-        ocrResultDiv.innerText = "Submit 2 images Front and Back of your Insurance Card";
-      }
+      templateFilePath: "./dist/mrz-scanner.template.json"
     });
 
     // Scan from gallery
@@ -468,7 +574,6 @@
           }
         }).catch(err => {
           console.error(`[${label}] OCR error:`, err);
-          // Change here as well for OCR failure fallback
           ocrResultDiv.innerText += `\nSubmit 2 images Front and Back of your Insurance Card\n`;
         });
       };
