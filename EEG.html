@@ -1,330 +1,232 @@
+html
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <script type="module" src="main.js"></script>
-  <meta charset="UTF-8">
-  <title>NeuroSky EEG Realtime Chart</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <button id=" amendBuffersAndDownload">Download PCAP</button>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>rPPG EEG Dashboard</title>
   <style>
-    body {
-      font-family: sans-serif;
-      background: #f7f7f7;
-      padding: 20px;
-      max-width: 1200px;
-      margin: 0 auto;
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: transparent;
     }
-    canvas {
-      background: white;
-      border: 1px solid #ccc;
-      margin-top: 20px;
+    #video {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: 0;
     }
-    .container {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-    .chart-container {
-      position: relative;
-      height: 300px;
-      width: 100%;
-    }
-    .metrics {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-    .metric-card {
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      padding: 15px;
-      min-width: 120px;
-      text-align: center;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    .metric-value {
-      font-size: 24px;
-      font-weight: bold;
-      margin: 5px 0;
-    }
-    .metric-label {
-      color: #666;
-      font-size: 14px;
-    }
-    button {
-      background: #4285f4;
+    #startBtn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: red;
       color: white;
+      padding: 15px 30px;
+      font-size: 18px;
       border: none;
-      padding: 10px 15px;
-      border-radius: 4px;
+      z-index: 3;
       cursor: pointer;
-      font-size: 16px;
     }
-    button:hover {
-      background: #3367d6;
+    #clock {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      font-size: 32px;
+      font-family: monospace;
+      color: lime;
+      z-index: 3;
     }
-    .status {
-      margin-top: 10px;
-      padding: 10px;
-      border-radius: 4px;
+    #chartContainer {
+      position: fixed;
+      top: 100px;
+      left: 0;
+      width: 100vw;
+      height: 3in;
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      z-index: 2;
     }
-    .connected {
-      background: #e6f4ea;
-      color: #0d652d;
-    }
-    .disconnected {
-      background: #fce8e6;
-      color: #d93025;
+    .chartCanvas {
+      width: 4in;
+      height: 2.5in;
+      flex: 0 0 auto;
+      background: transparent;
+      scroll-snap-align: start;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>NeuroSky EEG Data Visualization</h1>
-    <p>Visualize brainwave data in real-time from your NeuroSky headset</p>
-    
-    <button id="connectBtn">CONNECT DEVICE</button>
-   
-
-    <div id="status" class="status disconnected">Disconnected</div>
-    
-    
-    <div class="metrics">
-      <div class="metric-card">
-        <div class="metric-label">Attention</div>
-        <div class="metric-value" id="attention">0</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Meditation</div>
-        <div class="metric-value" id="meditation">0</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Signal Quality</div>
-        <div class="metric-value" id="signal">0</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Delta (0.5-2.75Hz)</div>
-        <div class="metric-value" id="delta">0</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Theta (3.5-6.75Hz)</div>
-        <div class="metric-value" id="theta">0</div>
-      </div>
-    </div>
-    
-    <div class="chart-container">
-      <canvas id="eegChart"></canvas>
-    </div>
+  <video id="video" autoplay muted playsinline></video>
+  <button id="startBtn">🎥 Start Camera</button>
+  <div id="clock">30:00</div>
+  <div id="chartContainer">
+    <canvas id="barChart" class="chartCanvas"></canvas>
+    <canvas id="lineChart" class="chartCanvas"></canvas>
+    <canvas id="radarChart" class="chartCanvas"></canvas>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fft.js/dist/fft.min.js"></script>
   <script>
-    // Chart setup
-    const ctx = document.getElementById('eegChart').getContext('2d');
-    const chart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: Array(100).fill(''),
-        datasets: [{
-          label: 'EEG Raw Data',
-          data: Array(100).fill(0),
-          borderColor: 'rgb(75, 192, 192)',
-          tension: 0.1,
-          pointRadius: 0
-        }]
+    const EEG_BANDS = {
+      "Delta (δ) 0.5–4 Hz": [0.5, 4],
+      "Theta (θ) 4–8 Hz": [4, 8],
+      "Alpha (α) 8–13 Hz": [8, 13],
+      "Beta (β) 13–30 Hz": [13, 30],
+      "Gamma (γ) >30 Hz": [30, 100]
+    };
+
+    const alpha = 0.2989, beta = 0.5870, gamma = 0.1140;
+    const samplingRate = 30;
+    const bufferLength = 256;
+    let signalBuffer = [];
+
+    const video = document.getElementById('video');
+    const barCtx = document.getElementById('barChart').getContext('2d');
+    const lineCtx = document.getElementById('lineChart').getContext('2d');
+    const radarCtx = document.getElementById('radarChart').getContext('2d');
+
+    let barChart, lineChart, radarChart;
+
+    document.getElementById('startBtn').onclick = () => {
+      navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+        video.srcObject = stream;
+        document.getElementById('startBtn').style.display = 'none';
+        startCountdown(30 * 60);
+        requestAnimationFrame(processFrame);
+      });
+    };
+
+    function processFrame() {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+      const frame = ctx.getImageData(video.videoWidth / 2, video.videoHeight / 2, 100, 100).data;
+
+      let r = 0, g = 0, b = 0, count = 0;
+      for (let i = 0; i < frame.length; i += 4) {
+        r += frame[i];
+        g += frame[i + 1];
+        b += frame[i + 2];
+        count++;
+      }
+      r /= count; g /= count; b /= count;
+      const s = alpha  r + beta  g + gamma * b;
+      signalBuffer.push(s);
+
+      if (signalBuffer.length >= bufferLength) {
+        const bandPower = computeEEG(signalBuffer.slice());
+        updateCharts(bandPower);
+        signalBuffer = [];
+      }
+
+      setTimeout(() => requestAnimationFrame(processFrame), 1);
+    }
+
+    function computeEEG(signal) {
+      const fft = new FFT(signal.length);
+      const out = fft.createComplexArray();
+      fft.realTransform(out, signal);
+      fft.completeSpectrum(out);
+
+      const freqs = Array(signal.length / 2).fill(0).map((_, i) => i * samplingRate / signal.length);
+      const power = freqs.map((f, i) => {
+        const re = out[2  i], im = out[2  i + 1];
+        return re  re + im  im;
+      });
+
+      const bandPower = {};
+      for (const [band, [low, high]] of Object.entries(EEG_BANDS)) {
+        const indices = freqs.map((f, i) => (f >= low && f <= high ? i : -1)).filter(i => i !== -1);
+        bandPower[band] = indices.reduce((sum, i) => sum + power[i], 0);
+      }
+
+      return bandPower;
+    }
+
+    function updateCharts(data) {
+      const labels = Object.keys(data);
+      const values = Object.values(data);
+      const colors = ['rgba(255,0,0,0.5)','rgba(0,255,0,0.5)','rgba(0,0,255,0.5)','rgba(0,255,255,0.5)','rgba(255,0,255,0.5)'];
+
+      if (!barChart) {
+        barChart = new Chart(barCtx, {
+          type: 'bar',
+          data: { labels, datasets: [{ data: values, backgroundColor: colors }] },
+          options: chartOptions
+        });
+        lineChart = new Chart(lineCtx, {
+          type: 'line',
+          data: { labels, datasets: [{ data: values, borderColor: 'white', backgroundColor: 'transparent' }] },
+          options: chartOptions
+        });
+        radarChart = new Chart(radarCtx, {
+          type: 'radar',
+          data: { labels, datasets: [{ data: values, borderColor: 'white', backgroundColor: 'rgba(255,255,255,0.1)' }] },
+          options: chartOptions
+        });
+      } else {
+        barChart.data.datasets[0].data = values;
+        lineChart.data.datasets[0].data = values;
+        radarChart.data.datasets[0].data = values;
+        barChart.update();
+        lineChart.update();
+        radarChart.update();
+      }
+    }
+
+    const chartOptions = {
+      animation: false,
+      responsive: false,
+      plugins: {
+        legend: { display: false },
+        title: { display: false }
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            min: 0,
-            max: 255
-          }
-        },
-        animation: {
-          duration: 0
-        }
+      scales: {
+        r: { pointLabels: { color: 'white' }, ticks: { color: 'white' } },
+        x: { ticks: { color: 'white' } },
+        y: { ticks: { color: 'white' } }
       }
-    });
+    };
 
-    // EEG Data Parser for NeuroSky
-    class NeuroSkyParser {
-      constructor(callback) {
-        this.callback = callback;
-        this.buffer = new Uint8Array(0);
-      }
-
-      parse(data) {
-        // Append new data to buffer
-        const newBuffer = new Uint8Array(this.buffer.length + data.byteLength);
-        newBuffer.set(this.buffer, 0);
-        newBuffer.set(new Uint8Array(data), this.buffer.length);
-        this.buffer = newBuffer;
-
-        // Process complete packets
-        while (this.buffer.length >= 2) {
-          const payloadLength = this.buffer[1];
-          if (this.buffer.length >= payloadLength + 2) {
-            const packet = this.buffer.slice(0, payloadLength + 2);
-            this.processPacket(packet);
-            this.buffer = this.buffer.slice(payloadLength + 2);
-          } else {
-            break;
-          }
+    function startCountdown(seconds) {
+      const clock = document.getElementById('clock');
+      const interval = setInterval(() => {
+        const min = Math.floor(seconds / 60);
+        const sec = seconds % 60;
+        clock.textContent = ${min}:${sec.toString().padStart(2, '0')};
+        if (--seconds < 0) {
+          clearInterval(interval);
+          downloadReport();
         }
-      }
-
-      processPacket(packet) {
-        if (packet[0] !== 0xAA || packet[1] !== packet.length - 2) {
-          console.error('Invalid packet');
-          return;
-        }
-
-        let i = 2;
-        while (i < packet.length) {
-          const code = packet[i++];
-          const length = packet[i++];
-          const value = packet.slice(i, i + length);
-          i += length;
-
-          this.parseDataRow(code, length, value);
-        }
-      }
-
-      parseDataRow(code, length, value) {
-        switch (code) {
-          case 0x02: // POOR_SIGNAL
-            this.callback({ type: 'signal', value: value[0] });
-            break;
-          case 0x04: // ATTENTION
-            this.callback({ type: 'attention', value: value[0] });
-            break;
-          case 0x05: // MEDITATION
-            this.callback({ type: 'meditation', value: value[0] });
-            break;
-          case 0x80: // RAW_EEG
-            const rawValue = (value[0] << 8) | value[1];
-            this.callback({ type: 'raw', value: rawValue });
-            break;
-          case 0x83: // ASIC_EEG_POWER
-            this.parseEegPower(value);
-            break;
-        }
-      }
-
-      parseEegPower(data) {
-        const bands = [
-          'delta', 'theta', 'lowAlpha', 'highAlpha',
-          'lowBeta', 'highBeta', 'lowGamma', 'midGamma'
-        ];
-        
-        const view = new DataView(data.buffer);
-        const eegPower = {};
-        
-        for (let i = 0; i < bands.length; i++) {
-          eegPower[bands[i]] = view.getUint32(i * 4, true);
-        }
-        
-        this.callback({ type: 'eegPower', value: eegPower });
-      }
+      }, 1000);
     }
 
-    // Bluetooth connection handler
-    document.getElementById('connectBtn').addEventListener('click', async () => {
-      try {
-        const btn = document.getElementById('connectBtn');
-        btn.disabled = true;
-        btn.textContent = 'Connecting...';
-        
-        const status = document.getElementById('status');
-        status.className = 'status';
-        status.textContent = 'Searching for device...';
-        
-        // Request Bluetooth device
-        const device = await navigator.bluetooth.requestDevice({
-          filters: [{ name: 'MindWave Mobile' }],
-          optionalServices: [0xffe0, 0xff0f]
-        });
-        
-        status.textContent = 'Connecting to device...';
-        const server = await device.gatt.connect();
-        
-        status.textContent = 'Getting service...';
-        const service = await server.getPrimaryService(0xff0f);
-        
-        status.textContent = 'Getting characteristic...';
-        const characteristic = await service.getCharacteristic(0xfffc);
-        
-        status.textContent = 'Connected! Receiving data...';
-        status.className = 'status connected';
-        btn.textContent = 'DISCONNECT';
-        btn.disabled = false;
-        
-        // Set up disconnect handler
-        device.addEventListener('gattserverdisconnected', () => {
-          status.textContent = 'Disconnected';
-          status.className = 'status disconnected';
-          btn.textContent = 'CONNECT DEVICE';
-        });
-        
-        // Set up data parser
-        const parser = new NeuroSkyParser((data) => {
-          switch (data.type) {
-            case 'raw':
-              updateChart(data.value);
-              break;
-            case 'attention':
-              document.getElementById('attention').textContent = data.value;
-              break;
-            case 'meditation':
-              document.getElementById('meditation').textContent = data.value;
-              break;
-            case 'signal':
-              document.getElementById('signal').textContent = data.value;
-              break;
-            case 'eegPower':
-              document.getElementById('delta').textContent = Math.round(data.value.delta / 1000000);
-              document.getElementById('theta').textContent = Math.round(data.value.theta / 1000000);
-              break;
-          }
-        });
-        
-        // Start notifications
-        characteristic.startNotifications();
-        characteristic.addEventListener('characteristicvaluechanged', (event) => {
-          parser.parse(event.target.value.buffer);
-        });
-        
-        // Add disconnect functionality to button
-        btn.onclick = () => {
-          device.gatt.disconnect();
-        };
-        
-      } catch (error) {
-        console.error('Error:', error);
-        document.getElementById('status').textContent = `Error: ${error.message}`;
-        document.getElementById('status').className = 'status disconnected';
-        document.getElementById('connectBtn').textContent = 'CONNECT DEVICE';
-        document.getElementById('connectBtn').disabled = false;
-      }
-    });
-
-    // Chart update function
-    function updateChart(value) {
-      chart.data.datasets[0].data.push(value);
-      if (chart.data.datasets[0].data.length > 100) {
-        chart.data.datasets[0].data.shift();
-      }
-      chart.update();
-    }
-
-    // Check if Web Bluetooth is supported
-    if (!navigator.bluetooth) {
-      document.getElementById('status').textContent = 'Web Bluetooth API not supported in this browser. Try Chrome or Edge.';
-      document.getElementById('connectBtn').disabled = true;
+    function downloadReport() {
+      const blob = new Blob([JSON.stringify({ EEG_BANDS })], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'EEGrPPGReport.json';
+      link.click();
     }
   </script>
 </body>
 </html>
+`
+
+---
+
+This version includes:
+- Modular chart canvases
+- Horizontal scrolling layout
+- Transparent chart backgrounds
+- Real-time EEG updates
+- Countdown and auto-download
+
