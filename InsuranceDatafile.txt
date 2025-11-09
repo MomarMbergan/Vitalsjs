@@ -1,1 +1,29 @@
 //Insurance Card Database
+
+// Node.js script: processIDscan.js
+// Requires Node.js environment
+
+import fs from "fs";
+
+// Read the IDScan.html file
+const idScanData = fs.readFileSync("IDscan.html", "utf8");
+
+// Extract image data for front and back (assuming base64 or <img> tags)
+const frontRegex = /<img[^>]*id=["']frontScan["'][^>]*src=["']([^"']+)["']/i;
+const backRegex = /<img[^>]*id=["']backScan["'][^>]*src=["']([^"']+)["']/i;
+
+const frontMatch = idScanData.match(frontRegex);
+const backMatch = idScanData.match(backRegex);
+
+if (!frontMatch || !backMatch) {
+  console.error("Front or back image not found in IDscan.html");
+  process.exit(1);
+}
+
+// Combine them into one paragraph of text
+const combinedText = `Front Scan Data: ${frontMatch[1]} Back Scan Data: ${backMatch[1]}\n\n\n`;
+
+// Append to InsuranceDatafile.txt
+fs.appendFileSync("InsuranceDatafile.txt", combinedText, "utf8");
+
+console.log("✅ Scanned data appended successfully to InsuranceDatafile.txt");
