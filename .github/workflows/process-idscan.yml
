@@ -1,0 +1,41 @@
+name: Process ID Scan Data
+
+on:
+  push:
+    paths:
+      - "IDscan.html"   # Run this whenever IDscan.html changes
+  workflow_dispatch:     # Allows manual run from the Actions tab
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out your repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Install Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20   # You can also use 18 or 22
+
+      # Step 3: Install any dependencies (optional)
+      - name: Install dependencies
+        run: |
+          npm install
+
+      # Step 4: Run your Node script
+      - name: Run ID scan processor
+        run: |
+          node processIDscan.js
+
+      # Step 5: Commit and push updated text file
+      - name: Commit updated InsuranceDatafile.txt
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add InsuranceDatafile.txt
+          git commit -m "Auto-update InsuranceDatafile.txt from IDscan.html" || echo "No changes to commit"
+          git push
