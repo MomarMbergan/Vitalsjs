@@ -1,4 +1,4 @@
-name: Process ID Scan Data
+ Process ID Scan Data
 
 on:
   push:
