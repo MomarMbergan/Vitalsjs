@@ -1,9 +1,11 @@
-html
+
+
+`html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>rPPG EEG Dashboard</title>
+  <title>EEG Dashboard</title>
   <style>
     html, body {
       margin: 0;
@@ -40,9 +42,24 @@ html
       color: lime;
       z-index: 3;
     }
+    #metrics {
+      position: fixed;
+      top: 70px;
+      right: 20px;
+      font-family: monospace;
+      font-size: 18px;
+      z-index: 3;
+      line-height: 1.4em;
+    }
+    #metrics div { margin-bottom: 4px; }
+    #eegHz { color: white; }
+    #eegNote { font-size: 14px; color: white; }
+    #heartRate { color: red; }
+    #oximeter { color: limegreen; }
+    #eegHash { color: deeppink; }
     #chartContainer {
       position: fixed;
-      top: 100px;
+      top: 130px;
       left: 0;
       width: 100vw;
       height: 3in;
@@ -64,6 +81,13 @@ html
   <video id="video" autoplay muted playsinline></video>
   <button id="startBtn">🎥 Start Camera</button>
   <div id="clock">30:00</div>
+  <div id="metrics">
+    <div id="eegHz">EEG Hertz: -- Hz</div>
+    <div id="eegNote">(Hold Camera 2–7 inches away from your Scalp Swirl on your Head)</div>
+    <div id="heartRate">Heart Rate: -- bpm</div>
+    <div id="oximeter">SpO₂: --%</div>
+    <div id="eegHash">EEG Process: --</div>
+  </div>
   <div id="chartContainer">
     <canvas id="barChart" class="chartCanvas"></canvas>
     <canvas id="lineChart" class="chartCanvas"></canvas>
@@ -74,17 +98,18 @@ html
   <script src="https://cdn.jsdelivr.net/npm/fft.js/dist/fft.min.js"></script>
   <script>
     const EEG_BANDS = {
-      "Delta (δ) 0.5–4 Hz": [0.5, 4],
-      "Theta (θ) 4–8 Hz": [4, 8],
-      "Alpha (α) 8–13 Hz": [8, 13],
-      "Beta (β) 13–30 Hz": [13, 30],
-      "Gamma (γ) >30 Hz": [30, 100]
+      "Delta (δ)": [0.5, 4],
+      "Theta (θ)": [4, 8],
+      "Alpha (α)": [8, 13],
+      "Beta (β)": [13, 30],
+      "Gamma (γ)": [30, 100]
     };
 
     const alpha = 0.2989, beta = 0.5870, gamma = 0.1140;
     const samplingRate = 30;
     const bufferLength = 256;
-    let signalBuffer = [];
+    let signalBuffer = [], peakTimes = [];
+    let latestBandPower = {};
 
     const video = document.getElementById('video');
     const barCtx = document.getElementById('barChart').getContext('2d');
@@ -121,13 +146,26 @@ html
       const s = alpha  r + beta  g + gamma * b;
       signalBuffer.push(s);
 
+      detectPeak(s);
+
       if (signalBuffer.length >= bufferLength) {
-        const bandPower = computeEEG(signalBuffer.slice());
-        updateCharts(bandPower);
+        latestBandPower = computeEEG(signalBuffer.slice());
+        updateCharts(latestBandPower);
         signalBuffer = [];
       }
 
       setTimeout(() => requestAnimationFrame(processFrame), 1);
+    }
+
+    function detectPeak(val) {
+      const now = Date.now();
+      if (signalBuffer.length > 2) {
+        const prev = signalBuffer[signalBuffer.length - 2];
+        if (val > prev && val > signalBuffer[signalBuffer.length - 3]) {
+          peakTimes.push(now);
+          peakTimes = peakTimes.filter(t => now - t <= 60000);
+        }
+      }
     }
 
     function computeEEG(signal) {
@@ -182,51 +220,4 @@ html
       }
     }
 
-    const chartOptions = {
-      animation: false,
-      responsive: false,
-      plugins: {
-        legend: { display: false },
-        title: { display: false }
-      },
-      scales: {
-        r: { pointLabels: { color: 'white' }, ticks: { color: 'white' } },
-        x: { ticks: { color: 'white' } },
-        y: { ticks: { color: 'white' } }
-      }
-    };
-
-    function startCountdown(seconds) {
-      const clock = document.getElementById('clock');
-      const interval = setInterval(() => {
-        const min = Math.floor(seconds / 60);
-        const sec = seconds % 60;
-        clock.textContent = ${min}:${sec.toString().padStart(2, '0')};
-        if (--seconds < 0) {
-          clearInterval(interval);
-          downloadReport();
-        }
-      }, 1000);
-    }
-
-    function downloadReport() {
-      const blob = new Blob([JSON.stringify({ EEG_BANDS })], { type: 'application/json' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'EEGrPPGReport.json';
-      link.click();
-    }
-  </script>
-</body>
-</html>
-`
-
----
-
-This version includes:
-- Modular chart canvases
-- Horizontal scrolling layout
-- Transparent chart backgrounds
-- Real-time EEG updates
-- Countdown and auto-download
-
+    const chartOptions =
