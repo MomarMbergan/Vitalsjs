@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <title>EEG Dashboard HD</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fft.js/dist/fft.min.js"></script>
   <style>
     html, body {
       margin: 0;
@@ -12,6 +14,7 @@
       background: black;
       font-family: Arial, sans-serif;
       color: white;
+      cursor: none;
     }
 
     video {
@@ -45,10 +48,7 @@
       line-height: 1.4em;
     }
 
-    #metrics div {
-      margin-bottom: 4px;
-      text-shadow: 0 0 8px rgba(255,255,255,0.6);
-    }
+    #metrics div { margin-bottom: 4px; text-shadow: 0 0 8px rgba(255,255,255,0.6); }
 
     #eegHz { color: cyan; }
     #heartRate { color: red; }
@@ -60,7 +60,7 @@
       top: 130px;
       left: 0;
       width: 100vw;
-      height: 3in;
+      height: 40vh;
       display: flex;
       overflow-x: auto;
       scroll-snap-type: x mandatory;
@@ -68,8 +68,8 @@
     }
 
     .chartCanvas {
-      width: 4in;
-      height: 2.5in;
+      width: 5in;
+      height: 3in;
       flex: 0 0 auto;
       background: rgba(0,0,0,0.3);
       scroll-snap-align: start;
@@ -142,9 +142,7 @@
   </div>
 
   <div id="chartContainer">
-    <canvas id="barChart" class="chartCanvas"></canvas>
-    <canvas id="lineChart" class="chartCanvas"></canvas>
-    <canvas id="radarChart" class="chartCanvas"></canvas>
+    <canvas id="spectrumChart" class="chartCanvas"></canvas>
   </div>
 
   <div class="button-container">
@@ -158,8 +156,6 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fft.js/dist/fft.min.js"></script>
   <script>
     const EEG_BANDS = {
       "Delta (δ)": [0.5, 4],
@@ -172,19 +168,21 @@
     const alpha = 0.2989, beta = 0.5870, gamma = 0.1140;
     const samplingRate = 30, bufferLength = 256;
     let signalBuffer = [], peakTimes = [], latestBandPower = {};
-    let barChart, lineChart, radarChart, stream = null;
+    let spectrumChart, stream = null;
     let usingFrontCamera = true;
+    let combinedEEG_Hz = 0;
 
     const video = document.getElementById('video');
-    const barCtx = document.getElementById('barChart').getContext('2d');
-    const lineCtx = document.getElementById('lineChart').getContext('2d');
-    const radarCtx = document.getElementById('radarChart').getContext('2d');
+    const ctxCanvas = document.getElementById('canvas').getContext('2d');
+    const spectrumCtx = document.getElementById('spectrumChart').getContext('2d');
+
+    const colors = ['#0000FF', '#00FF00', '#FFFF00', '#FFA500', '#FF0000'];
 
     async function startCamera() {
       if (stream) stream.getTracks().forEach(track => track.stop());
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: usingFrontCamera ? 'user' : 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: { facingMode: usingFrontCamera ? 'user' : 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
           audio: false
         });
         video.srcObject = stream;
@@ -196,10 +194,9 @@
 
     document.getElementById('snapshotBtn').addEventListener('click', () => {
       const canvas = document.getElementById('canvas');
-      const ctx = canvas.getContext('2d');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctxCanvas.drawImage(video, 0, 0, canvas.width, canvas.height);
       const img = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.href = img;
@@ -218,31 +215,28 @@
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = video.videoWidth;
       tempCanvas.height = video.videoHeight;
-      const ctx = tempCanvas.getContext('2d');
-      ctx.drawImage(video, 0, 0);
-      const frame = ctx.getImageData(video.videoWidth / 2, video.videoHeight / 2, 100, 100).data;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.drawImage(video, 0, 0);
+      const frame = tempCtx.getImageData(video.videoWidth / 2, video.videoHeight / 2, 80, 80).data;
 
       let r = 0, g = 0, b = 0, count = 0;
       for (let i = 0; i < frame.length; i += 4) {
-        r += frame[i];
-        g += frame[i + 1];
-        b += frame[i + 2];
-        count++;
+        r += frame[i]; g += frame[i + 1]; b += frame[i + 2]; count++;
       }
-
       r /= count; g /= count; b /= count;
       const s = alpha * r + beta * g + gamma * b;
       signalBuffer.push(s);
-      detectPeak(s);
 
+      detectPeak(s);
       if (signalBuffer.length >= bufferLength) {
         latestBandPower = computeEEG(signalBuffer.slice());
-        updateCharts(latestBandPower);
+        updateSpectrum(latestBandPower);
+        combinedEEG_Hz = calculateCombinedEEGHz();
         signalBuffer = [];
       }
 
       updateMetrics();
-      setTimeout(() => requestAnimationFrame(processFrame), 1);
+      setTimeout(() => requestAnimationFrame(processFrame), 10);
     }
 
     function detectPeak(val) {
@@ -276,26 +270,52 @@
       return bandPower;
     }
 
-    const colors = ['rgb(0,0,255)', 'rgb(0,255,0)', 'rgb(255,255,0)', 'rgb(255,165,0)', 'rgb(255,0,0)'];
+    function calculateCombinedEEGHz() {
+      // rPPG frequency from heartbeat peaks
+      let rPPG_Hz = peakTimes.length / 60;  // peaks per second
+      if (rPPG_Hz <= 0) rPPG_Hz = 1;
 
-    function updateCharts(data) {
+      // EEG centroid frequency from FFT band power
+      const bands = Object.values(EEG_BANDS);
+      const powers = Object.values(latestBandPower);
+      let totalPower = powers.reduce((a, b) => a + b, 0);
+      if (totalPower === 0) totalPower = 1;
+      const eegCentroid = bands
+        .map(([low, high], i) => ((low + high) / 2) * (powers[i] / totalPower))
+        .reduce((a, b) => a + b, 0);
+
+      return ((rPPG_Hz * 10) + eegCentroid) / 2; // scale rPPG to match EEG range
+    }
+
+    function updateSpectrum(data) {
       const labels = Object.keys(data);
       const values = Object.values(data);
-      const opts = {
+
+      const chartOptions = {
         responsive: true,
         plugins: { legend: { display: false } },
-        scales: { x: { ticks: { color: 'white' } }, y: { ticks: { color: 'white' } }, r: { grid: { color: 'rgba(255,255,255,0.2)' } } }
+        scales: {
+          x: { ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.2)' } },
+          y: { ticks: { color: 'white' }, grid: { color: 'rgba(255,255,255,0.2)' } }
+        }
       };
 
-      if (!barChart) {
-        barChart = new Chart(barCtx, { type: 'bar', data: { labels, datasets: [{ data: values, backgroundColor: colors }] }, options: opts });
-        lineChart = new Chart(lineCtx, { type: 'line', data: { labels, datasets: [{ data: values, borderColor: 'white', pointBackgroundColor: colors }] }, options: opts });
-        radarChart = new Chart(radarCtx, { type: 'radar', data: { labels, datasets: [{ data: values, borderColor: 'white', backgroundColor: 'rgba(255,255,255,0.1)', pointBackgroundColor: colors }] }, options: opts });
-      } else {
-        [barChart, lineChart, radarChart].forEach(chart => {
-          chart.data.datasets[0].data = values;
-          chart.update();
+      if (!spectrumChart) {
+        spectrumChart = new Chart(spectrumCtx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{
+              label: 'EEG Band Power Spectrum',
+              data: values,
+              backgroundColor: colors
+            }]
+          },
+          options: chartOptions
         });
+      } else {
+        spectrumChart.data.datasets[0].data = values;
+        spectrumChart.update();
       }
     }
 
@@ -304,7 +324,7 @@
       const spo2 = Math.min(100, Math.max(85, 95 + Math.random() * 5));
       document.getElementById('heartRate').innerText = `Heart Rate: ${bpm} bpm`;
       document.getElementById('oximeter').innerText = `SpO₂: ${spo2.toFixed(1)}%`;
-      document.getElementById('eegHz').innerText = `EEG Hertz: ${(Math.random() * 30 + 5).toFixed(1)} Hz`;
+      document.getElementById('eegHz').innerText = `EEG Hertz: ${combinedEEG_Hz.toFixed(2)} Hz`;
       document.getElementById('eegHash').innerText = `EEG Process: ${Object.keys(latestBandPower).length ? 'Active' : '--'}`;
       document.getElementById('clock').innerText = new Date().toLocaleTimeString();
     }
