@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>EEG Dashboard HD</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8" />
+<title>EEG Dashboard HD — Debugged</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fft.js/dist/fft.min.js"></script>
 <style>
@@ -13,101 +13,9 @@
   #metrics{position:fixed;top:70px;right:20px;font-family:monospace;font-size:18px;z-index:3;line-height:1.4em}
   #metrics div{margin-bottom:4px;text-shadow:0 0 8px rgba(255,255,255,.6)}
   #eegHz{color:cyan}#heartRate{color:red}#oximeter{color:lime}#eegHash{color:deeppink}
-  #chartContainer{position:fixed;top:130px;left:0;width:100vw;height:40vh;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;z-index:2}
-  .chartCanvas{width:5in;height:3in;flex:0 0 auto;background:rgba(0,0,0,.3);scroll-snap-align:start;backdrop-filter:blur(6px);border-radius:16px;margin:0 10px;box-shadow:0 0 15px rgba(0,255,255,.2)}
+  #chartContainer{position:fixed;top:130px;left:0;width:100vw;height:40vh;display:flex;align-items:center;gap:18px;padding:0 18px;box-sizing:border-box;z-index:2}
+  .chartCanvas{flex:1 1 0;background:rgba(0,0,0,.35);backdrop-filter:blur(6px);border-radius:12px;padding:8px;height:100%;}
   .button-container{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:80px;z-index:10}
-  .camera-btn{width:80px;height:80px;border-radius:50%;border:3px solid rgba(255,255,255,.4);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:30px;background:rgba(255,255,255,.1);backdrop-filter:blur(8px);box-shadow:0 0 25px rgba(255,255,255,.2);transition:all .2s}
-  #snapshotBtn{border:3px solid rgba(255,0,0,.7);color:#ff4d4d}
-  #flipBtn{border:3px solid rgba(255,255,255,.7);color:white}
-  .camera-btn:hover{transform:scale(1.1);box-shadow:0 0 30px rgba(255,255,255,.4)}
-  .button-label{position:absolute;bottom:-28px;width:100%;text-align:center;font-family:Helvetica,sans-serif;font-size:14px;color:white;opacity:.9;text-shadow:0 0 6px rgba(255,255,255,.4)}
-  #canvas{display:none}
-</style>
-</head>
-<body>
-  <video id="video" autoplay muted playsinline></video>
-  <canvas id="canvas"></canvas>
-  <div id="clock">--:--</div>
-  <div id="metrics">
-    <div id="eegHz">EEG Hertz: -- Hz</div>
-    <div id="heartRate">Heart Rate: -- bpm</div>
-    <div id="oximeter">SpO₂: --%</div>
-    <div id="soundDB">Sound Level: -- dB</div>
-    <div id="eegHash">EEG Process: --</div>
-  </div>
-  <div id="chartContainer"><canvas id="spectrumChart" class="chartCanvas"></canvas></div>
-  <div class="button-container">
-    <div style="position:relative">
-      <button id="snapshotBtn" class="camera-btn">📸</button><div class="button-label">Snapshot</div>
-    </div>
-    <div style="position:relative">
-      <button id="flipBtn" class="camera-btn">🔄</button><div class="button-label">Flip Camera</div>
-    </div>
-  </div>
-
-<script>
-const EEG_BANDS={"Delta (δ)":[0.5,4],"Theta (θ)":[4,8],"Alpha (α)":[8,13],"Beta (β)":[13,30],"Gamma (γ)":[30,100]};
-const alpha=0.2989,beta=0.5870,gamma=0.1140,samplingRate=30,bufferLength=256;
-let signalBuffer=[],peakTimes=[],latestBandPower={},spectrumChart=null,stream=null,usingFrontCamera=true;
-let combinedEEG_Hz=0,soundDB=0;
-
-const video=document.getElementById('video');
-const ctxCanvas=document.getElementById('canvas').getContext('2d');
-const spectrumCtx=document.getElementById('spectrumChart').getContext('2d');
-const colors=['#0000FF','#00FF00','#FFFF00','#FFA500','#FF0000'];
-
-async function startCamera(){
-  if(stream)stream.getTracks().forEach(t=>t.stop());
-  try{
-    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:usingFrontCamera?'user':'environment'},audio:false});
-    video.srcObject=stream;
-    requestAnimationFrame(processFrame);
-  }catch(e){console.error(e);}
-}
-
-document.getElementById('snapshotBtn').onclick=()=>{
-  const c=document.getElementById('canvas');
-  c.width=video.videoWidth;c.height=video.videoHeight;
-  ctxCanvas.drawImage(video,0,0,c.width,c.height);
-  const link=document.createElement('a');
-  link.href=c.toDataURL('image/png');link.download='snapshot.png';link.click();
-};
-document.getElementById('flipBtn').onclick=async()=>{usingFrontCamera=!usingFrontCamera;await startCamera();};
-
-function processFrame(){
-  if(!video.videoWidth)return requestAnimationFrame(processFrame);
-  const temp=document.createElement('canvas');
-  temp.width=video.videoWidth;temp.height=video.videoHeight;
-  const ctx=temp.getContext('2d');
-  ctx.drawImage(video,0,0);
-  const frame=ctx.getImageData(video.videoWidth/2,video.videoHeight/2,80,80).data;
-  let r=0,g=0,b=0,n=0;
-  for(let i=0;i<frame.length;i+=4){r+=frame[i];g+=frame[i+1];b+=frame[i+2];n++;}
-  const s=alpha*r/n+beta*g/n+gamma*b/n;
-  signalBuffer.push(s);detectPeak(s);
-  if(signalBuffer.length>=bufferLength){
-    latestBandPower=computeEEG(signalBuffer.slice());
-    updateSpectrum(latestBandPower);
-    combinedEEG_Hz=calculateCombinedEEGHz();
-    signalBuffer=[];
-  }
-  updateMetrics();
-  setTimeout(()=>requestAnimationFrame(processFrame),10);
-}
-
-function detectPeak(v){
-  const now=Date.now();
-  if(signalBuffer.length>2){
-    const prev=signalBuffer.at(-2);
-    if(v>prev&&v>signalBuffer.at(-3)){
-      peakTimes.push(now);
-      peakTimes=peakTimes.filter(t=>now-t<=60000);
-    }
-  }
-}
-
-function computeEEG(signal){
-  const fft=new FFT(signal.length),out=fft.createComplexArray();
-  fft.realTransform(out,signal);fft.completeSpectrum(out);
-  const freqs=Array(signal.length/2).fill(0).map((_,i)=>i*samplingRate/signal.length);
-  const power=freqs.map(
+  .camera-btn{width:80px;height:80px;border-radius:50%;border:3px solid rgba(255,255,255,.4);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:30px;background:rgba(255,255,255,.08);backdrop-filter:blur(8px);box-shadow:0 0 25px rgba(255,255,255,.06);transition:all .2s}
+  .camera-btn:hover{transform:scale(1.06);box-shadow:0 0 30px rgba(255,255,255,.12)}
+  .button-label{position:absolute;bottom:-28px;w
