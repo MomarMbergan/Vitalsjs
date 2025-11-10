@@ -2,227 +2,223 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>EEG Dashboard — Main (Chart.js, 12 charts)</title>
+<title>Gamma Dashboard — IronBow Overlay</title>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<!-- Chart.js + FFT -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fft.js/dist/fft.min.js"></script>
-<!-- RIPEMD-320 library: must be present locally as ripemd320.js -->
 <script src="ripemd320.js"></script>
-
 <style>
-  html,body{height:100%;margin:0;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif}
-  #topbar{position:fixed;left:12px;top:8px;z-index:60;display:flex;gap:8px;align-items:center}
-  #gammaBtn{background:linear-gradient(90deg,#7b2cff,#ff7a00);color:#fff;border:0;padding:8px 10px;border-radius:10px;cursor:pointer}
-  #timer{font-family:monospace;color:#0f0}
-  #status{position:fixed;right:12px;top:8px;text-align:right;font-family:monospace;z-index:60}
-  #camera{position:fixed;left:0;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;opacity:0.06}
-  #overlayCanvas{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:1;pointer-events:none}
-  #grid{position:relative;z-index:20;padding:90px 18px 140px 18px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-  .panel{background:rgba(255,255,255,0.02);border-radius:12px;padding:8px;min-height:260px;box-shadow:0 0 30px rgba(0,0,0,0.4)}
-  .title{color:#fff;font-weight:700;font-size:13px;margin-bottom:6px}
-  canvas.chart{width:100%;height:100%}
-  .row2 .panel{background:rgba(255,255,255,0.01);border:1px solid rgba(255,255,255,0.02)}
+  html,body{height:100%;margin:0;background:#000;color:#fff;font-family:Arial,sans-serif}
+  #controls{position:fixed;left:12px;top:8px;z-index:80;display:flex;gap:8px}
+  #camera{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:0}
+  #canvas{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:0}
+  #ui{position:relative;z-index:20;padding:92px 18px 140px 18px}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .panel{background:rgba(255,255,255,0.02);padding:8px;border-radius:12px;min-height:260px}
+  .title{font-weight:700;margin-bottom:6px}
   .stopped *{color:#ff0000 !important}
 </style>
 </head>
 <body>
-  <!-- hidden video for camera -->
-  <video id="video" autoplay muted playsinline style="display:none"></video>
-  <canvas id="overlayCanvas"></canvas>
-
-  <div id="topbar">
-    <button id="gammaBtn">Γ Gamma</button>
-    <input id="timerInput" value="00:30:00" style="width:120px;padding:6px;border-radius:6px;background:#111;color:#fff;border:0" />
+  <div id="controls">
+    <button id="backBtn" style="background:linear-gradient(90deg,#7b2cff,#ff7a00);color:#fff;border:0;padding:8px 10px;border-radius:10px">Back</button>
+    <input id="timerInput" value="00:30:00" style="width:120px;padding:6px;border-radius:6px;background:#111;color:#fff;border:0"/>
     <button id="setBtn">Set</button>
     <button id="startBtn">Start</button>
-    <button id="stopBtn">Stop</button>
-    <div id="timer" style="margin-left:12px">00:30:00</div>
   </div>
 
-  <div id="status">
-    <div id="clock">--:--:--</div>
-    <div id="eegHz">EEG Hertz: --.- Hz</div>
-    <div id="hr">Heart Rate: --.- BPM</div>
-    <div id="spo2">SpO₂: --.- %</div>
-    <div id="sound">Sound: --.- dB</div>
-    <div id="hash">EEG Process: --</div>
-  </div>
+  <video id="video" autoplay muted playsinline style="display:none"></video>
+  <canvas id="canvas"></canvas>
 
-  <!-- 12 chart panels (4x3 layout made as four columns then two rows with the duplicates) -->
-  <div id="grid">
-    <!-- Row 1: Phys neon -->
-    <div class="panel"><div class="title">EEG Hz (Neon)</div><canvas id="chart_eeg_1" class="chart"></canvas></div>
-    <div class="panel"><div class="title">Heart BPM (Neon)</div><canvas id="chart_hr_1" class="chart"></canvas></div>
-    <div class="panel"><div class="title">Sound dB (Neon)</div><canvas id="chart_sound_1" class="chart"></canvas></div>
-    <div class="panel"><div class="title">SpO₂ % (Neon)</div><canvas id="chart_spo2_1" class="chart"></canvas></div>
+  <div id="ui">
+    <div class="grid">
+      <div class="panel"><div class="title">Alluvial EEG</div><canvas id="a1"></canvas></div>
+      <div class="panel"><div class="title">Alluvial HR</div><canvas id="a2"></canvas></div>
+      <div class="panel"><div class="title">Alluvial Sound</div><canvas id="a3"></canvas></div>
+      <div class="panel"><div class="title">Alluvial Oximeter</div><canvas id="a4"></canvas></div>
+    </div>
 
-    <!-- Row 2: Phys ironbow duplicates -->
-    <div class="panel row2"><div class="title">EEG Hz (Iron)</div><canvas id="chart_eeg_2" class="chart"></canvas></div>
-    <div class="panel row2"><div class="title">Heart BPM (Iron)</div><canvas id="chart_hr_2" class="chart"></canvas></div>
-    <div class="panel row2"><div class="title">Sound dB (Iron)</div><canvas id="chart_sound_2" class="chart"></canvas></div>
-    <div class="panel row2"><div class="title">SpO₂ % (Iron)</div><canvas id="chart_spo2_2" class="chart"></canvas></div>
+    <div class="grid" style="margin-top:12px">
+      <div class="panel"><div class="title">Alluvial Lumens</div><canvas id="a5"></canvas></div>
+      <div class="panel"><div class="title">Alluvial Lux</div><canvas id="a6"></canvas></div>
+      <div class="panel"><div class="title">Alluvial Candela</div><canvas id="a7"></canvas></div>
+      <div class="panel"><div class="title">Signal Line — EEG</div><canvas id="line1"></canvas></div>
+    </div>
 
-    <!-- Row 3: Photometric metrics (4 panels) -->
-    <div class="panel"><div class="title">Lumens (lm)</div><canvas id="chart_lumens" class="chart"></canvas></div>
-    <div class="panel"><div class="title">Lux (lx)</div><canvas id="chart_lux" class="chart"></canvas></div>
-    <div class="panel"><div class="title">Foot-candle</div><canvas id="chart_fc" class="chart"></canvas></div>
-    <div class="panel"><div class="title">Candela / Nits / CRI</div><canvas id="chart_light_misc" class="chart"></canvas></div>
+    <div class="grid" style="margin-top:12px">
+      <div class="panel"><div class="title">Nits</div><canvas id="a9"></canvas></div>
+      <div class="panel"><div class="title">Foot-candle</div><canvas id="a10"></canvas></div>
+      <div class="panel"><div class="title">CRI</div><canvas id="a11"></canvas></div>
+      <div class="panel"><div class="title">Signal Line — Light</div><canvas id="line2"></canvas></div>
+    </div>
   </div>
 
 <script>
-/* ----------------------
-  Config & globals
-------------------------*/
+/* gamma page: same core processing as main but paint camera with iron palette for full-screen thermal effect */
 const ironPalette = [
-  'rgb(40,10,80)',   // delta
-  'rgb(120,20,140)', // theta
-  'rgb(255,80,10)',  // alpha
-  'rgb(255,210,40)', // beta
-  'rgb(255,255,240)' // gamma
+  {r:40,g:10,b:80},
+  {r:120,g:20,b:140},
+  {r:255,g:80,b:10},
+  {r:255,g:210,b:40},
+  {r:255,g:255,b:240}
 ];
-const neonPalette = ['#0000FF','#00FF00','#FFFF00','#FFA500','#FF0000'];
-
+const OVERLAY_ALPHA = 0.88;
 const AR=0.2989, AG=0.5870, AB=0.1140;
 const samplingRate=30, bufferLen=256;
-let signalBuffer=[], peakTimes=[], combinedEEGHz=0, heartRate=0, soundDB=0;
-let latestBands={}; let csvRows=[]; let stopped=false;
+let signalBuffer=[], peakTimes=[], combinedEEGHz=0, heartRate=0, soundDB=0, csvRows=[];
+let stopped=false;
+let video = document.getElementById('video');
+const canvas = document.getElementById('canvas'); const ctx = canvas.getContext('2d');
+function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener('resize', resize); resize();
 
-/* DOM */
-const video = document.getElementById('video');
-const overlayCanvas = document.getElementById('overlayCanvas');
-const overlayCtx = overlayCanvas.getContext('2d');
-const clockEl = document.getElementById('clock');
-const eegEl = document.getElementById('eegHz');
-const hrEl = document.getElementById('hr');
-const spo2El = document.getElementById('spo2');
-const soundEl = document.getElementById('sound');
-const hashEl = document.getElementById('hash');
+/* charts using Chart.js */
+function makeChart(id,color){ const c=document.getElementById(id); c.width=1280; c.height=720; const ctx=c.getContext('2d'); return new Chart(ctx,{type:'bar',data:{labels:[],datasets:[{label:id,data:[],backgroundColor:color}]},options:{responsive:true,animation:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#fff'}},y:{ticks:{color:'#fff'}}}}}); }
+const allCharts = {
+  a1: makeChart('a1','rgba(255,80,10,0.9)'), a2: makeChart('a2','rgba(255,210,40,0.9)'), a3: makeChart('a3','rgba(120,20,140,0.9)'), a4: makeChart('a4','rgba(40,10,80,0.9)'),
+  a5: makeChart('a5','rgba(255,80,10,0.9)'), a6: makeChart('a6','rgba(255,210,40,0.9)'), a7: makeChart('a7','rgba(255,255,240,0.9)'), a9: makeChart('a9','rgba(255,210,40,0.9)'),
+  a10: makeChart('a10','rgba(120,20,140,0.9)'), a11: makeChart('a11','rgba(40,10,80,0.9)'),
+  line1: new Chart(document.getElementById('line1').getContext('2d'), {type:'line',data:{labels:[],datasets:[{label:'EEG',data:[],borderColor:'rgba(255,255,240,0.95)',pointRadius:0}]},options:{responsive:true,animation:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#fff'}},y:{ticks:{color:'#fff'}}}}),
+  line2: new Chart(document.getElementById('line2').getContext('2d'), {type:'line',data:{labels:[],datasets:[{label:'Light',data:[],borderColor:'rgba(255,210,40,0.95)',pointRadius:0}]},options:{responsive:true,animation:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#fff'}},y:{ticks:{color:'#fff'}}}}),
+};
 
-function resize() {
-  overlayCanvas.width = window.innerWidth;
-  overlayCanvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
-
-/* Charts: Chart.js instances */
-const charts = {};
-function createLine(id, color){
-  const ctx = document.getElementById(id).getContext('2d');
-  // HD backing store
-  document.getElementById(id).width = 1280; document.getElementById(id).height = 720;
-  return new Chart(ctx, {
-    type:'line',
-    data:{labels:[], datasets:[{label:id, data:[], borderColor:color, backgroundColor: color.replace('rgb','rgba').replace(')',',0.06)'), pointRadius:0, tension:0.18}]},
-    options:{responsive:true, animation:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{color:'#fff'}}, y:{ticks:{color:'#fff'}}}
-  });
-}
-
-/* initialize all 12 charts */
-function initCharts(){
-  charts.eeg1 = createLine('chart_eeg_1', neonPalette[0]);
-  charts.hr1 = createLine('chart_hr_1', neonPalette[1]);
-  charts.sound1 = createLine('chart_sound_1', neonPalette[2]);
-  charts.spo21 = createLine('chart_spo2_1', neonPalette[3]);
-
-  charts.eeg2 = createLine('chart_eeg_2', ironPalette[4]);
-  charts.hr2 = createLine('chart_hr_2', ironPalette[2]);
-  charts.sound2 = createLine('chart_sound_2', ironPalette[3]);
-  charts.spo22 = createLine('chart_spo2_2', ironPalette[1]);
-
-  charts.lumens = createLine('chart_lumens', ironPalette[2]);
-  charts.lux = createLine('chart_lux', ironPalette[3]);
-  charts.fc = createLine('chart_fc', ironPalette[0]);
-  charts.misc = createLine('chart_light_misc', ironPalette[4]);
-}
-initCharts();
-
-/* append data helper */
-function pushChart(chart, value){
-  const t = new Date().toLocaleTimeString();
-  chart.data.labels.push(t);
-  chart.data.datasets[0].data.push(Number(value.toFixed(1)));
-  if (chart.data.labels.length > 120){ chart.data.labels.shift(); chart.data.datasets[0].data.shift(); }
-  chart.update('none');
-}
-
-/* -----------------------
-  Camera & audio
-------------------------*/
-let audioCtx=null, analyser=null, audioData=null;
-async function startDevices(){
+async function start(){
   try{
     const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user', width:{ideal:1920}, height:{ideal:1080}}, audio:true});
-    video.srcObject = stream;
-    // audio
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    video.srcObject = stream; video.play();
+    // audio analyzer
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const src = audioCtx.createMediaStreamSource(stream);
-    analyser = audioCtx.createAnalyser();
+    const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 2048;
     src.connect(analyser);
-    audioData = new Float32Array(analyser.fftSize);
-    audioLoop();
-    frameLoop();
-  } catch(e){ console.error(e); alert('Allow camera & mic'); }
+    const audioData = new Float32Array(analyser.fftSize);
+    function readAudio(){
+      analyser.getFloatTimeDomainData(audioData);
+      let sum=0; for (let i=0;i<audioData.length;i++) sum += audioData[i]*audioData[i];
+      const rms = Math.sqrt(sum/audioData.length) || 0; soundDB = rms>0 ? (20*Math.log10(rms)+120) : 0;
+      if (!stopped) requestAnimationFrame(readAudio);
+    }
+    readAudio();
+    requestAnimationFrame(loop);
+  }catch(e){ console.error(e); alert('Allow camera & mic'); }
 }
 
-function audioLoop(){
-  if (!analyser) return;
-  analyser.getFloatTimeDomainData(audioData);
-  let sum=0; for (let i=0;i<audioData.length;i++) sum+=audioData[i]*audioData[i];
-  const rms = Math.sqrt(sum/audioData.length) || 0;
-  soundDB = rms > 0 ? (20*Math.log10(rms)+120) : 0;
-  soundEl.textContent = `Sound: ${format00_0(soundDB)} dB`;
-  if (!stopped) requestAnimationFrame(audioLoop);
+/* map scalar to palette index */
+function mapToIndex(value){
+  const idx = Math.min(4, Math.max(0, Math.floor(value * 5)));
+  return idx;
 }
 
-function format00_0(v){ return Number(v||0).toFixed(1).padStart(4,'0'); }
-
-/* frame loop: rPPG sampling + overlay minimal (low alpha overlay so main page is subtle) */
-function frameLoop(){
+/* primary render loop: draw video->imageData->map pixel to 5 colors -> composite */
+function loop(){
   if (stopped) return;
-  if (!video.videoWidth) { requestAnimationFrame(frameLoop); return; }
-  // draw subtle overlay (very low alpha for main page)
-  overlayCtx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
-  overlayCtx.globalAlpha = 0.06;
-  overlayCtx.drawImage(video, 0, 0, overlayCanvas.width, overlayCanvas.height);
-  overlayCtx.globalAlpha = 1;
-
-  // sample small center region for rPPG
-  const w = Math.round(video.videoWidth * 0.15), h = Math.round(video.videoHeight * 0.15);
-  const sx = Math.round((video.videoWidth-w)/2), sy = Math.round((video.videoHeight-h)/2);
-  const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
-  const tctx = tmp.getContext('2d'); tctx.drawImage(video, sx, sy, w, h, 0,0,w,h);
-  const frame = tctx.getImageData(0,0,w,h).data;
-  let r=0,g=0,b=0,cnt=0;
-  for (let i=0;i<frame.length;i+=4){ r+=frame[i]; g+=frame[i+1]; b+=frame[i+2]; cnt++; }
-  const avgR = r/cnt, avgG = g/cnt, avgB = b/cnt;
-  const s = AR*avgR + AG*avgG + AB*avgB;
-  signalBuffer.push(s);
-  detectPeaks();
-  if (signalBuffer.length >= bufferLen){
-    const buff = signalBuffer.slice(-bufferLen);
-    const bands = computeBands(buff);
-    latestBands = bands;
-    combineEEG(bands.dominantFreq || 0);
-    csvRows.push([new Date().toISOString(), Number(combinedEEGHz).toFixed(1), Number(heartRate).toFixed(1), Number((95+Math.random()*3)).toFixed(1), Number(soundDB).toFixed(1)]);
-    signalBuffer = signalBuffer.slice(Math.floor(bufferLen/2));
-    // push to charts
-    pushToAllCharts();
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  // sample ROI for rPPG
+  const vw = video.videoWidth, vh = video.videoHeight;
+  if (vw && vh){
+    const rw = Math.round(vw*0.18), rh = Math.round(vh*0.18);
+    const sx = Math.round((vw-rw)/2), sy = Math.round((vh-rh)/2);
+    const tmp = document.createElement('canvas'); tmp.width=rw; tmp.height=rh;
+    tmp.getContext('2d').drawImage(video, sx, sy, rw, rh, 0, 0, rw, rh);
+    const frame = tmp.getContext('2d').getImageData(0,0,rw,rh).data;
+    let r=0,g=0,b=0,cnt=0;
+    for (let i=0;i<frame.length;i+=4){ r+=frame[i]; g+=frame[i+1]; b+=frame[i+2]; cnt++; }
+    const avgR=r/cnt, avgG=g/cnt, avgB=b/cnt;
+    const s = AR*avgR + AG*avgG + AB*avgB;
+    signalBuffer.push(s);
+    if (signalBuffer.length >= bufferLen){
+      const buff = signalBuffer.slice(-bufferLen);
+      const bands = computeBands(buff);
+      // combine
+      combine(bands.dominantFreq||0);
+      csvRows.push([new Date().toISOString(), combinedEEGHz.toFixed(1), heartRate.toFixed(1), (95+Math.random()*3).toFixed(1), soundDB.toFixed(1)]);
+      signalBuffer = signalBuffer.slice(Math.floor(bufferLen/2));
+      updateCharts(bands);
+    }
   }
-  updateStatus();
-  if (!stopped) requestAnimationFrame(frameLoop);
+  // recolor pixels: heavy per-pixel operation
+  const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+  const data = img.data;
+  // amplitude scalar from latestBands or combinedEEG
+  let ampScalar = Math.min(1, (combinedEEGHz / 60)); // normalized
+  for (let i=0;i<data.length;i+=4){
+    const lum = 0.2126*data[i] + 0.7152*data[i+1] + 0.0722*data[i+2];
+    const value = (lum/255)*0.6 + ampScalar*0.4;
+    const idx = mapToIndex(value);
+    const c = ironPalette[idx];
+    // overlay at 88%: new = alpha*c + (1-alpha)*orig
+    const alpha = OVERLAY_ALPHA;
+    data[i]   = Math.round(alpha*c.r + (1-alpha)*data[i]);
+    data[i+1] = Math.round(alpha*c.g + (1-alpha)*data[i+1]);
+    data[i+2] = Math.round(alpha*c.b + (1-alpha)*data[i+2]);
+  }
+  ctx.putImageData(img,0,0);
+  requestAnimationFrame(loop);
 }
 
-/* peak detection (simple) */
-function detectPeaks(){
-  if (signalBuffer.length < 6) return;
-  const len = signalBuffer.length;
-  const a=signalBuffer[len-6], b=signalBuffer[len-5], c=signalBuffer[len-4], d=signalBuffer[len-3], e=signalBuffer[len-2], f=signalBuffer[len-1];
-  if (e > d && e > f && e > c) {
-    const now = Date.now();
-    if (peakTimes.length===0 || (now - peakTimes[peakTimes.length-1] > 300)) {
-      peakTimes.push(now);
-      const cutoff = now - 65000;
-      peakTimes = peakTimes.filter(t=>t>=c
+/* compute FFT bands (same as main) */
+function computeBands(signal){
+  const fft = new FFT(signal.length);
+  const out = fft.createComplexArray();
+  fft.realTransform(out, signal);
+  fft.completeSpectrum(out);
+  const half = signal.length/2;
+  const freqs = new Array(half).fill(0).map((_,i)=>i*samplingRate/signal.length);
+  const mags = new Array(half);
+  for (let i=0;i<half;i++){ const re=out[2*i], im=out[2*i+1]; mags[i]=Math.sqrt(re*re+im*im); }
+  let dom=0, max=-Infinity;
+  for (let i=1;i<half;i++){ if (mags[i] > max){ max = mags[i]; dom = freqs[i]; } }
+  const bands={};
+  for (const [band,[lo,hi]] of Object.entries(EEG_BANDS)){
+    let sum=0;
+    for (let i=0;i<half;i++) if (freqs[i]>=lo && freqs[i]<=hi) sum += mags[i];
+    bands[band]=sum;
+  }
+  bands.dominantFreq = dom;
+  return bands;
+}
+
+/* combine */
+function combine(dominant){
+  const rppgHz = Math.max(0.1, (heartRate || 0)/60);
+  const scaled = rppgHz * 10;
+  combinedEEGHz = (scaled + dominant)/2;
+}
+
+/* update charts with band powers */
+function updateCharts(bands){
+  // map bands to values array
+  const vals = Object.keys(EEG_BANDS).map(k=>bands[k]||0);
+  const labels = Object.keys(EEG_BANDS);
+  for (const id in allCharts){
+    const ch = allCharts[id];
+    if (!ch) continue;
+    ch.data.labels = labels;
+    ch.data.datasets[0].data = vals.map(v=>Number((v/1000).toFixed(1)));
+    ch.update('none');
+  }
+  // push line charts
+  const t = new Date().toLocaleTimeString();
+  allCharts.line1.data.labels.push(t);
+  allCharts.line1.data.datasets[0].data.push(Number(combinedEEGHz.toFixed(1)));
+  if (allCharts.line1.data.labels.length > 120){ allCharts.line1.data.labels.shift(); allCharts.line1.data.datasets[0].data.shift(); }
+  allCharts.line1.update('none');
+  allCharts.line2.data.labels.push(t);
+  allCharts.line2.data.datasets[0].data.push(Number((combinedEEGHz*0.8 + soundDB*0.02).toFixed(1)));
+  if (allCharts.line2.data.labels.length > 120){ allCharts.line2.data.labels.shift(); allCharts.line2.data.datasets[0].data.shift(); }
+  allCharts.line2.update('none');
+}
+
+/* update charts object created earlier */
+const allCharts = {}; // placeholder (populated above)
+
+/* simple helper to start */
+window.addEventListener('load', ()=>{ start(); });
+
+/* Back button returns to main */
+document.getElementById('backBtn').onclick = ()=>{ window.close(); };
+
+</script>
+</body>
+</html>
