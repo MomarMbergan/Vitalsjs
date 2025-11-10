@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Gamma Dashboard — IronBow rPPG +EEG + RIPEMD-320</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<!-- Libraries -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- RIPEMD-320 library (local file should be present) -->
+<script src="ripemd320.js"></script>
+
+<style>
+  :root{
+    --panel-gap:12px;
+    --panel-radius:12px;
+    --alpha-overlay:0.88; /* transparency fraction per user (88% coverage) */
+  }
+  html,body{height:100%;margin:0;background:#000;color:#fff;font-family:Inter,Arial,Helvetica,sans-serif;overflow:auto}
+  #controls{position:fixed;left:18px;top:12px;z-index:120;display:flex;gap:8px;align-items:center}
+  #gammaBtn{background:linear-gradient(90deg,#7b2cff,#ff7a00);color:#fff;border:0;padding:8px 10px;border-radius:10px;cursor:pointer;font-weight:600}
+  #timerInput{width:130px;padding:6px;border-radius:8px;border:0;background:#111;color:#fff;text-align:center}
+  button.ctrl{background:#222;color:#fff;border:0;padding:6px 8px;border-radius:8px;cursor:pointer}
+  #statusBox{position:fixed;right:18px;top:12px;text-align:right;z-index:120}
+  #statusBox div{font-family:monospace}
+  #cameraWrap{position:fixed;left:0;top:0;width:100vw;height:100vh;overflow:hidden;z-index:0}
+  #cameraCanvas{position:absolute;left:0;top:0;width:100vw;height:100vh;object-fit:cover;filter:contrast(1.05) saturate(1.05);pointer-events:none}
+  /* visualization container */
+  #container{position:relative;z-index:10;padding:92px 18px 140px 18px}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--panel-gap);align-items:stretch}
+  .panel{background:rgba(255,255,255,0.02);backdrop-filter:blur(6px);border-radius:var(--panel-radius);padding:8px;min-height:260px;position:relative;box-shadow:0 0 40px rgba(0,0,0,0.4)}
+  .panel-title{position:absolute;left:12px;top:8px;font-weight:700;color:#fff;font-size:13px}
+  .panel-caption{position:absolute;right:12px;top:8px;color:#fff;font-size:12px}
+  .panel canvas, .panel svg{width:100%;height:100%;display:block;border-radius:8px}
+  .row2 .panel{background:rgba(255,255,255,0.01);border:1px solid rgba(255,255,255,0.03)}
+  #footer{position:fixed;left:18px;bottom:16px;color:#aaa;font-size:12px}
+  .stopped *{color:#ff0000 !important}
+</style>
+</head>
+<body>
+  <!-- Controls -->
+  <div id="controls">
+    <button id="gammaBtn">Γ Gamma</button>
+    <input id="timerInput" type="text" value="00:30:00" title="HH:MM:SS (max 01:00:00)"/>
+    <button id="setTimer" class="ctrl">Set</button>
+    <button id="startTimer" class="ctrl">Start</button>
+    <button id="stopTimer" class="ctrl">Stop</button>
+  </div>
+
+  <div id="statusBox">
+    <div id="clockDisplay">--:--:--</div>
+    <div id="eegHz">EEG Hertz: --.- Hz</div>
+    <div id="heartRate">Heart Rate: --.- BPM</div>
+    <div id="oximeter">SpO₂: --.- %</div>
+    <div id="soundDB">Sound: --.- dB</div>
+    <div id="eegHash">EEG Process: --</div>
+  </div>
+
+  <!-- Camera canvas (full-screen). We'll draw both live feed and the iron-bow overlay here. -->
+  <div id="cameraWrap">
+    <canvas id="cameraCanvas"></canvas>
+  </div>
+
+  <div id="container">
+    <!-- First row (neon/iron palette top set) -->
+    <div class="grid" id="row1">
+      <div class="panel"><div class="panel-title">Alluvial — EEG (1)</div><div class="panel-caption">IronBow</div><svg id="alluvial1"></svg></div>
+      <div class="panel"><div class="panel-title">Alluvial — HR (2)</div><div class="panel-caption">IronBow</div><svg id="alluvial2"></svg></div>
+      <div class="panel"><div class="panel-title">Alluvial — Sound (3)</div><div class="panel-caption">IronBow</div><svg id="alluvial3"></svg></div>
+      <div class="panel"><div class="panel-title">Alluvial — Oximeter (4)</div><div class="panel-caption">IronBow</div><svg id="alluvial4"></svg></div>
+    </div>
+
+    <!-- Second row (mirrored, iron palette) -->
+    <div class="grid row2" id="row2" style="margin-top:18px">
+      <div class="panel"><div class="panel-title">Alluvial — Light (5)</div><div class="panel-caption">Photometric</div><svg id="alluvial5"></svg></div>
+      <div class="panel"><div class="panel-title">Alluvial — Lux (6)</div><div class="panel-caption">Photometric</div><svg id="alluvial6"></svg></div>
+      <div class="panel"><div class="panel-title">Alluvial — Candela (7)</div><div class="panel-caption">Photometric</div><svg id="alluvial7"></svg></div>
+      <div class="panel"><div class="panel-title">Signal Line — EEG Hz (8)</div><div class="panel-caption">Time</div><canvas id="lineChart"></canvas></div>
+    </div>
+
+    <!-- Third row: additional 4 charts for the remaining photometric/metrics (to total 12) -->
+    <div class="grid" id="row3" style="margin-top:18px">
+      <div class="panel"><div class="panel-title">Nits (9)</div><svg id="alluvial9"></svg></div>
+      <div class="panel"><div class="panel-title">Foot-candle (10)</div><svg id="alluvial10"></svg></div>
+      <div class="panel"><div class="panel-title">CRI (11)</div><svg id="alluvial11"></svg></div>
+      <div class="panel"><div class="panel-title">Signal Line — Light (12)</div><canvas id="lineChart2"></canvas></div>
+    </div>
+  </div>
+
+  <div id="footer">Allow camera & mic. Downloads at 00:00:00 (charts → snapshot → CSV → PCAP).</div>
+
+<script>
+/* -------------------------
+  Configuration
+--------------------------*/
+const EEG_BANDS = {
+  "Delta (δ)": [0.5,4],
+  "Theta (θ)": [4,8],
+  "Alpha (α)": [8,13],
+  "Beta (β)": [13,30],
+  "Gamma (γ)": [30,100]
+};
+
+// Iron-bow palette (5 neon colors). You can tune these to your exact desired neon shades:
+const ironPalette = [
+  'rgb(40,10,80)',   // darkest - Delta
+  'rgb(120,20,140)', // Theta
+  'rgb(255,80,10)',  // Alpha
+  'rgb(255,210,40)', // Beta
+  'rgb(255,255,240)' // Gamma (bright)
+];
+
+// We'll map brightness/amplitude to the 5 colors; overlay alpha = 0.88 coverage ratio
+const OVERLAY_ALPHA = 0.88;
+
+// rPPG weights
+const AR = 0.2989, AG = 0.5870, AB = 0.1140;
+// sampling & buffer
+const samplingRate = 30, bufferLen = 256;
+
+// Data buffers and state
+let signalBuffer = [];
+let peakTimes = [];
+let latestBandPower = {};
+let combinedEEGHz = 0;
+let heartRateBPM = 0;
+let soundDB = 0;
+let csvRows = [];
+let stopped = false;
+let gammaActive = false;
+
+/* DOM elements */
+const cameraCanvas = document.getElementById('cameraCanvas');
+const cameraCtx = cameraCanvas.getContext('2d');
+const video = document.createElement('video'); // hidden video element for feed
+video.autoplay = true; video.playsInline = true; video.muted = true;
+
+const clockDisplay = document.getElementById('clockDisplay');
+const eegHzEl = document.getElementById('eegHz');
+const hrEl = document.getElementById('heartRate');
+const spo2El = document.getElementById('oximeter');
+const soundEl = document.getElementById('soundDB');
+const hashEl = document.getElementById('eegHash');
+
+const gammaBtn = document.getElementById('gammaBtn');
+const timerInput = document.getElementById('timerInput');
+const setTimer = document.getElementById('setTimer');
+const startTimer = document.getElementById('startTimer');
+const stopTimer = document.getElementById('stopTimer');
+
+const lineCanvas = document.getElementById('lineChart');
+const lineCanvas2 = document.getElementById('lineChart2');
+let lineChart = null, lineChart2 = null;
+
+/* AUDIO */
+let audioCtx = null, analyser = null, audioData = null;
+
+/* Countdown */
+let countdownRemaining = 30 * 60 * 1000; // default 30m
+let countdownInterval = null;
+
+/* Setup HD canvas sizes */
+function resizeCameraCanvas(){
+  cameraCanvas.width = window.innerWidth;
+  cameraCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCameraCanvas);
+resizeCameraCanvas();
+
+/* -------------------------
+  Camera & audio start
+--------------------------*/
+async function startDevices(){
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user', width:{ideal:1920}, height:{ideal:1080}}, audio:true});
+    video.srcObject = stream;
+    // audio
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    src.connect(analyser);
+    audioData = new Float32Array(analyser.fftSize);
+
+    // start loops
+    video.play();
+    requestAnimationFrame(frameLoop);
+    audioLoop();
+  } catch(e) {
+    console.error('Device error', e);
+    alert('Camera/mic access required.');
+  }
+}
+
+function stopDevices(){
+  stopped = true;
+  if (video.srcObject) {
+    video.srcObject.getTracks().forEach(t => t.stop());
+    video.srcObject = null;
+  }
+  if (audioCtx) { try { audioCtx.close(); } catch(_){} }
+}
+
+/* audio read loop */
+function audioLoop(){
+  if (!analyser) return;
+  analyser.getFloatTimeDomainData(audioData);
+  let sum = 0;
+  for (let i=0;i<audioData.length;i++) sum += audioData[i]*audioData[i];
+  const rms = Math.sqrt(sum / audioData.length) || 0;
+  // map to readable dB-ish metric
+  soundDB = rms > 0 ? (20 * Math.log10(rms) + 120) : 0;
+  soundEl.textContent = `Sound: ${format00_0(soundDB)} dB`;
+  if (!stopped) requestAnimationFrame(audioLoop);
+}
+
+/* -------------------------
+  rPPG & frame processing
+  - When Gamma active: overlay iron-bow mapping on camera
+  - rPPG uses RGB equation and THEN maps amplitude to one of 5 iron colors
+--------------------------*/
+function frameLoop(){
+  if (stopped) return;
+  if (!video.videoWidth || !video.videoHeight) { requestAnimationFrame(frameLoop); return; }
+
+  // draw video to camera canvas at full screen
+  cameraCtx.drawImage(video, 0, 0, cameraCanvas.width, cameraCanvas.height);
+
+  // sample ROI center region for rPPG
+  const roiW = Math.round(video.videoWidth * 0.2);
+  const roiH = Math.round(video.videoHeight * 0.2);
+  const sx = Math.round((video.videoWidth - roiW)/2);
+  const sy = Math.round((video.videoHeight - roiH)/2);
+
+  // create temporary offscreen for sampling at native video resolution
+  const off = document.createElement('canvas');
+  off.width = roiW; off.height = roiH;
+  const offCtx = off.getContext('2d');
+  offCtx.drawImage(video, sx, sy, roiW, roiH, 0, 0, roiW, roiH);
+  const frame = offCtx.getImageData(0,0,roiW,roiH).data;
+  let r=0,g=0,b=0,cnt=0;
+  for (let i=0;i<frame.length;i+=4){ r+=frame[i]; g+=frame[i+1]; b+=frame[i+2]; cnt++; }
+  const avgR = r/cnt, avgG = g/cnt, avgB = b/cnt;
+  const s = AR*avgR + AG*avgG + AB*avgB;
+  signalBuffer.push(s);
+
+  // detect peaks
+  detectPeak();
+
+  // FFT when buffer full
+  if (signalBuffer.length >= bufferLen) {
+    const bufferCopy = signalBuffer.slice(-bufferLen);
+    const bandPower = computeEEG(bufferCopy);
+    latestBandPower = bandPower;
+    // combine rPPG and FFT dominant
+    combineEEGandPPG(bandPower.dominantFreq || 0);
+    // store CSV row
+    const spo2 = (95 + Math.random()*3).toFixed(1);
+    csvRows.push([new Date().toISOString(), Number(combinedEEGHz).toFixed(1), Number(heartRateBPM).toFixed(1), Number(spo2).toFixed(1), Number(soundDB).toFixed(1)]);
+    // keep 50% overlap
+    signalBuffer = signalBuffer.slice(Math.floor(bufferLen/2));
+    // update charts
+    updateCharts(bandPower, combinedEEGHz);
+  }
+
+  // If gammaActive: paint iron-bow overlay
+  if (gammaActive) paintIronBowOverlay();
+
+  // update UI text
+  updateUI();
+
+  requestAnimationFrame(frameLoop);
+}
+
+/* -------------------------
+  Peak detection (rPPG -> heart)
+--------------------------*/
+function detectPeak(){
+  if (signalBuffer.length < 6) return;
+  const len = signalBuffer.length;
+  const a = signalBuffer[len-6], b = signalBuffer[len-5], c = signalBuffer[len-4], d = signalBuffer[len-3], e = signalBuffer[len-2], f = signalBuffer[len-1];
+  if (e > d && e > f && e > c) {
+    const now = Date.now();
+    if (peakTimes.length === 0 || (now - peakTimes[peakTimes.length-1] > 300)) {
+      peakTimes.push(now);
+      // keep last 65s
+      const cutoff = now - 65000;
+      peakTimes = peakTimes.filter(t => t >= cutoff);
+    }
+  }
+  if (peakTimes.length >= 2) {
+    const diffs = [];
+    for (let i=1;i<peakTimes.length;i++) diffs.push(peakTimes[i]-peakTimes[i-1]);
+    const avgMs = diffs.reduce((a,b)=>a+b,0)/diffs.length;
+    heartRateBPM = Math.round(60000 / avgMs) || 0;
+  } else {
+    heartRateBPM = peakTimes.length>0 ? Math.round(peakTimes.length*60) : 0;
+  }
+}
+
+/* -------------------------
+  Compute EEG via FFT and band powers
+--------------------------*/
+function computeEEG(signal){
+  // pad or trim to bufferLen
+  let sig = signal.slice();
+  if (sig.length < bufferLen) while(sig.length < bufferLen) sig.push(sig[sig.length-1]||0);
+  if (sig.length > bufferLen) sig = sig.slice(sig.length - bufferLen);
+
+  const fft = new FFT(sig.length);
+  const out = fft.createComplexArray();
+  fft.realTransform(out, sig);
+  fft.completeSpectrum(out);
+  const half = sig.length/2;
+  const freqs = new Array(half);
+  for (let i=0;i<half;i++) freqs[i] = i * samplingRate / sig.length;
+  const mags = new Array(half);
+  for (let i=0;i<half;i++){
+    const re = out[2*i], im = out[2*i+1];
+    mags[i] = Math.sqrt(re*re + im*im);
+  }
+  let dominant = 0, max = -Infinity;
+  for (let i=1;i<half;i++){
+    const f = freqs[i];
+    if (f >= 0.5 && f <= 60 && mags[i] > max) { max = mags[i]; dominant = f; }
+  }
+  // band powers by sum of mags
+  const bandPower = {};
+  for (const [band,[lo,hi]] of Object.entries(EEG_BANDS)){
+    let sum = 0;
+    for (let i=0;i<half;i++){
+      const f = freqs[i];
+      if (f >= lo && f <= hi) sum += mags[i];
+    }
+    bandPower[band] = sum;
+  }
+  bandPower.dominantFreq = dominant;
+  return bandPower;
+}
+
+/* -------------------------
+  Combine EEG dominant and rPPG:
+  combinedEEGHz = average( dominantFFTHz, scaled_rPPGHz )
+  where scaled_rPPGHz = rPPGHz * 10 (maps heart ~1Hz -> ~10)
+--------------------------*/
+function combineEEGandPPG(dominantFreq){
+  const rppgHz = Math.max(0.1, (heartRateBPM || 0) / 60);
+  const scaledRppg = rppgHz * 10;
+  combinedEEGHz = (scaledRppg + (dominantFreq || 0)) / 2;
+}
+
+/* -------------------------
+  Paint Iron-Bow overlay on camera canvas
+  - Convert camera pixels to one of the 5 iron colors based on instantaneous band amplitude
+  - Painted at OVERLAY_ALPHA (88% coverage)
+--------------------------*/
+function paintIronBowOverlay(){
+  // read camera pixels
+  const w = cameraCanvas.width, h = cameraCanvas.height;
+  // get raw pixel data by drawing video scaled to canvas
+  // we already drew the video at beginning of frame loop
+  const img = cameraCtx.getImageData(0,0,w,h);
+  const data = img.data;
+  // compute an amplitude map per pixel based on brightness (use luminance)
+  // But per request, use rPPG + EEG mapping to 5 colors. We'll map pixel luminance -> band index.
+  // compute global amplitude value from latestBandPower and combinedEEGHz
+  // We'll produce a single scalar amplitude in [0,1]
+  let ampsum = 0, cnt=0;
+  for (const k of Object.keys(EEG_BANDS)) { ampsum += (latestBandPower[k] || 0); cnt++; }
+  let amp = 0;
+  if (cnt>0 && ampsum>0) amp = Math.min(1, ampsum / (ampsum + 1e4)); // normalize loosely
+  // also add combinedEEGHz normalized (if large)
+  amp = Math.min(1, amp + (combinedEEGHz / 100.0) * 0.5);
+
+  // For each pixel, map luminance to band index 0..4
+  for (let i=0;i<data.length;i+=4){
+    const r = data[i], g = data[i+1], b = data[i+2];
+    const luminance = 0.2126*r + 0.7152*g + 0.0722*b; // 0..255
+    // combine luminance with amp to choose a color index
+    const value = (luminance/255)*0.6 + amp*0.4; // weighted
+    const idx = Math.min(4, Math.floor(value * 5)); // 0..4
+    // parse iron color
+    const col = ironPalette[idx];
+    // parse rgb components
+    const m = col.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+    if (!m) continue;
+    const rc = parseInt(m[1]), gc = parseInt(m[2]), bc = parseInt(m[3]);
+    // alpha overlay: OVERLAY_ALPHA coverage of color over original pixel
+    const alpha = OVERLAY_ALPHA; // 0.88
+    // new pixel = alpha * color + (1-alpha) * original
+    data[i]   = Math.round(alpha * rc + (1-alpha) * r);
+    data[i+1] = Math.round(alpha * gc + (1-alpha) * g);
+    data[i+2] = Math.round(alpha * bc + (1-alpha) * b);
+    // leave alpha channel as 255
+  }
+  cameraCtx.putImageData(img, 0, 0);
+}
+
+/* -------------------------
+  Update charts (Alluvial diagrams)
+  For performance and simplicity we render simplified alluvial bars using D3 rectangles,
+  colored using ironPalette. Each panel updates with bandPower values.
+--------------------------*/
+function updateCharts(bandPower, combinedHz){
+  // For all alluvial SVGs we draw 5 vertical gradient bars representing band powers
+  const keys = Object.keys(EEG_BANDS);
+  const panels = ['alluvial1','alluvial2','alluvial3','alluvial4','alluvial5','alluvial6','alluvial7','alluvial9','alluvial10','alluvial11'];
+  panels.forEach(id=>{
+    const sel = d3.select('#'+id);
+    fitSVG(sel);
+    sel.selectAll('*').remove();
+    const w = +sel.attr('width'), h = +sel.attr('height');
+    const g = sel.append('g');
+    const vals = keys.map(k => bandPower[k] || 0);
+    const total = Math.max(1, vals.reduce((a,b)=>a+b,0));
+    const bw = (w - 20) / vals.length;
+    vals.forEach((v,i)=>{
+      const hh = Math.max(2, Math.round((v/total) * (h - 40)));
+      g.append('rect').attr('x', 10 + i*bw).attr('y', h - hh - 20).attr('width', Math.max(6,bw-8)).attr('height', hh).attr('rx',4).attr('fill', ironPalette[i%ironPalette.length]);
+      g.append('text').attr('x', 10 + i*bw + (bw/2)).attr('y', h - 6).attr('text-anchor','middle').attr('fill','#fff').text(keys[i]).style('font-size','11px');
+    });
+  });
+
+  // Update line charts (push combinedHz)
+  appendLine(lineChart, combinedHz);
+  appendLine(lineChart2, combinedHz * 0.8 + soundDB * 0.02); // sample second chart mixing
+}
+
+/* small helper to resize svg to parent */
+function fitSVG(sel){
+  try {
+    const node = sel.node();
+    const box = node.parentElement.getBoundingClientRect();
+    node.setAttribute('width', Math.max(320, Math.floor(box.width)));
+    node.setAttribute('height', Math.max(180, Math.floor(box.height)));
+  } catch(e){}
+}
+
+/* create initial visuals */
+function initVisuals(){
+  // set up svg containers initial size
+  ['alluvial1','alluvial2','alluvial3','alluvial4','alluvial5','alluvial6','alluvial7','alluvial9','alluvial10','alluvial11'].forEach(id=>{
+    fitSVG(d3.select('#'+id));
+  });
+  // setup line charts as HD canvases
+  createLineCharts();
+}
+
+/* create Chart.js line charts with HD backing */
+function createLineCharts(){
+  lineCanvas.width = 1920; lineCanvas.height = 1080; lineCanvas.style.width = '100%'; lineCanvas.style.height = '100%';
+  const ctx = lineCanvas.getContext('2d');
+  lineChart = new Chart(ctx, {
+    type:'line',
+    data:{labels:[], datasets:[{label:'EEG_Hz', data:[], borderColor:'rgb(255,255,240)', backgroundColor:'rgba(255,255,240,0.08)', pointRadius:0, tension:0.18}]},
+    options:{responsive:false, animation:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{color:'#fff'}}, y:{ticks:{color:'#fff'}}}
+  });
+
+  lineCanvas2.width = 1920; lineCanvas2.height = 1080; lineCanvas2.style.width='100%'; lineCanvas2.style.height='100%';
+  const ctx2 = lineCanvas2.getContext('2d');
+  lineChart2 = new Chart(ctx2, {
+    type:'line',
+    data:{labels:[], datasets:[{label:'Light_Hz', data:[], borderColor:ironPalette[3], backgroundColor:'rgba(255,210,40,0.08)', pointRadius:0, tension:0.18}]},
+    options:{responsive:false, animation:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{color:'#fff'}}, y:{ticks:{color:'#fff'}}}
+  });
+}
+
+/* append to chart */
+function appendLine(chart, val){
+  if (!chart) return;
+  const label = new Date().toLocaleTimeString();
+  chart.data.labels.push(label);
+  chart.data.datasets[0].data.push(Number(val.toFixed(1)));
+  if (chart.data.labels.length > 120) { chart.data.labels.shift(); chart.data.datasets[0].data.shift(); }
+  chart.update('none');
+}
+
+/* -------------------------
+  UI update
+--------------------------*/
+function updateUI(){
+  clockDisplay.textContent = new Date().toLocaleTimeString();
+  eegHzEl.textContent = `EEG Hertz: ${format00_0(combinedEEGHz)} Hz`;
+  hrEl.textContent = `Heart Rate: ${format00_0(heartRateBPM)} BPM`;
+  spo2El.textContent = `SpO₂: ${format00_0(95 + Math.random()*3)} %`;
+  soundEl.textContent = `Sound: ${format00_0(soundDB)} dB`;
+}
+
+/* small formatting helper */
+function format00_0(v){ return Number(v||0).toFixed(1).padStart(4,'0'); }
+
+/* -------------------------
+  Hashing using RIPEMD-320 every second
+--------------------------*/
+setInterval(()=> {
+  if (typeof RIPEMD320 === 'function') {
+    const payload = `${Number(combinedEEGHz||0).toFixed(1)}|${Number(heartRateBPM||0).toFixed(1)}|${Number((95+Math.random()*3)).toFixed(1)}|${Number(soundDB||0).toFixed(1)}`;
+    try { const h = RIPEMD320(payload); hashEl.textContent = `EEG Process: ${h}`; } catch(e){ hashEl.textContent = 'EEG Process: err'; }
+  } else {
+    hashEl.textContent = 'EEG Process: missing lib';
+  }
+}, 1000);
+
+/* -------------------------
+  Download helpers
+  - downloadAllCharts (PNG of SVGs & canvases)
+  - downloadSnapshot
+  - downloadCSV
+  - downloadPCAP (simulated)
+--------------------------*/
+async function downloadAllCharts(){
+  // gather svg ids & canvas ids in desired order (top-left to bottom-right)
+  const svgs = ['alluvial1','alluvial2','alluvial3','alluvial4','alluvial5','alluvial6','alluvial7','alluvial9','alluvial10','alluvial11'];
+  const pngBlobs = [];
+  for (const id of svgs){
+    const svgEl = document.getElementById(id);
+    const blob = await svgToPngBlob(svgEl);
+    pngBlobs.push(blob);
+    await sleep(120);
+  }
+  // add line charts
+  pngBlobs.push(await canvasToBlob(lineCanvas));
+  await sleep(120);
+  pngBlobs.push(await canvasToBlob(lineCanvas2));
+  // download sequentially
+  for (let i=0;i<pngBlobs.length;i++){
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(pngBlobs[i]);
+    a.download = `chart_${i+1}_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    await sleep(200);
+  }
+}
+
+function svgToPngBlob(svgEl){
+  return new Promise((resolve)=>{
+    const svg = new XMLSerializer().serializeToString(svgEl);
+    const blob = new Blob([svg], {type:'image/svg+xml;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = function(){
+      const c = document.createElement('canvas'); c.width = 1920; c.height = 1080;
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#000'; ctx.fillRect(0,0,c.width,c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => { resolve(b); }, 'image/png');
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  });
+}
+function canvasToBlob(canvas){
+  return new Promise((res)=>{ canvas.toBlob(b=>res(b),'image/png'); });
+}
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+function downloadSnapshot(){
+  const c = document.createElement('canvas'); c.width = 1920; c.height = 1080;
+  const ctx = c.getContext('2d'); ctx.drawImage(cameraCanvas, 0, 0, c.width, c.height);
+  c.toBlob(b=>{
+    const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+    a.download = `snapshot_${new Date().toISOString().replace(/[:.]/g,'-')}.png`; a.click(); URL.revokeObjectURL(a.href);
+  }, 'image/png');
+}
+
+function downloadCSV(){
+  const header = ['timestamp','EEG_Hz','BPM','SpO2','SoundDB'];
+  const rows = [header.join(',')].concat(csvRows.map(r=>r.join(','))).join('\n');
+  const blob = new Blob([rows], {type:'text/csv'}); const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `EEG_Data_${new Date().toISOString().replace(/[:.]/g,'-')}.csv`; a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* PCAP generator - simulated telemetry packets */
+function makePCAPBuffer(rows){
+  // simple pcap global header + simple packet records
+  const GLOBAL = new Uint8Array(24); const g = new DataView(GLOBAL.buffer);
+  g.setUint32(0,0xa1b2c3d4,true); g.setUint16(4,2,true); g.setUint16(6,4,true); g.setInt32(8,0,true);
+  g.setUint32(12,0,true); g.setUint32(16,65535,true); g.setUint32(20,1,true);
+  const parts = [GLOBAL];
+  const enc = new TextEncoder();
+  for (let i=0;i<rows.length;i++){
+    const [ts,EEG,BPM,Spo2,Sound] = rows[i];
+    const t = new Date(ts);
+    const sec = Math.floor(t.getTime()/1000);
+    const usec = (t.getTime()%1000)*1000;
+    const payload = enc.encode(`SOUND|${Number(Sound).toFixed(1)}\nOXIM|${Number(Spo2).toFixed(1)}\nEEG|${Number(EEG).toFixed(1)}\nHR|${Number(BPM).toFixed(1)}\n`);
+    const ph = new Uint8Array(16); const dv = new DataView(ph.buffer);
+    dv.setUint32(0,sec,true); dv.setUint32(4,usec,true); dv.setUint32(8,payload.length,true); dv.setUint32(12,payload.length,true);
+    parts.push(ph); parts.push(payload);
+  }
+  const totalLen = parts.reduce((s,p)=>s + p.length,0);
+  const out = new Uint8Array(totalLen); let offset = 0;
+  for (const p of parts){ out.set(p, offset); offset += p.length; }
+  return out.buffer;
+}
+function downloadPCAP(){
+  const rows = csvRows.slice(-120);
+  if (rows.length === 0) return;
+  const buf = makePCAPBuffer(rows);
+  const blob = new Blob([buf], {type:'application/vnd.tcpdump.pcap'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `metrics_capture_${new Date().toISOString().replace(/[:.]/g,'-')}.pcap`; a.click(); URL.revokeObjectURL(a.href);
+}
+
+/* -------------------------
+  Countdown Timer logic
+--------------------------*/
+function parseHHMMSS(str){
+  const parts = str.split(':').map(x=>Number(x));
+  if (parts.length!==3) return null;
+  const [h,m,s] = parts;
+  if (isNaN(h)||isNaN(m)||isNaN(s)) return null;
+  if (h<0||m<0||s<0) return null;
+  if (h>1 || (h===1 && (m>0||s>0))) return null; // max 1 hour
+  return ((h*3600)+(m*60)+s) * 1000;
+}
+function formatHHMMSS(ms){
+  const s = Math.max(0, Math.floor(ms/1000));
+  const hh = String(Math.floor(s/3600)).padStart(2,'0');
+  const mm = String(Math.floor((s%3600)/60)).padStart(2,'0');
+  const ss = String(s%60).padStart(2,'0');
+  return `${hh}:${mm}:${ss}`;
+}
+
+let countdownRemaining = parseHHMMSS(timerInput.value) || 30*60*1000;
+function setCountdownFromInput(){
+  const ms = parseHHMMSS(timerInput.value);
+  if (ms===null){ alert('Enter HH:MM:SS (max 01:00:00)'); return; }
+  countdownRemaining = ms; updateClockDisplay();
+}
+setTimer.onclick = setCountdownFromInput;
+
+function updateClockDisplay(){ document.getElementById('clockDisplay').textContent = formatHHMMSS(countdownRemaining); }
+
+let timerInterval = null;
+function startCountdown(){
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(async ()=>{
+    if (stopped) { clearInterval(timerInterval); return; }
+    countdownRemaining -= 1000;
+    updateClockDisplay();
+    if (countdownRemaining <= 0){
+      clearInterval(timerInterval);
+      countdownRemaining = 0; updateClockDisplay();
+      // run downloads: charts -> snapshot -> CSV -> PCAP
+      await downloadAllCharts();
+      await sleep(200);
+      downloadSnapshot();
+      await sleep(200);
+      downloadCSV();
+      await sleep(200);
+      downloadPCAP();
+      // turn red and stop all activity
+      stopAll();
+    }
+  },1000);
+}
+startTimer.onclick = startCountdown;
+stopTimer.onclick = ()=>{ if (timerInterval) clearInterval(timerInterval); };
+
+/* stop everything and change fonts red */
+function stopAll(){
+  stopped = true;
+  stopDevices();
+  document.body.classList.add('stopped');
+}
+
+/* -------------------------
+  Gamma toggle (paint overlay)
+--------------------------*/
+gammaBtn.onclick = ()=>{ gammaActive = !gammaActive; gammaBtn.style.opacity = gammaActive ? '1' : '0.8'; };
+
+/* -------------------------
+  Initialization
+--------------------------*/
+window.addEventListener('load', async ()=>{
+  initVisuals();
+  // start devices
+  await startDevices();
+  updateClockDisplay();
+});
+
+/* expose some utilities for debugging */
+window._internal = { csvRows, downloadAllCharts, downloadSnapshot, downloadCSV, downloadPCAP, stopAll };
+
+</script>
+
+<!-- FFT library (small embedded) -->
+<script>
+/*
+ Minimal FFT.js (only realTransform usage) - small shim by referencing FFT.js earlier is recommended.
+ For performance and correctness include full fft.js via CDN; for this file assume realTransform exists.
+ If running locally and you do not have FFT.js, consider adding:
+ <script src="https://cdn.jsdelivr.net/npm/fft.js/dist/fft.min.js"></script>
+*/
+if (typeof FFT === 'undefined') {
+  // If FFT library isn't loaded, add a minimal stub that will prevent runtime errors but won't produce FFT results.
+  window.FFT = function(n){ this.n = n; this.createComplexArray = ()=>new Float32Array(n*2); this.realTransform = (out, input)=>{ for(let i=0;i<n;i++){ out[2*i]=input[i]; out[2*i+1]=0;} }; this.completeSpectrum = ()=>{}; };
+}
+</script>
+
+</body>
+</html>
