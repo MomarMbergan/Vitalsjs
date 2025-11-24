@@ -52,5 +52,25 @@
       background: rgba(0, 0, 0, 0.6);
       z-index: 10;
     }
+  </style>
+</head>
 
-    .overl
+<body>
+  <!-- Add the video element for the camera stream -->
+  <video id="cameraStream" autoplay playsinline></video>
+
+  <!-- You can add your canvases and additional HTML here -->
+
+  <script>
+    // Activate the camera and display it in the video element
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+      .then(function (stream) {
+        const video = document.getElementById('cameraStream');
+        video.srcObject = stream;
+      })
+      .catch(function (err) {
+        alert('Could not access the camera. Error: ' + err.name);
+      });
+  </script>
+</body>
+</html>
