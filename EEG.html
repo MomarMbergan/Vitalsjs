@@ -2,13 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<script src="https://cdn.jsdelivr.net/npm/fft.js@0.3.0/dist/fft.min.js"></script>
 <title>EEG Dashboard — Main (Chart.js, 12 charts)</title>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <!-- Chart.js + FFT -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fft.js/dist/fft.min.js"></script>
-<!-- RIPEMD-320 library: must be present locally as ripemd320.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fft.js@0.3.0/dist/fft.min.js"></script>
+<!-- RIPEMD-320 library (optional) -->
 <script src="ripemd320.js"></script>
 
 <style>
@@ -17,7 +16,8 @@
   #gammaBtn{background:linear-gradient(90deg,#7b2cff,#ff7a00);color:#fff;border:0;padding:8px 10px;border-radius:10px;cursor:pointer}
   #timer{font-family:monospace;color:#0f0}
   #status{position:fixed;right:12px;top:8px;text-align:right;font-family:monospace;z-index:60}
-  #camera{position:fixed;left:0;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;opacity:0.06}
+  /* video is visible but very low opacity, overlayCanvas will also draw image for better control */
+  #video{position:fixed;left:0;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;opacity:0.04}
   #overlayCanvas{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:1;pointer-events:none}
   #grid{position:relative;z-index:20;padding:90px 18px 140px 18px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
   .panel{background:rgba(255,255,255,0.02);border-radius:12px;padding:8px;min-height:260px;box-shadow:0 0 30px rgba(0,0,0,0.4)}
@@ -28,8 +28,8 @@
 </style>
 </head>
 <body>
-  <!-- hidden video for camera -->
-  <video id="video" autoplay muted playsinline style="display:none"></video>
+  <!-- visible video (low opacity) used as camera background -->
+  <video id="video" autoplay muted playsinline></video>
   <canvas id="overlayCanvas"></canvas>
 
   <div id="topbar">
@@ -50,21 +50,17 @@
     <div id="hash">EEG Process: --</div>
   </div>
 
-  <!-- 12 chart panels (4x3 layout made as four columns then two rows with the duplicates) -->
   <div id="grid">
-    <!-- Row 1: Phys neon -->
     <div class="panel"><div class="title">EEG Hz (Neon)</div><canvas id="chart_eeg_1" class="chart"></canvas></div>
     <div class="panel"><div class="title">Heart BPM (Neon)</div><canvas id="chart_hr_1" class="chart"></canvas></div>
     <div class="panel"><div class="title">Sound dB (Neon)</div><canvas id="chart_sound_1" class="chart"></canvas></div>
     <div class="panel"><div class="title">SpO₂ % (Neon)</div><canvas id="chart_spo2_1" class="chart"></canvas></div>
 
-    <!-- Row 2: Phys ironbow duplicates -->
     <div class="panel row2"><div class="title">EEG Hz (Iron)</div><canvas id="chart_eeg_2" class="chart"></canvas></div>
     <div class="panel row2"><div class="title">Heart BPM (Iron)</div><canvas id="chart_hr_2" class="chart"></canvas></div>
     <div class="panel row2"><div class="title">Sound dB (Iron)</div><canvas id="chart_sound_2" class="chart"></canvas></div>
     <div class="panel row2"><div class="title">SpO₂ % (Iron)</div><canvas id="chart_spo2_2" class="chart"></canvas></div>
 
-    <!-- Row 3: Photometric metrics (4 panels) -->
     <div class="panel"><div class="title">Lumens (lm)</div><canvas id="chart_lumens" class="chart"></canvas></div>
     <div class="panel"><div class="title">Lux (lx)</div><canvas id="chart_lux" class="chart"></canvas></div>
     <div class="panel"><div class="title">Foot-candle</div><canvas id="chart_fc" class="chart"></canvas></div>
@@ -107,31 +103,67 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-/* Charts: Chart.js instances */
+/* Charts */
 const charts = {};
+function colorToRGBA(color, alpha=0.06){
+  // handle 'rgb(r,g,b)' or hex '#rrggbb'
+  if (!color) return `rgba(255,255,255,${alpha})`;
+  if (color.startsWith('rgb')) {
+    return color.replace('rgb(', 'rgba(').replace(')', `,${alpha})`);
+  }
+  // hex -> rgba
+  const hex = color.replace('#','');
+  if (hex.length === 3) {
+    const r = parseInt(hex[0]+hex[0],16);
+    const g = parseInt(hex[1]+hex[1],16);
+    const b = parseInt(hex[2]+hex[2],16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  const r = parseInt(hex.slice(0,2),16);
+  const g = parseInt(hex.slice(2,4),16);
+  const b = parseInt(hex.slice(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 function createLine(id, color){
-  const ctx = document.getElementById(id).getContext('2d');
-  // HD backing store
-  document.getElementById(id).width = 1280; document.getElementById(id).height = 720;
+  const canvas = document.getElementById(id);
+  // set a reasonable internal resolution
+  canvas.width = 1280; canvas.height = 360;
+  const ctx = canvas.getContext('2d');
   return new Chart(ctx, {
     type:'line',
-    data:{labels:[], datasets:[{label:id, data:[], borderColor:color, backgroundColor: color.replace('rgb','rgba').replace(')',',0.06)'), pointRadius:0, tension:0.18}]},
-    options:{responsive:true, animation:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{color:'#fff'}}, y:{ticks:{color:'#fff'}}}
+    data:{labels:[], datasets:[{
+      label:id,
+      data:[],
+      borderColor:color,
+      backgroundColor: colorToRGBA(color, 0.06),
+      pointRadius:0,
+      tension:0.18
+    }]},
+    options:{
+      responsive:true,
+      animation:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#fff'}},
+        y:{ticks:{color:'#fff'}}
+      }
+    }
   });
 }
 
-/* initialize all 12 charts */
 function initCharts(){
+  // physiological neon
   charts.eeg1 = createLine('chart_eeg_1', neonPalette[0]);
   charts.hr1 = createLine('chart_hr_1', neonPalette[1]);
   charts.sound1 = createLine('chart_sound_1', neonPalette[2]);
   charts.spo21 = createLine('chart_spo2_1', neonPalette[3]);
-
+  // iron
   charts.eeg2 = createLine('chart_eeg_2', ironPalette[4]);
   charts.hr2 = createLine('chart_hr_2', ironPalette[2]);
   charts.sound2 = createLine('chart_sound_2', ironPalette[3]);
   charts.spo22 = createLine('chart_spo2_2', ironPalette[1]);
-
+  // photometric
   charts.lumens = createLine('chart_lumens', ironPalette[2]);
   charts.lux = createLine('chart_lux', ironPalette[3]);
   charts.fc = createLine('chart_fc', ironPalette[0]);
@@ -139,12 +171,15 @@ function initCharts(){
 }
 initCharts();
 
-/* append data helper */
-function pushChart(chart, value){
+/* push single value into a Chart.js line dataset */
+function pushChartValue(chart, v){
   const t = new Date().toLocaleTimeString();
   chart.data.labels.push(t);
-  chart.data.datasets[0].data.push(Number(value.toFixed(1)));
-  if (chart.data.labels.length > 120){ chart.data.labels.shift(); chart.data.datasets[0].data.shift(); }
+  chart.data.datasets[0].data.push(Number(Number(v).toFixed(1)));
+  if (chart.data.labels.length > 120){
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.shift();
+  }
   chart.update('none');
 }
 
@@ -152,10 +187,16 @@ function pushChart(chart, value){
   Camera & audio
 ------------------------*/
 let audioCtx=null, analyser=null, audioData=null;
+
+/* Start devices now triggered by a user gesture (Start button) */
 async function startDevices(){
   try{
-    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user', width:{ideal:1920}, height:{ideal:1080}}, audio:true});
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'user', width:{ideal:1280}, height:{ideal:720}},
+      audio:true
+    });
     video.srcObject = stream;
+
     // audio
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const src = audioCtx.createMediaStreamSource(stream);
@@ -165,25 +206,30 @@ async function startDevices(){
     audioData = new Float32Array(analyser.fftSize);
     audioLoop();
     frameLoop();
-  } catch(e){ console.error(e); alert('Allow camera & mic'); }
+  } catch(e){
+    console.error('getUserMedia error', e);
+    alert('Camera & mic access required. Please allow permission and try again.');
+  }
 }
 
 function audioLoop(){
   if (!analyser) return;
   analyser.getFloatTimeDomainData(audioData);
-  let sum=0; for (let i=0;i<audioData.length;i++) sum+=audioData[i]*audioData[i];
+  let sum=0;
+  for (let i=0;i<audioData.length;i++) sum += audioData[i]*audioData[i];
   const rms = Math.sqrt(sum/audioData.length) || 0;
-  soundDB = rms > 0 ? (20*Math.log10(rms)+120) : 0;
+  soundDB = rms > 0 ? (20*Math.log10(rms) + 120) : 0;
   soundEl.textContent = `Sound: ${format00_0(soundDB)} dB`;
   if (!stopped) requestAnimationFrame(audioLoop);
 }
 
-function format00_0(v){ return Number(v||0).toFixed(1).padStart(4,'0'); }
+function format00_0(v){ return String(Number(v||0).toFixed(1)).padStart(4,'0'); }
 
-/* frame loop: rPPG sampling + overlay minimal (low alpha overlay so main page is subtle) */
+/* frame loop: rPPG sampling + overlay draw */
 function frameLoop(){
   if (stopped) return;
-  if (!video.videoWidth) { requestAnimationFrame(frameLoop); return; }
+  if (!video || !video.videoWidth) { requestAnimationFrame(frameLoop); return; }
+
   // draw subtle overlay (very low alpha for main page)
   overlayCtx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
   overlayCtx.globalAlpha = 0.06;
@@ -208,6 +254,7 @@ function frameLoop(){
     latestBands = bands;
     combineEEG(bands.dominantFreq || 0);
     csvRows.push([new Date().toISOString(), Number(combinedEEGHz).toFixed(1), Number(heartRate).toFixed(1), Number((95+Math.random()*3)).toFixed(1), Number(soundDB).toFixed(1)]);
+    // reduce buffer to half-overlap
     signalBuffer = signalBuffer.slice(Math.floor(bufferLen/2));
     // push to charts
     pushToAllCharts();
@@ -216,7 +263,7 @@ function frameLoop(){
   if (!stopped) requestAnimationFrame(frameLoop);
 }
 
-/* peak detection (simple) */
+/* simple peak detection for heart */
 function detectPeaks(){
   if (signalBuffer.length < 6) return;
   const len = signalBuffer.length;
@@ -236,20 +283,31 @@ function detectPeaks(){
   } else heartRate = peakTimes.length>0 ? peakTimes.length*60 : 0;
 }
 
-/* compute FFT & band sums */
+/* compute FFT & band sums (fixed a 'freq' typo -> freqs) */
+const EEG_BANDS = {
+  delta: [0.5,4],
+  theta: [4,8],
+  alpha: [8,13],
+  beta: [13,30],
+  gamma: [30,60]
+};
+
 function computeBands(signal){
-  const fft = new FFT(signal.length);
+  // ensure length is power of two for FFT.js
+  const N = signal.length;
+  const fft = new FFT(N);
   const out = fft.createComplexArray();
-  fft.realTransform(out, signal);
+  // FFT.js expects a Float32Array for realTransform; convert if needed
+  const signalArr = (signal instanceof Float32Array) ? signal : Float32Array.from(signal);
+  fft.realTransform(out, signalArr);
   fft.completeSpectrum(out);
-  const half = signal.length/2;
-  const freqs = new Array(half).fill(0).map((_,i)=>i*samplingRate/signal.length);
+  const half = N/2;
+  const freqs = new Array(half).fill(0).map((_,i)=>i*samplingRate/N);
   const mags = new Array(half);
   for (let i=0;i<half;i++){ const re=out[2*i], im=out[2*i+1]; mags[i]=Math.sqrt(re*re+im*im); }
   let dom=0, max=-Infinity;
-  for (let i=1;i<half;i++){ if (freqs[i]>=0.5 && freq[i] <= 60){} } // safety, but we'll compute below
-  // dominant freq
-  for (let i=1;i<half;i++){ if (mags[i] > max){ max = mags[i]; dom = freqs[i]; } }
+  for (let i=1;i<half;i++){ if (freqs[i] >= 0.5 && freqs[i] <= 60 && mags[i] > max){ max = mags[i]; dom = freqs[i]; } }
+
   const bands = {};
   for (const [band,[lo,hi]] of Object.entries(EEG_BANDS)){
     let sum=0;
@@ -267,17 +325,14 @@ function combineEEG(dominant){
   combinedEEGHz = (scaled + (dominant||0)) / 2;
 }
 
-/* push to charts & photometric values (simulated) */
+/* push to charts & simulated photometric */
 function pushToAllCharts(){
-  const timestamp = new Date().toLocaleTimeString();
-  // physiological
-  pushChart(charts.eeg1, combinedEEGHz); pushChart(charts.eeg2, combinedEEGHz);
-  pushChart(charts.hr1, heartRate); pushChart(charts.hr2, heartRate);
-  pushChart(charts.sound1, soundDB); pushChart(charts.sound2, soundDB);
-  pushChart(charts.spo21, 95 + Math.random()*3); pushChart(charts.spo22, 95 + Math.random()*3);
-  // photometric (simulated from brightness)
-  const lum = Math.random()*200 + 50; const lx = lum*1.2; const fc = lx/10.764; const cd = lx/10; const nits = lx*0.2; const cri = 80 + Math.random()*15;
-  pushChart(charts.lumens, lum); pushChart(charts.lux, lx); pushChart(charts.fc, fc); pushChart(charts.misc, cd);
+  pushChartValue(charts.eeg1, combinedEEGHz); pushChartValue(charts.eeg2, combinedEEGHz);
+  pushChartValue(charts.hr1, heartRate); pushChartValue(charts.hr2, heartRate);
+  pushChartValue(charts.sound1, soundDB); pushChartValue(charts.sound2, soundDB);
+  pushChartValue(charts.spo21, 95 + Math.random()*3); pushChartValue(charts.spo22, 95 + Math.random()*3);
+  const lum = Math.random()*200 + 50; const lx = lum*1.2; const fc = lx/10.764; const cd = lx/10;
+  pushChartValue(charts.lumens, lum); pushChartValue(charts.lux, lx); pushChartValue(charts.fc, fc); pushChartValue(charts.misc, cd);
 }
 
 /* update status display & hash */
@@ -287,7 +342,6 @@ function updateStatus(){
   hrEl.textContent = `Heart Rate: ${format00_0(heartRate)} BPM`;
   spo2El.textContent = `SpO₂: ${format00_0(95 + Math.random()*3)} %`;
   soundEl.textContent = `Sound: ${format00_0(soundDB)} dB`;
-  // hash using RIPEMD320
   if (typeof RIPEMD320 === 'function'){
     try{
       const payload = `${Number(combinedEEGHz||0).toFixed(1)}|${Number(heartRate||0).toFixed(1)}|${Number((95+Math.random()*3)).toFixed(1)}|${Number(soundDB||0).toFixed(1)}`;
@@ -296,23 +350,50 @@ function updateStatus(){
   } else hashEl.textContent = 'EEG Process: missing';
 }
 
-/* pushChart util */
-function pushChart(chart, value){
-  pushChartValue(chart, value);
+/* -----------------------
+  Countdown UI / controls
+------------------------*/
+let countdownMs = parseHHMMSS(document.getElementById('timerInput').value) || 30*60*1000;
+let countdownTimer = null;
+function parseHHMMSS(s){
+  const p = s.split(':').map(x=>Number(x));
+  if (p.length!==3) return null; const [h,m,sec]=p;
+  return (h*3600 + m*60 + sec) * 1000;
 }
-function pushChartValue(chart, v){
-  const t = new Date().toLocaleTimeString();
-  chart.data.labels.push(t);
-  chart.data.datasets[0].data.push(Number(v.toFixed(1)));
-  if (chart.data.labels.length > 120){ chart.data.labels.shift(); chart.data.datasets[0].data.shift(); }
-  chart.update('none');
-}
+function formatHHMMSS(ms){ const s=Math.max(0,Math.floor(ms/1000)); const hh=String(Math.floor(s/3600)).padStart(2,'0'); const mm=String(Math.floor((s%3600)/60)).padStart(2,'0'); const ss=String(s%60).padStart(2,'0'); return `${hh}:${mm}:${ss}`; }
+document.getElementById('timerInput').addEventListener('change', ()=>{ const val=parseHHMMSS(document.getElementById('timerInput').value); if (val!==null) countdownMs = val; document.getElementById('timer').textContent = formatHHMMSS(countdownMs); });
+document.getElementById('setBtn').onclick = ()=>{ const v = parseHHMMSS(document.getElementById('timerInput').value); if (v!==null) { countdownMs = v; document.getElementById('timer').textContent = formatHHMMSS(countdownMs); } };
+
+/* Start button now triggers device start (user gesture required) and countdown */
+document.getElementById('startBtn').onclick = async ()=>{
+  // start camera + mic (user gesture)
+  await startDevices();
+  if (countdownTimer) clearInterval(countdownTimer);
+  countdownTimer = setInterval(async ()=>{
+    if (countdownMs <= 0){
+      clearInterval(countdownTimer);
+      // trigger downloads (keeps original behavior)
+      await downloadChartsSnapshotCSVPCAP();
+      document.body.classList.add('stopped'); stopped=true;
+      return;
+    }
+    countdownMs -= 1000;
+    document.getElementById('timer').textContent = formatHHMMSS(countdownMs);
+  },1000);
+};
+
+document.getElementById('stopBtn').onclick = ()=>{ if (countdownTimer) clearInterval(countdownTimer); };
+
+/* Gamma button opens gamma_dashboard.html in new tab */
+document.getElementById('gammaBtn').onclick = ()=>{ window.open('gamma_dashboard.html','_blank'); };
 
 /* -----------------------
-  Downloads at countdown 0
+  Downloads & helpers (unchanged logical behavior)
 ------------------------*/
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+/* Download snapshot/CSV/pcap sequence (unchanged except for minor safety) */
 function downloadChartsSnapshotCSVPCAP(){
-  // 1) Export each chart image (Chart.js canvases)
   const canvasIds = [
     'chart_eeg_1','chart_hr_1','chart_sound_1','chart_spo2_1',
     'chart_eeg_2','chart_hr_2','chart_sound_2','chart_spo2_2',
@@ -322,35 +403,35 @@ function downloadChartsSnapshotCSVPCAP(){
     for (let i=0;i<canvasIds.length;i++){
       const c = document.getElementById(canvasIds[i]);
       await sleep(80);
+      if (!c) continue;
       c.toBlob(b=>{
         const a = document.createElement('a'); a.href = URL.createObjectURL(b);
         a.download = `chart_${i+1}_${new Date().toISOString().replace(/[:.]/g,'-')}.png`; a.click(); URL.revokeObjectURL(a.href);
       }, 'image/png');
       await sleep(180);
     }
-    // 2) camera snapshot
+    // camera snapshot
     await sleep(200);
-    const snap = document.createElement('canvas'); snap.width=1920; snap.height=1080;
-    const sctx = snap.getContext('2d'); sctx.drawImage(video,0,0,snap.width,snap.height);
+    const snap = document.createElement('canvas'); snap.width=1280; snap.height=720;
+    const sctx = snap.getContext('2d'); try { sctx.drawImage(video,0,0,snap.width,snap.height); } catch(e){}
     snap.toBlob(b=>{
       const a = document.createElement('a'); a.href = URL.createObjectURL(b);
       a.download = `snapshot_${new Date().toISOString().replace(/[:.]/g,'-')}.png`; a.click(); URL.revokeObjectURL(a.href);
     }, 'image/png');
     await sleep(300);
-    // 3) CSV
+    // CSV
     const header = ['timestamp','EEG_Hz','BPM','SpO2','SoundDB'];
     const csv = [header.join(',')].concat(csvRows.map(r=>r.join(','))).join('\n');
     const blob = new Blob([csv], {type:'text/csv'}); const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = `EEG_Data_${new Date().toISOString().replace(/[:.]/g,'-')}.csv`; a.click(); URL.revokeObjectURL(a.href);
     await sleep(200);
-    // 4) PCAP simulated
+    // PCAP simulated
     const pcap = makePCAP(csvRows.slice(-120));
     const blobP = new Blob([pcap], {type:'application/vnd.tcpdump.pcap'});
     const ap = document.createElement('a'); ap.href = URL.createObjectURL(blobP); ap.download = `metrics_capture_${new Date().toISOString().replace(/[:.]/g,'-')}.pcap`; ap.click(); URL.revokeObjectURL(ap.href);
   })();
 }
 
-/* simple pcap maker (simulated telemetry) */
 function makePCAP(rows){
   const enc = new TextEncoder();
   const GLOBAL = new Uint8Array(24); const dv = new DataView(GLOBAL.buffer);
@@ -370,37 +451,8 @@ function makePCAP(rows){
   return out.buffer;
 }
 
-/* sleep */
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-/* -----------------------
-  Countdown UI / controls
-------------------------*/
-let countdownMs = parseHHMMSS(document.getElementById('timerInput').value) || 30*60*1000;
-let countdownTimer = null;
-function parseHHMMSS(s){
-  const p = s.split(':').map(x=>Number(x));
-  if (p.length!==3) return null; const [h,m,sec]=p;
-  if (h>1) return null; return (h*3600 + m*60 + sec) * 1000;
-}
-function formatHHMMSS(ms){ const s=Math.max(0,Math.floor(ms/1000)); const hh=String(Math.floor(s/3600)).padStart(2,'0'); const mm=String(Math.floor((s%3600)/60)).padStart(2,'0'); const ss=String(s%60).padStart(2,'0'); return `${hh}:${mm}:${ss}`; }
-document.getElementById('timerInput').addEventListener('change', ()=>{ const val=parseHHMMSS(document.getElementById('timerInput').value); if (val!==null) countdownMs = val; document.getElementById('timer').textContent = formatHHMMSS(countdownMs); });
-document.getElementById('setBtn').onclick = ()=>{ const v = parseHHMMSS(document.getElementById('timerInput').value); if (v!==null) { countdownMs = v; document.getElementById('timer').textContent = formatHHMMSS(countdownMs); } };
-document.getElementById('startBtn').onclick = ()=>{ if (countdownTimer) clearInterval(countdownTimer); countdownTimer = setInterval(async ()=>{
-  if (countdownMs <= 0){ clearInterval(countdownTimer); // trigger downloads
-    await downloadChartsSnapshotCSVPCAP(); document.body.classList.add('stopped'); stopped=true; return; }
-  countdownMs -= 1000; document.getElementById('timer').textContent = formatHHMMSS(countdownMs);
-},1000); };
-document.getElementById('stopBtn').onclick = ()=>{ if (countdownTimer) clearInterval(countdownTimer); };
-
-/* Gamma button opens gamma_dashboard.html in new tab */
-document.getElementById('gammaBtn').onclick = ()=>{ window.open('gamma_dashboard.html','_blank'); };
-
-/* -----------------------
-  Init & start
-------------------------*/
-window.addEventListener('load', ()=>{ initCharts(); startDevices(); document.getElementById('timer').textContent = formatHHMMSS(countdownMs); });
-
+/* set initial timer display */
+document.getElementById('timer').textContent = (function(){ return formatHHMMSS(countdownMs); })();
 </script>
 </body>
 </html>
