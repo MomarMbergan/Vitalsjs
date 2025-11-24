@@ -1,76 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Heart Rate, SpO₂ & Sound Analysis</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <title>Heart Rate & SpO₂ Monitor</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      cursor: none;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: black; overflow: hidden; font-family: Arial, sans-serif; }
 
-    body {
-      font-family: Arial, sans-serif;
-      background: black;
-      overflow: hidden;
-      text-align: center;
-    }
-
+    /* Camera background */
     video {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
       object-fit: cover;
       z-index: -1;
     }
 
-    canvas#canvas {
+    /* HUD text */
+    .hud {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      pointer-events: none;
-      mix-blend-mode: screen;
+      top: 20px; left: 20px;
+      color: #00e5ff;
+      font-size: 1.5rem;
+      background: rgba(0,0,0,0.5);
+      padding: 10px 15px;
+      border-radius: 8px;
     }
 
-    canvas#ppgChart {
+    /* Dual chart layout */
+    .charts {
       position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 35vh;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 10;
+      bottom: 0; left: 0;
+      width: 100%; height: 40vh;
+      display: flex;
+      justify-content: space-evenly;
+      align-items: center;
+      background: rgba(0,0,0,0.4);
+    }
+    canvas {
+      flex: 1;
+      max-width: 48%;
+      height: 100%;
+      background: transparent;
     }
   </style>
 </head>
-
 <body>
-  <!-- Add the video element for the camera stream -->
+  <!-- Camera feed -->
   <video id="cameraStream" autoplay playsinline></video>
 
-  <!-- You can add your canvases and additional HTML here -->
+  <!-- HUD for live data -->
+  <div class="hud">
+    ❤️ Heart Rate: <span id="hr">--</span> bpm<br>
+    🌬 SpO₂: <span id="spo2">--</span> %
+  </div>
+
+  <!-- Dual charts -->
+  <div class="charts">
+    <canvas id="ppgChart"></canvas>
+    <canvas id="spo2Chart"></canvas>
+  </div>
 
   <script>
-    // Activate the camera and display it in the video element
+    // Activate camera
     navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-      .then(function (stream) {
-        const video = document.getElementById('cameraStream');
-        video.srcObject = stream;
+      .then(stream => {
+        document.getElementById('cameraStream').srcObject = stream;
       })
-      .catch(function (err) {
-        alert('Could not access the camera. Error: ' + err.name);
-      });
+      .catch(err => alert('Camera error: ' + err));
+
+    // Chart.js setup
+    const ppgCtx = document.getElementById('ppgChart').getContext('2d');
+    const spo2Ctx = document.getElementById('spo2Chart').getContext('2d');
+
+    const ppgChart = new Chart(ppgCtx, {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'PPG Signal', data: [], borderColor: '#00e5ff', fill: false }] },
+      options: { animation: false, scales: { x: { display: false }, y: { display: true } } }
+    });
+
+    const spo2Chart = new Chart(spo2Ctx, {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'SpO₂ Signal', data: [], borderColor: '#ff4081', fill: false }] },
+      options: { animation: false, scales: { x: { display: false }, y: { display: true } } }
+    });
+
+    // Simulated data update (replace with real rPPG/SpO₂ algorithm)
+    setInterval(() => {
+      const hr = Math.floor(60 + Math.random() * 40);   // fake HR 60-100
+      const spo2 = Math.floor(95 + Math.random() * 5);  // fake SpO₂ 95-100
+      document.getElementById('hr').textContent = hr;
+      document.getElementById('spo2').textContent = spo2;
+
+      // Update charts
+      const t = new Date().toLocaleTimeString();
+      ppgChart.data.labels.push(t);
+      ppgChart.data.datasets[0].data.push(hr);
+      spo2Chart.data.labels.push(t);
+      spo2Chart.data.datasets[0].data.push(spo2);
+
+      if (ppgChart.data.labels.length > 20) {
+        ppgChart.data.labels.shift();
+        ppgChart.data.datasets[0].data.shift();
+        spo2Chart.data.labels.shift();
+        spo2Chart.data.datasets[0].data.shift();
+      }
+      ppgChart.update();
+      spo2Chart.update();
+    }, 1000);
   </script>
 </body>
 </html>
