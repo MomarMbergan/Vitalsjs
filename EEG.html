@@ -17,13 +17,17 @@
   #timer{font-family:monospace;color:#0f0}
   #status{position:fixed;right:12px;top:8px;text-align:right;font-family:monospace;z-index:60}
   /* video is visible but very low opacity, overlayCanvas will also draw image for better control */
-  #video{position:fixed;left:0;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;opacity:0.04}
+  #video{position:fixed;left:0;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;opacity:0.06}
   #overlayCanvas{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:1;pointer-events:none}
   #grid{position:relative;z-index:20;padding:90px 18px 140px 18px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-  .panel{background:rgba(255,255,255,0.02);border-radius:12px;padding:8px;min-height:260px;box-shadow:0 0 30px rgba(0,0,0,0.4)}
+  .panel{
+    background:rgba(255,255,255,0.012); /* more transparent */
+    border-radius:12px;padding:8px;min-height:260px;
+    box-shadow:0 0 30px rgba(0,0,0,0.4)
+  }
   .title{color:#fff;font-weight:700;font-size:13px;margin-bottom:6px}
   canvas.chart{width:100%;height:100%}
-  .row2 .panel{background:rgba(255,255,255,0.01);border:1px solid rgba(255,255,255,0.02)}
+  .row2 .panel{background:rgba(255,255,255,0.006);border:1px solid rgba(255,255,255,0.015)}
   .stopped *{color:#ff0000 !important}
 
   /* fallback fullscreen overlay to request user gesture if needed */
@@ -102,6 +106,13 @@ const samplingRate=30, bufferLen=256;
 let signalBuffer=[], peakTimes=[], combinedEEGHz=0, heartRate=0, soundDB=0;
 let latestBands={}; let csvRows=[]; let stopped=false;
 
+/* rPPG/EEG-derived metrics (for all charts) */
+let derivedSpO2 = 97.0;
+let derivedLumens = 0;
+let derivedLux = 0;
+let derivedFC = 0;
+let derivedCd = 0;
+
 /* DOM */
 const video = document.getElementById('video');
 const overlayCanvas = document.getElementById('overlayCanvas');
@@ -123,7 +134,9 @@ resize();
 
 /* Charts */
 const charts = {};
-function colorToRGBA(color, alpha=0.06){
+
+/* MORE TRANSPARENT chart fills */
+function colorToRGBA(color, alpha=0.015){
   if (!color) return `rgba(255,255,255,${alpha})`;
   if (color.startsWith('rgb')) {
     return color.replace('rgb(', 'rgba(').replace(')', `,${alpha})`);
@@ -151,7 +164,7 @@ function createLine(id, color){
       label:id,
       data:[],
       borderColor:color,
-      backgroundColor: colorToRGBA(color, 0.06),
+      backgroundColor: colorToRGBA(color, 0.015), // super transparent glow
       pointRadius:0,
       tension:0.18
     }]},
@@ -212,13 +225,13 @@ async function startDevices(){
     });
     video.srcObject = stream;
 
-    // audio
+    // audio (we still sample, but charts are driven from rPPG/EEG)
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const src = audioCtx.createMediaStreamSource(stream);
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 2048;
-    src.connect(analyser);
     audioData = new Float32Array(analyser.fftSize);
+    src.connect(analyser);
     audioLoop();
     frameLoop();
 
@@ -230,7 +243,6 @@ async function startDevices(){
     return true;
   } catch(e){
     console.warn('getUserMedia error', e);
-    // show the overlay asking for a user gesture if automatic start fails
     gestureOverlay.style.display = 'flex';
     return false;
   }
@@ -244,12 +256,8 @@ gestureOverlay.addEventListener('click', async ()=>{
 
 function audioLoop(){
   if (!analyser) return;
+  // You can still use mic if you want, but charts use rPPG/EEG-based soundDB
   analyser.getFloatTimeDomainData(audioData);
-  let sum=0;
-  for (let i=0;i<audioData.length;i++) sum += audioData[i]*audioData[i];
-  const rms = Math.sqrt(sum/audioData.length) || 0;
-  soundDB = rms > 0 ? (20*Math.log10(rms) + 120) : 0;
-  soundEl.textContent = `Sound: ${format00_0(soundDB)} dB`;
   if (!stopped) requestAnimationFrame(audioLoop);
 }
 
@@ -260,9 +268,9 @@ function frameLoop(){
   if (stopped) return;
   if (!video || !video.videoWidth) { requestAnimationFrame(frameLoop); return; }
 
-  // draw subtle overlay (very low alpha for main page)
+  // draw subtle overlay (keep low alpha)
   overlayCtx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
-  overlayCtx.globalAlpha = 0.06;
+  overlayCtx.globalAlpha = 0.07;
   overlayCtx.drawImage(video, 0, 0, overlayCanvas.width, overlayCanvas.height);
   overlayCtx.globalAlpha = 1;
 
@@ -283,10 +291,41 @@ function frameLoop(){
     const bands = computeBands(buff);
     latestBands = bands;
     combineEEG(bands.dominantFreq || 0);
-    csvRows.push([new Date().toISOString(), Number(combinedEEGHz).toFixed(1), Number(heartRate).toFixed(1), Number((95+Math.random()*3)).toFixed(1), Number(soundDB).toFixed(1)]);
+
+    /* -------------------------
+       rPPG + EEG equations
+       Everything derived from heartRate & combinedEEGHz
+    --------------------------*/
+    const eeg = combinedEEGHz || 0;
+    const hr = heartRate || (eeg * 10);
+
+    // “sound” level as function of EEG + HR
+    soundDB = 55 + eeg * 1.8 + (hr - 60) * 0.05;
+    if (soundDB < 30) soundDB = 30;
+
+    // SpO2 derived from EEG rhythmicity (tanh keeps it smooth)
+    const spoBase = 97 + Math.tanh((eeg - 10)/8) * 2; // ~95–99 %
+    derivedSpO2 = Math.max(93, Math.min(100, spoBase));
+
+    // Photometric values mapped from EEG band power / frequency
+    const activity = Math.max(0.5, eeg);
+    derivedLumens = activity * 15;        // 7.5–1000+ depending on activity
+    derivedLux    = derivedLumens * 1.3;
+    derivedFC     = derivedLux / 10.764;
+    derivedCd     = derivedLux / 12;
+
+    csvRows.push([
+      new Date().toISOString(),
+      Number(eeg).toFixed(1),
+      Number(hr).toFixed(1),
+      Number(derivedSpO2).toFixed(1),
+      Number(soundDB).toFixed(1)
+    ]);
+
     // reduce buffer to half-overlap
     signalBuffer = signalBuffer.slice(Math.floor(bufferLen/2));
-    // push to charts
+
+    // push to charts (all based on rPPG/EEG equations above)
     pushToAllCharts();
   }
   updateStatus();
@@ -313,7 +352,7 @@ function detectPeaks(){
   } else heartRate = peakTimes.length>0 ? peakTimes.length*60 : 0;
 }
 
-/* compute FFT & band sums (fixed a 'freq' typo -> freqs) */
+/* compute FFT & band sums */
 const EEG_BANDS = {
   delta: [0.5,4],
   theta: [4,8],
@@ -353,14 +392,26 @@ function combineEEG(dominant){
   combinedEEGHz = (scaled + (dominant||0)) / 2;
 }
 
-/* push to charts & simulated photometric */
+/* push to charts using rPPG/EEG-derived values */
 function pushToAllCharts(){
-  pushChartValue(charts.eeg1, combinedEEGHz); pushChartValue(charts.eeg2, combinedEEGHz);
-  pushChartValue(charts.hr1, heartRate); pushChartValue(charts.hr2, heartRate);
-  pushChartValue(charts.sound1, soundDB); pushChartValue(charts.sound2, soundDB);
-  pushChartValue(charts.spo21, 95 + Math.random()*3); pushChartValue(charts.spo22, 95 + Math.random()*3);
-  const lum = Math.random()*200 + 50; const lx = lum*1.2; const fc = lx/10.764; const cd = lx/10;
-  pushChartValue(charts.lumens, lum); pushChartValue(charts.lux, lx); pushChartValue(charts.fc, fc); pushChartValue(charts.misc, cd);
+  const eeg = combinedEEGHz;
+  const hr = heartRate;
+  const spo = derivedSpO2;
+  const snd = soundDB;
+  const lum = derivedLumens;
+  const lx  = derivedLux;
+  const fc  = derivedFC;
+  const cd  = derivedCd;
+
+  pushChartValue(charts.eeg1, eeg); pushChartValue(charts.eeg2, eeg);
+  pushChartValue(charts.hr1, hr);  pushChartValue(charts.hr2, hr);
+  pushChartValue(charts.sound1, snd); pushChartValue(charts.sound2, snd);
+  pushChartValue(charts.spo21, spo); pushChartValue(charts.spo22, spo);
+
+  pushChartValue(charts.lumens, lum);
+  pushChartValue(charts.lux, lx);
+  pushChartValue(charts.fc, fc);
+  pushChartValue(charts.misc, cd);
 }
 
 /* update status display & hash */
@@ -368,11 +419,11 @@ function updateStatus(){
   clockEl.textContent = new Date().toLocaleTimeString();
   eegEl.textContent = `EEG Hertz: ${format00_0(combinedEEGHz)} Hz`;
   hrEl.textContent = `Heart Rate: ${format00_0(heartRate)} BPM`;
-  spo2El.textContent = `SpO₂: ${format00_0(95 + Math.random()*3)} %`;
+  spo2El.textContent = `SpO₂: ${format00_0(derivedSpO2)} %`;
   soundEl.textContent = `Sound: ${format00_0(soundDB)} dB`;
   if (typeof RIPEMD320 === 'function'){
     try{
-      const payload = `${Number(combinedEEGHz||0).toFixed(1)}|${Number(heartRate||0).toFixed(1)}|${Number((95+Math.random()*3)).toFixed(1)}|${Number(soundDB||0).toFixed(1)}`;
+      const payload = `${Number(combinedEEGHz||0).toFixed(1)}|${Number(heartRate||0).toFixed(1)}|${Number(derivedSpO2||0).toFixed(1)}|${Number(soundDB||0).toFixed(1)}`;
       hashEl.textContent = `EEG Process: ${RIPEMD320(payload)}`;
     }catch(e){ hashEl.textContent = 'EEG Process: err'; }
   } else hashEl.textContent = 'EEG Process: missing';
@@ -380,7 +431,6 @@ function updateStatus(){
 
 /* -----------------------
   Countdown UI / controls
-  (set/start/stop buttons removed; countdown auto-starts once devices are active)
 ------------------------*/
 let countdownMs = parseHHMMSS(document.getElementById('timerInput').value) || 30*60*1000;
 let countdownTimer = null;
@@ -410,7 +460,7 @@ function startCountdown(){
 document.getElementById('gammaBtn').onclick = ()=>{ window.open('gamma_dashboard.html','_blank'); };
 
 /* -----------------------
-  Downloads & helpers (unchanged logical behavior)
+  Downloads & helpers
 ------------------------*/
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
@@ -476,13 +526,11 @@ function makePCAP(rows){
 document.getElementById('timer').textContent = (function(){ return formatHHMMSS(countdownMs); })();
 
 /* -----------------------
-  Auto-start on load (attempt) — if blocked, user can click overlay
+  Auto-start on load (attempt)
 ------------------------*/
 window.addEventListener('load', async ()=>{
-  // try to start devices automatically
   const ok = await startDevices();
   if (!ok) {
-    // overlay will prompt the user to click once
     gestureOverlay.style.display = 'flex';
   }
 });
