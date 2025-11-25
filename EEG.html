@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>EEG + rPPG Dashboard (Full Screen)</title>
+  <title>EEG + rPPG Dashboard (Fusion Methods)</title>
   <style>
     body {
       margin: 0;
@@ -39,7 +39,7 @@
       z-index: 2;
     }
 
-    #combinedOutput {
+    #fusionOutput {
       position: fixed;
       bottom: 20px;
       left: 50%;
@@ -47,9 +47,10 @@
       font-size: 15px;
       color: white;
       background: rgba(0,0,0,0.3);
-      padding: 5px 10px;
+      padding: 10px;
       border-radius: 5px;
       z-index: 3;
+      text-align: left;
     }
   </style>
 
@@ -64,7 +65,11 @@
 <canvas id="rppgChart"></canvas>
 <canvas id="eegChart"></canvas>
 
-<div id="combinedOutput">Combined rPPG + EEG: 0 Hz</div>
+<div id="fusionOutput">
+  <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
+  <div id="peakFusion">2. Peak-Based Fusion: 0 Hz</div>
+  <div id="coherenceFusion">3. Cross-Spectral Coherence: 0</div>
+</div>
 
 <script>
 /* -------------------------------
@@ -168,13 +173,52 @@ setInterval(() => {
   eegChart.update();
 }, 50);
 
-// Combined output in Hertz (simple demo calculation)
+/* -------------------------------
+   Fusion Methods
+-------------------------------- */
+
+// Simple FFT helper (naive DFT for demo)
+function fftMagnitude(signal) {
+  const N = signal.length;
+  let mags = [];
+  for (let k = 0; k < N/2; k++) {
+    let re = 0, im = 0;
+    for (let n = 0; n < N; n++) {
+      const angle = (2 * Math.PI * k * n) / N;
+      re += signal[n] * Math.cos(angle);
+      im -= signal[n] * Math.sin(angle);
+    }
+    mags.push(Math.sqrt(re*re + im*im));
+  }
+  return mags;
+}
+
 setInterval(() => {
-  const rppgFreq = Math.abs(rData[rData.length-1] || 0) / 10;
-  const eegFreq = Math.abs(eegData[eegData.length-1] || 0) / 10;
-  const combined = (rppgFreq + eegFreq).toFixed(2);
-  document.getElementById("combinedOutput").textContent = "Combined rPPG + EEG: " + combined + " Hz";
-}, 500);
+  if (rData.length < 100 || eegData.length < 100) return;
+
+  // 1. Frequency-Domain Fusion
+  const rFFT = fftMagnitude(rData);
+  const eFFT = fftMagnitude(eegData);
+  const fusedFFT = rFFT.map((val, i) => val + (eFFT[i] || 0));
+  const freqFusion = fusedFFT.indexOf(Math.max(...fusedFFT));
+  document.getElementById("freqFusion").textContent = "1. Frequency-Domain Fusion: " + freqFusion + " Hz";
+
+  // 2. Peak-Based Fusion
+  const rPeak = rFFT.indexOf(Math.max(...rFFT));
+  const ePeak = eFFT.indexOf(Math.max(...eFFT));
+  const peakFusion = 0.5 * rPeak + 0.5 * ePeak;
+  document.getElementById("peakFusion").textContent = "2. Peak-Based Fusion: " + peakFusion.toFixed(2) + " Hz";
+
+  // 3. Cross-Spectral Coherence (simplified)
+  let cross = 0, rPow = 0, ePow = 0;
+  for (let i = 0; i < rFFT.length; i++) {
+    cross += rFFT[i] * (eFFT[i] || 0);
+    rPow += rFFT[i] * rFFT[i];
+    ePow += (eFFT[i] || 0) * (eFFT[i] || 0);
+  }
+  const coherence = (cross*cross) / (rPow * ePow + 1e-9);
+  document.getElementById("coherenceFusion").textContent = "3. Cross-Spectral Coherence: " + coherence.toFixed(3);
+}, 1000);
 
 </script>
 
