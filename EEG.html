@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Real-Time rPPG-EEG Dashboard</title>
+<title>Transparent rPPG-EEG Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <!-- Chart.js -->
@@ -33,14 +33,13 @@ body {
   z-index:0;
 }
 
-/* Charts float like AR HUD, 90% transparent */
+/* Charts float like AR HUD, faint frame only */
 .chartBox {
   backdrop-filter: blur(2px);
   background: rgba(0,0,0,0.1); /* 90% transparent */
   border-radius: 20px;
   padding: 6px;
   z-index: 20;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
 }
 
 /* Layout: flexible grid overlay */
@@ -59,6 +58,7 @@ body {
 .chartBox canvas {
   width: 100%;
   height: 100%;
+  background: transparent !important; /* ensure canvas is transparent */
 }
 
 /* Camera button */
@@ -71,7 +71,6 @@ body {
   background: red;
   border: 4px solid white;
   z-index: 50;
-  cursor: pointer;
 }
 
 /* Flip camera */
@@ -87,21 +86,6 @@ body {
   line-height: 60px;
   font-size: 22px;
   z-index: 50;
-  cursor: pointer;
-}
-
-/* FPS + CPU overlay */
-#fpsCounter {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  font-family: monospace;
-  font-size: 18px;
-  color: lime;
-  background: rgba(0,0,0,0.4);
-  padding: 6px 10px;
-  border-radius: 8px;
-  z-index: 100;
 }
 </style>
 </head>
@@ -110,41 +94,30 @@ body {
 
 <video id="cameraFeed" autoplay playsinline></video>
 
-<button id="snapBtn" title="Capture"></button>
-<button id="flipBtn" title="Flip">⇆</button>
+<button id="snapBtn"></button>
+<button id="flipBtn">⇆</button>
 
 <div id="chartsGrid"></div>
-<div id="fpsCounter">FPS: 0 | CPU: 0 ms</div>
 
 <script>
 /* ======================================================
    CAMERA SETUP
 ====================================================== */
 let cameraFacing = "user";
-
 async function startCamera() {
   const video = document.getElementById("cameraFeed");
   const constraints = {
-    audio: false,
-    video: {
-      facingMode: cameraFacing,
-      width: { ideal: 1920 },
-      height: { ideal: 1080 }
-    }
+    audio:false,
+    video:{ facingMode: cameraFacing }
   };
   try {
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = stream;
-  } catch (err) {
-    console.warn("Camera error:", err);
-  }
+    video.srcObject = await navigator.mediaDevices.getUserMedia(constraints);
+  } catch(e){ console.error(e); }
 }
-
 document.getElementById("flipBtn").onclick = () => {
   cameraFacing = cameraFacing === "user" ? "environment" : "user";
   startCamera();
 };
-
 startCamera();
 
 /* ======================================================
@@ -152,132 +125,91 @@ startCamera();
 ====================================================== */
 const SAMPLE_RATE = 256;
 const BUFFER_SIZE = 256;
-
 const fft = new FFT(BUFFER_SIZE);
 const rppgBuffer = new Float32Array(BUFFER_SIZE);
 const eegBuffer  = new Float32Array(BUFFER_SIZE);
 
-/* Hann window */
-const hann = new Float32Array(BUFFER_SIZE);
-for (let i = 0; i < BUFFER_SIZE; i++) {
-  hann[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (BUFFER_SIZE - 1)));
-}
-
-/* Combined HE */
-function computeCombinedHE(rppgAmp, eegAmp) {
-  return Math.sqrt(rppgAmp * rppgAmp + eegAmp * eegAmp);
-}
-
-/* RIPEMD-320 Hash */
-function hashFrame(dataArray) {
-  const json = JSON.stringify(dataArray);
-  return CryptoJS.RIPEMD320(json).toString();
-}
-
 /* EEG bands */
 const eegBands = {
-  Delta:  [0.5, 4],
-  Theta:  [4, 8],
-  Alpha:  [8, 12],
-  Beta:   [12, 30],
-  Gamma:  [30, 80]
+  Delta:[0.5,4], Theta:[4,8], Alpha:[8,12], Beta:[12,30], Gamma:[30,80]
 };
+
+/* Hash */
+function hashFrame(arr){ return CryptoJS.RIPEMD320(JSON.stringify(arr)).toString(); }
 
 /* ======================================================
    CHARTS
 ====================================================== */
 const grid = document.getElementById("chartsGrid");
 const charts = [];
-
-function addChart(title) {
+function addChart(title){
   const box = document.createElement("div");
-  box.className = "chartBox";
+  box.className="chartBox";
   const c = document.createElement("canvas");
   box.appendChild(c);
   grid.appendChild(box);
-
-  return new Chart(c, {
-    type: "line",
-    data: {
-      labels: Array(60).fill(""),
-      datasets: [{
-        label: title,
-        data: Array(60).fill(0),
-        borderColor: "rgba(0,200,255,0.85)",
-        backgroundColor: "rgba(0,200,255,0.12)",
-        borderWidth: 3,
-        pointRadius: 0,
-        tension: 0.25
-      }]
-    },
+  return new Chart(c,{
+    type:"line",
+    data:{ labels:Array(60).fill(""), datasets:[{
+      label:title,
+      data:Array(60).fill(0),
+      borderColor:"rgba(0,200,255,0.9)",
+      backgroundColor:"transparent",
+      borderWidth:2,
+      pointRadius:0,
+      tension:0.25
+    }]},
     options:{
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
-      scales:{ x:{display:false}, y:{display:false} },
-      plugins:{ legend:{display:false} }
+      responsive:true,
+      maintainAspectRatio:false,
+      animation:false,
+      scales:{x:{display:false},y:{display:false}},
+      plugins:{legend:{display:false}}
     }
   });
 }
-
-const chartNames = [
-  "Combined HE (Hz)", "Delta", "Theta", "Alpha", "Beta", "Gamma",
-  "rPPG", "EEG Raw", "FFT Spectrum", "Heart Rate", "Breathing Rate", "Hash"
-];
-chartNames.forEach(n => charts.push(addChart(n)));
+["Combined HE","Delta","Theta","Alpha","Beta","Gamma",
+ "rPPG","EEG Raw","FFT Spectrum","Heart Rate","Breathing Rate","Hash"]
+.forEach(n=>charts.push(addChart(n)));
 
 /* ======================================================
-   FPS + CPU Monitor
+   LOOP
 ====================================================== */
-let lastFrameTime = performance.now();
-let frameCount = 0;
-let fps = 0;
-let cpuTime = 0;
-
-function updateFPS(startTime) {
-  const now = performance.now();
-  frameCount++;
-  cpuTime = (now - startTime).toFixed(1);
-  if (now - lastFrameTime >= 1000) {
-    fps = frameCount;
-    frameCount = 0;
-    lastFrameTime = now;
+function updateCharts(){
+  const t=performance.now();
+  for(let i=0;i<BUFFER_SIZE;i++){
+    eegBuffer[i]=Math.sin(i*0.1+t/300);
+    rppgBuffer[i]=Math.sin(i*0.03+t/400);
   }
-  document.getElementById("fpsCounter").textContent = `FPS: ${fps} | CPU: ${cpuTime} ms`;
+  const input=fft.createComplexArray(), output=fft.createComplexArray();
+  for(let i=0;i<BUFFER_SIZE;i++){ input[2*i]=eegBuffer[i]; input[2*i+1]=0; }
+  fft.transform(output,input);
+  const mags=[];
+  for(let i=0;i<BUFFER_SIZE/2;i++){
+    const re=output[2*i], im=output[2*i+1];
+    mags[i]=Math.sqrt(re*re+im*im);
+  }
+  charts[0].data.datasets[0].data.push(Math.sqrt(rppgBuffer[10]**2+eegBuffer[10]**2));
+  let idx=1;
+  for(const [lo,hi] of Object.values(eegBands)){
+    const loBin=Math.floor(lo*(BUFFER_SIZE/SAMPLE_RATE));
+    const hiBin=Math.floor(hi*(BUFFER_SIZE/SAMPLE_RATE));
+    const avg=mags.slice(loBin,hiBin).reduce((a,b)=>a+b,0)/(hiBin-loBin);
+    charts[idx++].data.datasets[0].data.push(avg);
+  }
+  charts[6].data.datasets[0].data.push(rppgBuffer[128]);
+  charts[7].data.datasets[0].data.push(eegBuffer[128]);
+  charts[8].data.datasets[0].data=mags.slice(0,60);
+  charts[9].data.datasets[0].data.push(60+40*Math.abs(rppgBuffer[100]));
+  charts[10].data.datasets[0].data.push(14+6*Math.abs(rppgBuffer[20]));
+  charts[11].data.datasets[0].data.push(hashFrame(mags).length%30);
+  charts.forEach(ch=>{
+    const d=ch.data.datasets[0].data;
+    while(d.length>60) d.shift();
+    ch.update('none');
+  });
 }
-
-/* ======================================================
-   REAL-TIME LOOP (throttled)
-====================================================== */
-function updateCharts() {
-  const startTime = performance.now();
-  const t = performance.now();
-
-  // Fake signals
-  for (let i = 0; i < BUFFER_SIZE; i++) {
-    eegBuffer[i]  = Math.sin(i * 0.1  + t / 300) * hann[i];
-    rppgBuffer[i] = Math.sin(i * 0.03 + t / 400) * hann[i];
-  }
-
-  // FFT
-  const input  = fft.createComplexArray();
-  const output = fft.createComplexArray();
-  for (let i = 0; i < BUFFER_SIZE; i++) {
-    input[2*i] = eegBuffer[i];
-    input[2*i+1] = 0;
-  }
-  fft.transform(output, input);
-
-  const mags = new Float32Array(BUFFER_SIZE/2);
-  for (let i = 0; i < BUFFER_SIZE/2; i++) {
-    const real = output[2*i], imag = output[2*i+1];
-    mags[i] = Math.sqrt(real*real + imag*imag);
-  }
-
-  // Combined HE
-  const combined = computeCombinedHE(Math.abs(rppgBuffer[10]), Math.abs(eegBuffer[10]));
-  charts[0].data.datasets[0].data.push(combined);
-
-  // EEG bands
-  let idx = 1;
-  for (const [
+setInterval(updateCharts,40);
+</script>
+</body>
+</html>
