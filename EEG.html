@@ -1,539 +1,332 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<title>EEG Dashboard — Main (Chart.js, 12 charts)</title>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<!-- Chart.js + FFT -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<meta charset="UTF-8">
+<title>Real-Time rPPG-EEG Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<!-- FFT -->
 <script src="https://cdn.jsdelivr.net/npm/fft.js@0.3.0/dist/fft.min.js"></script>
-<!-- RIPEMD-320 library (optional) -->
-<script src="ripemd320.js"></script>
+
+<!-- CryptoJS (SHA-256 available) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 
 <style>
-  html,body{height:100%;margin:0;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif}
-  #topbar{position:fixed;left:12px;top:8px;z-index:60;display:flex;gap:8px;align-items:center}
-  #gammaBtn{background:linear-gradient(90deg,#7b2cff,#ff7a00);color:#fff;border:0;padding:8px 10px;border-radius:10px;cursor:pointer}
-  #timer{font-family:monospace;color:#0f0}
-  #status{position:fixed;right:12px;top:8px;text-align:right;font-family:monospace;z-index:60}
-  /* video is visible but very low opacity, overlayCanvas will also draw image for better control */
-  #video{position:fixed;left:0;top:0;width:100vw;height:100vh;object-fit:cover;z-index:0;opacity:0.06}
-  #overlayCanvas{position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:1;pointer-events:none}
-  #grid{position:relative;z-index:20;padding:90px 18px 140px 18px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-  .panel{
-    background:rgba(255,255,255,0.012); /* more transparent */
-    border-radius:12px;padding:8px;min-height:260px;
-    box-shadow:0 0 30px rgba(0,0,0,0.4)
+  body {
+    margin: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: black;
   }
-  .title{color:#fff;font-weight:700;font-size:13px;margin-bottom:6px}
-  canvas.chart{width:100%;height:100%}
-  .row2 .panel{background:rgba(255,255,255,0.006);border:1px solid rgba(255,255,255,0.015)}
-  .stopped *{color:#ff0000 !important}
 
-  /* fallback fullscreen overlay to request user gesture if needed */
-  #gestureOverlay{
-    display:none;
-    position:fixed; inset:0; z-index:9999;
-    background:linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0.6));
-    color:#fff; align-items:center; justify-content:center; text-align:center;
-    font-family:inherit; font-size:18px;
-    cursor:pointer;
+  /* Camera video behind everything */
+  #cameraFeed {
+    position: fixed;
+    top:0; left:0;
+    width:100vw;
+    height:100vh;
+    object-fit: cover;
+    z-index:0;
   }
-  #gestureOverlay .msg { max-width:720px; padding:24px; border-radius:12px; backdrop-filter: blur(6px); }
-  #gestureOverlay .hint { font-size:13px; color:#ddd; margin-top:8px; }
+
+  /* Charts float like AR HUD, super transparent */
+  .chartBox {
+    /* remove absolute so CSS grid can place items */
+    backdrop-filter: blur(2px);
+    background: rgba(0,0,0,0.18);
+    border-radius: 20px;
+    padding: 6px;
+    z-index: 20;
+    /* make charts readable */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+  }
+
+  /* Layout: flexible grid overlay */
+  #chartsGrid {
+    position: absolute;
+    top:0; left:0;
+    width:100%; height:100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 33vh; /* three rows fill viewport height; auto flow beyond */
+    gap: 8px;
+    padding: 8px;
+    z-index: 20;
+  }
+
+  /* Size canvases to box */
+  .chartBox canvas {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Camera button */
+  #snapBtn {
+    position: fixed;
+    bottom: 20px;
+    left: calc(50% - 35px);
+    width: 70px; height: 70px;
+    border-radius: 50%;
+    background: red;
+    border: 4px solid white;
+    z-index: 50;
+    cursor: pointer;
+  }
+
+  /* Flip camera */
+  #flipBtn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: white;
+    color: black;
+    text-align: center;
+    line-height: 60px;
+    font-size: 22px;
+    z-index: 50;
+    cursor: pointer;
+  }
 </style>
 </head>
+
 <body>
-  <!-- visible video (low opacity) used as camera background -->
-  <video id="video" autoplay muted playsinline></video>
-  <canvas id="overlayCanvas"></canvas>
 
-  <div id="topbar">
-    <button id="gammaBtn">Γ Gamma</button>
-    <input id="timerInput" value="00:30:00" style="width:120px;padding:6px;border-radius:6px;background:#111;color:#fff;border:0" />
-    <div id="timer" style="margin-left:12px">00:30:00</div>
-  </div>
+<video id="cameraFeed" autoplay playsinline></video>
 
-  <div id="status">
-    <div id="clock">--:--:--</div>
-    <div id="eegHz">EEG Hertz: --.- Hz</div>
-    <div id="hr">Heart Rate: --.- BPM</div>
-    <div id="spo2">SpO₂: --.- %</div>
-    <div id="sound">Sound: --.- dB</div>
-    <div id="hash">EEG Process: --</div>
-  </div>
+<button id="snapBtn" title="Capture"></button>
+<button id="flipBtn" title="Flip">⇆</button>
 
-  <div id="grid">
-    <div class="panel"><div class="title">EEG Hz (Neon)</div><canvas id="chart_eeg_1" class="chart"></canvas></div>
-    <div class="panel"><div class="title">Heart BPM (Neon)</div><canvas id="chart_hr_1" class="chart"></canvas></div>
-    <div class="panel"><div class="title">Sound dB (Neon)</div><canvas id="chart_sound_1" class="chart"></canvas></div>
-    <div class="panel"><div class="title">SpO₂ % (Neon)</div><canvas id="chart_spo2_1" class="chart"></canvas></div>
-
-    <div class="panel row2"><div class="title">EEG Hz (Iron)</div><canvas id="chart_eeg_2" class="chart"></canvas></div>
-    <div class="panel row2"><div class="title">Heart BPM (Iron)</div><canvas id="chart_hr_2" class="chart"></canvas></div>
-    <div class="panel row2"><div class="title">Sound dB (Iron)</div><canvas id="chart_sound_2" class="chart"></canvas></div>
-    <div class="panel row2"><div class="title">SpO₂ % (Iron)</div><canvas id="chart_spo2_2" class="chart"></canvas></div>
-
-    <div class="panel"><div class="title">Lumens (lm)</div><canvas id="chart_lumens" class="chart"></canvas></div>
-    <div class="panel"><div class="title">Lux (lx)</div><canvas id="chart_lux" class="chart"></canvas></div>
-    <div class="panel"><div class="title">Foot-candle</div><canvas id="chart_fc" class="chart"></canvas></div>
-    <div class="panel"><div class="title">Candela / Nits / CRI</div><canvas id="chart_light_misc" class="chart"></canvas></div>
-  </div>
-
-  <!-- Gesture overlay shown only when automatic activation fails (click anywhere to allow) -->
-  <div id="gestureOverlay" role="button" aria-label="Click to allow camera and microphone">
-    <div class="msg">
-      <div style="font-size:22px;font-weight:700">Click anywhere to enable camera & microphone</div>
-      <div class="hint">Your browser requires a user interaction to allow camera/mic. Click to continue.</div>
-    </div>
-  </div>
+<div id="chartsGrid"></div>
 
 <script>
-/* ----------------------
-  Config & globals
-------------------------*/
-const ironPalette = [
-  'rgb(40,10,80)',   // delta
-  'rgb(120,20,140)', // theta
-  'rgb(255,80,10)',  // alpha
-  'rgb(255,210,40)', // beta
-  'rgb(255,255,240)' // gamma
+/* ======================================================
+   CAMERA SETUP
+====================================================== */
+let cameraFacing = "user";
+
+async function startCamera() {
+  const video = document.getElementById("cameraFeed");
+  const constraints = {
+    audio: false,
+    video: {
+      facingMode: cameraFacing,
+      width: { ideal: 1920 },
+      height: { ideal: 1080 }
+    }
+  };
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = stream;
+  } catch (err) {
+    console.warn("Camera error:", err);
+  }
+}
+
+document.getElementById("flipBtn").onclick = () => {
+  cameraFacing = cameraFacing === "user" ? "environment" : "user";
+  startCamera();
+};
+
+startCamera();
+
+/* ======================================================
+   CONSTANTS
+====================================================== */
+const SAMPLE_RATE = 256;             // EEG sampling
+const BUFFER_SIZE = 256;
+
+const fft = new FFT(BUFFER_SIZE);
+const rppgBuffer = new Float32Array(BUFFER_SIZE);
+const eegBuffer  = new Float32Array(BUFFER_SIZE);
+
+/* Hann window to reduce spectral leakage */
+const hann = new Float32Array(BUFFER_SIZE);
+for (let i = 0; i < BUFFER_SIZE; i++) {
+  hann[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (BUFFER_SIZE - 1)));
+}
+
+/* ======================================================
+   COMBINED rPPG + EEG EQUATION (frequency domain magnitude)
+====================================================== */
+function computeCombinedHE(rppgAmp, eegAmp) {
+  return Math.sqrt(rppgAmp * rppgAmp + eegAmp * eegAmp);
+}
+
+/* ======================================================
+   HASH ENGINE — SHA-256 for stability
+====================================================== */
+function hashFrame(dataArray) {
+  const json = JSON.stringify(dataArray);
+  return CryptoJS.SHA256(json).toString();
+}
+
+/* ======================================================
+   COLORS
+====================================================== */
+const spectrum = [
+  "rgba(0, 80, 255, 0.5)",
+  "rgba(0, 200, 80, 0.5)",
+  "rgba(230, 220, 0, 0.5)",
+  "rgba(255, 140, 0, 0.5)",
+  "rgba(255, 40, 0, 0.5)"
 ];
-const neonPalette = ['#0000FF','#00FF00','#FFFF00','#FFA500','#FF0000'];
 
-const AR=0.2989, AG=0.5870, AB=0.1140;
-const samplingRate=30, bufferLen=256;
-let signalBuffer=[], peakTimes=[], combinedEEGHz=0, heartRate=0, soundDB=0;
-let latestBands={}; let csvRows=[]; let stopped=false;
+const lineColor = "rgba(0, 200, 255, 0.85)";
 
-/* rPPG/EEG-derived metrics (for all charts) */
-let derivedSpO2 = 97.0;
-let derivedLumens = 0;
-let derivedLux = 0;
-let derivedFC = 0;
-let derivedCd = 0;
+/* EEG bands in Hz */
+const eegBands = {
+  Delta:  [0.5, 4],
+  Theta:  [4, 8],
+  Alpha:  [8, 12],
+  Beta:   [12, 30],
+  Gamma:  [30, 80]
+};
 
-/* DOM */
-const video = document.getElementById('video');
-const overlayCanvas = document.getElementById('overlayCanvas');
-const overlayCtx = overlayCanvas.getContext('2d');
-const clockEl = document.getElementById('clock');
-const eegEl = document.getElementById('eegHz');
-const hrEl = document.getElementById('hr');
-const spo2El = document.getElementById('spo2');
-const soundEl = document.getElementById('sound');
-const hashEl = document.getElementById('hash');
-const gestureOverlay = document.getElementById('gestureOverlay');
+/* ======================================================
+   CHARTS
+====================================================== */
+const grid = document.getElementById("chartsGrid");
+const charts = [];
 
-function resize() {
-  overlayCanvas.width = window.innerWidth;
-  overlayCanvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
+function addChart(title) {
+  const box = document.createElement("div");
+  box.className = "chartBox";
 
-/* Charts */
-const charts = {};
+  const c = document.createElement("canvas");
+  box.appendChild(c);
+  grid.appendChild(box);
 
-/* MORE TRANSPARENT chart fills */
-function colorToRGBA(color, alpha=0.015){
-  if (!color) return `rgba(255,255,255,${alpha})`;
-  if (color.startsWith('rgb')) {
-    return color.replace('rgb(', 'rgba(').replace(')', `,${alpha})`);
-  }
-  const hex = color.replace('#','');
-  if (hex.length === 3) {
-    const r = parseInt(hex[0]+hex[0],16);
-    const g = parseInt(hex[1]+hex[1],16);
-    const b = parseInt(hex[2]+hex[2],16);
-    return `rgba(${r},${g},${b},${alpha})`;
-  }
-  const r = parseInt(hex.slice(0,2),16);
-  const g = parseInt(hex.slice(2,4),16);
-  const b = parseInt(hex.slice(4,6),16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
-function createLine(id, color){
-  const canvas = document.getElementById(id);
-  canvas.width = 1280; canvas.height = 360;
-  const ctx = canvas.getContext('2d');
-  return new Chart(ctx, {
-    type:'line',
-    data:{labels:[], datasets:[{
-      label:id,
-      data:[],
-      borderColor:color,
-      backgroundColor: colorToRGBA(color, 0.015), // super transparent glow
-      pointRadius:0,
-      tension:0.18
-    }]},
+  const chart = new Chart(c, {
+    type: "line",
+    data: {
+      labels: Array(60).fill(""),
+      datasets: [{
+        label: title,
+        data: Array(60).fill(0),
+        borderColor: lineColor,
+        backgroundColor: "rgba(0, 200, 255, 0.12)",
+        borderWidth: 3,
+        pointRadius: 0,
+        tension: 0.25
+      }]
+    },
     options:{
-      responsive:true,
-      animation:false,
-      plugins:{legend:{display:false}},
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
       scales:{
-        x:{ticks:{color:'#fff'}},
-        y:{ticks:{color:'#fff'}}
+        x:{ display:false },
+        y:{ display:false }
+      },
+      plugins:{
+        legend:{ display:false }
       }
     }
   });
+
+  return chart;
 }
 
-function initCharts(){
-  // physiological neon
-  charts.eeg1 = createLine('chart_eeg_1', neonPalette[0]);
-  charts.hr1 = createLine('chart_hr_1', neonPalette[1]);
-  charts.sound1 = createLine('chart_sound_1', neonPalette[2]);
-  charts.spo21 = createLine('chart_spo2_1', neonPalette[3]);
-  // iron
-  charts.eeg2 = createLine('chart_eeg_2', ironPalette[4]);
-  charts.hr2 = createLine('chart_hr_2', ironPalette[2]);
-  charts.sound2 = createLine('chart_sound_2', ironPalette[3]);
-  charts.spo22 = createLine('chart_spo2_2', ironPalette[1]);
-  // photometric
-  charts.lumens = createLine('chart_lumens', ironPalette[2]);
-  charts.lux = createLine('chart_lux', ironPalette[3]);
-  charts.fc = createLine('chart_fc', ironPalette[0]);
-  charts.misc = createLine('chart_light_misc', ironPalette[4]);
-}
-initCharts();
+const chartNames = [
+  "Combined HE (Hz)", "Delta", "Theta", "Alpha", "Beta", "Gamma",
+  "rPPG", "EEG Raw", "FFT Spectrum", "Heart Rate", "Breathing Rate", "Hash"
+];
 
-/* push single value into a Chart.js line dataset */
-function pushChartValue(chart, v){
-  const t = new Date().toLocaleTimeString();
-  chart.data.labels.push(t);
-  chart.data.datasets[0].data.push(Number(Number(v).toFixed(1)));
-  if (chart.data.labels.length > 120){
-    chart.data.labels.shift();
-    chart.data.datasets[0].data.shift();
+chartNames.forEach(n => charts.push(addChart(n)));
+
+/* ======================================================
+   REAL-TIME LOOP (throttled)
+====================================================== */
+function updateCharts() {
+  const t = performance.now();
+
+  /* Fake signal generator — replace with real EEG + rPPG inputs */
+  for (let i = 0; i < BUFFER_SIZE; i++) {
+    eegBuffer[i]  = Math.sin(i * 0.1  + t / 300) * hann[i];
+    rppgBuffer[i] = Math.sin(i * 0.03 + t / 400) * hann[i];
   }
-  chart.update('none');
-}
 
-/* -----------------------
-  Camera & audio
-------------------------*/
-let audioCtx=null, analyser=null, audioData=null;
+  /* FFT of EEG */
+  const input  = fft.createComplexArray();
+  const output = fft.createComplexArray();
 
-/* Start devices (camera + mic) */
-async function startDevices(){
-  try{
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:'user', width:{ideal:1280}, height:{ideal:720}},
-      audio:true
-    });
-    video.srcObject = stream;
+  // real parts
+  for (let i = 0; i < BUFFER_SIZE; i++) {
+    input[2 * i]     = eegBuffer[i];
+    input[2 * i + 1] = 0; // imag = 0
+  }
 
-    // audio (we still sample, but charts are driven from rPPG/EEG)
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const src = audioCtx.createMediaStreamSource(stream);
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 2048;
-    audioData = new Float32Array(analyser.fftSize);
-    src.connect(analyser);
-    audioLoop();
-    frameLoop();
+  fft.transform(output, input);
 
-    // hide gesture overlay if visible
-    gestureOverlay.style.display = 'none';
+  /* Magnitudes for positive frequencies */
+  const mags = new Float32Array(BUFFER_SIZE / 2);
+  for (let i = 0; i < BUFFER_SIZE / 2; i++){
+    const real = output[2 * i];
+    const imag = output[2 * i + 1];
+    mags[i] = Math.sqrt(real * real + imag * imag);
+  }
 
-    // start countdown when devices are running
-    startCountdown();
-    return true;
-  } catch(e){
-    console.warn('getUserMedia error', e);
-    gestureOverlay.style.display = 'flex';
-    return false;
+  /* Combined HE (using current sample proxies) */
+  const combined = computeCombinedHE(
+    Math.abs(rppgBuffer[10] ?? 0),
+    Math.abs(eegBuffer[10]  ?? 0)
+  );
+
+  /* HASH of spectrum */
+  const hashValue = hashFrame(mags);
+
+  /* Update charts */
+  charts[0].data.datasets[0].data.push(combined);
+
+  /* EEG bands */
+  let idx = 1;
+  for (const [bandName, [lo, hi]] of Object.entries(eegBands)) {
+    const binHz = SAMPLE_RATE / BUFFER_SIZE;
+    const loBin = Math.max(0, Math.floor(lo / binHz));
+    const hiBin = Math.min(mags.length, Math.ceil(hi / binHz));
+    const len = Math.max(1, hiBin - loBin);
+    let sum = 0;
+    for (let k = loBin; k < hiBin; k++) sum += mags[k];
+    const avg = sum / len;
+    charts[idx].data.datasets[0].data.push(avg);
+    idx++;
+  }
+
+  /* rPPG + EEG time series */
+  charts[6].data.datasets[0].data.push(rppgBuffer[128]);
+  charts[7].data.datasets[0].data.push(eegBuffer[128]);
+
+  /* Spectrum (first 60 bins to match labels) */
+  charts[8].data.datasets[0].data = Array.from(mags.slice(0, 60));
+
+  /* Heart rate estimate (mock, stabilized) */
+  charts[9].data.datasets[0].data.push(60 + 40 * Math.abs(rppgBuffer[100]));
+
+  /* Respiration estimate (mock, stabilized) */
+  charts[10].data.datasets[0].data.push(14 + 6 * Math.abs(rppgBuffer[20]));
+
+  /* Hash chart: map to a small numeric range */
+  charts[11].data.datasets[0].data.push(hashValue.charCodeAt(0) % 30);
+
+  /* Trim & draw */
+  for (const ch of charts) {
+    const d = ch.data.datasets[0].data;
+    while (d.length > 60) d.shift();
+    ch.update('none'); // no animation for speed
   }
 }
 
-gestureOverlay.addEventListener('click', async ()=>{
-  gestureOverlay.style.pointerEvents = 'none';
-  await startDevices();
-  gestureOverlay.style.pointerEvents = 'auto';
-});
+/* Throttle to ~25 FPS */
+const UPDATE_MS = 40;
+setInterval(updateCharts, UPDATE_MS);
 
-function audioLoop(){
-  if (!analyser) return;
-  // You can still use mic if you want, but charts use rPPG/EEG-based soundDB
-  analyser.getFloatTimeDomainData(audioData);
-  if (!stopped) requestAnimationFrame(audioLoop);
-}
-
-function format00_0(v){ return String(Number(v||0).toFixed(1)).padStart(4,'0'); }
-
-/* frame loop: rPPG sampling + overlay draw */
-function frameLoop(){
-  if (stopped) return;
-  if (!video || !video.videoWidth) { requestAnimationFrame(frameLoop); return; }
-
-  // draw subtle overlay (keep low alpha)
-  overlayCtx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
-  overlayCtx.globalAlpha = 0.07;
-  overlayCtx.drawImage(video, 0, 0, overlayCanvas.width, overlayCanvas.height);
-  overlayCtx.globalAlpha = 1;
-
-  // sample small center region for rPPG
-  const w = Math.round(video.videoWidth * 0.15), h = Math.round(video.videoHeight * 0.15);
-  const sx = Math.round((video.videoWidth-w)/2), sy = Math.round((video.videoHeight-h)/2);
-  const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
-  const tctx = tmp.getContext('2d'); tctx.drawImage(video, sx, sy, w, h, 0,0,w,h);
-  const frame = tctx.getImageData(0,0,w,h).data;
-  let r=0,g=0,b=0,cnt=0;
-  for (let i=0;i<frame.length;i+=4){ r+=frame[i]; g+=frame[i+1]; b+=frame[i+2]; cnt++; }
-  const avgR = r/cnt, avgG = g/cnt, avgB = b/cnt;
-  const s = AR*avgR + AG*avgG + AB*avgB;
-  signalBuffer.push(s);
-  detectPeaks();
-  if (signalBuffer.length >= bufferLen){
-    const buff = signalBuffer.slice(-bufferLen);
-    const bands = computeBands(buff);
-    latestBands = bands;
-    combineEEG(bands.dominantFreq || 0);
-
-    /* -------------------------
-       rPPG + EEG equations
-       Everything derived from heartRate & combinedEEGHz
-    --------------------------*/
-    const eeg = combinedEEGHz || 0;
-    const hr = heartRate || (eeg * 10);
-
-    // “sound” level as function of EEG + HR
-    soundDB = 55 + eeg * 1.8 + (hr - 60) * 0.05;
-    if (soundDB < 30) soundDB = 30;
-
-    // SpO2 derived from EEG rhythmicity (tanh keeps it smooth)
-    const spoBase = 97 + Math.tanh((eeg - 10)/8) * 2; // ~95–99 %
-    derivedSpO2 = Math.max(93, Math.min(100, spoBase));
-
-    // Photometric values mapped from EEG band power / frequency
-    const activity = Math.max(0.5, eeg);
-    derivedLumens = activity * 15;        // 7.5–1000+ depending on activity
-    derivedLux    = derivedLumens * 1.3;
-    derivedFC     = derivedLux / 10.764;
-    derivedCd     = derivedLux / 12;
-
-    csvRows.push([
-      new Date().toISOString(),
-      Number(eeg).toFixed(1),
-      Number(hr).toFixed(1),
-      Number(derivedSpO2).toFixed(1),
-      Number(soundDB).toFixed(1)
-    ]);
-
-    // reduce buffer to half-overlap
-    signalBuffer = signalBuffer.slice(Math.floor(bufferLen/2));
-
-    // push to charts (all based on rPPG/EEG equations above)
-    pushToAllCharts();
-  }
-  updateStatus();
-  if (!stopped) requestAnimationFrame(frameLoop);
-}
-
-/* simple peak detection for heart */
-function detectPeaks(){
-  if (signalBuffer.length < 6) return;
-  const len = signalBuffer.length;
-  const a=signalBuffer[len-6], b=signalBuffer[len-5], c=signalBuffer[len-4], d=signalBuffer[len-3], e=signalBuffer[len-2], f=signalBuffer[len-1];
-  if (e > d && e > f && e > c) {
-    const now = Date.now();
-    if (peakTimes.length===0 || (now - peakTimes[peakTimes.length-1] > 300)) {
-      peakTimes.push(now);
-      const cutoff = now - 65000;
-      peakTimes = peakTimes.filter(t=>t>=cutoff);
-    }
-  }
-  if (peakTimes.length >= 2){
-    const diffs = []; for (let i=1;i<peakTimes.length;i++) diffs.push(peakTimes[i]-peakTimes[i-1]);
-    const avg = diffs.reduce((a,b)=>a+b,0)/diffs.length;
-    heartRate = Math.round(60000/avg);
-  } else heartRate = peakTimes.length>0 ? peakTimes.length*60 : 0;
-}
-
-/* compute FFT & band sums */
-const EEG_BANDS = {
-  delta: [0.5,4],
-  theta: [4,8],
-  alpha: [8,13],
-  beta: [13,30],
-  gamma: [30,60]
-};
-
-function computeBands(signal){
-  const N = signal.length;
-  const fft = new FFT(N);
-  const out = fft.createComplexArray();
-  const signalArr = (signal instanceof Float32Array) ? signal : Float32Array.from(signal);
-  fft.realTransform(out, signalArr);
-  fft.completeSpectrum(out);
-  const half = N/2;
-  const freqs = new Array(half).fill(0).map((_,i)=>i*samplingRate/N);
-  const mags = new Array(half);
-  for (let i=0;i<half;i++){ const re=out[2*i], im=out[2*i+1]; mags[i]=Math.sqrt(re*re+im*im); }
-  let dom=0, max=-Infinity;
-  for (let i=1;i<half;i++){ if (freqs[i] >= 0.5 && freqs[i] <= 60 && mags[i] > max){ max = mags[i]; dom = freqs[i]; } }
-
-  const bands = {};
-  for (const [band,[lo,hi]] of Object.entries(EEG_BANDS)){
-    let sum=0;
-    for (let i=0;i<half;i++){ if (freqs[i] >= lo && freqs[i] <= hi) sum += mags[i]; }
-    bands[band] = sum;
-  }
-  bands.dominantFreq = dom;
-  return bands;
-}
-
-/* combine EEG & rPPG */
-function combineEEG(dominant){
-  const rppgHz = Math.max(0.1, (heartRate || 0) / 60);
-  const scaled = rppgHz * 10;
-  combinedEEGHz = (scaled + (dominant||0)) / 2;
-}
-
-/* push to charts using rPPG/EEG-derived values */
-function pushToAllCharts(){
-  const eeg = combinedEEGHz;
-  const hr = heartRate;
-  const spo = derivedSpO2;
-  const snd = soundDB;
-  const lum = derivedLumens;
-  const lx  = derivedLux;
-  const fc  = derivedFC;
-  const cd  = derivedCd;
-
-  pushChartValue(charts.eeg1, eeg); pushChartValue(charts.eeg2, eeg);
-  pushChartValue(charts.hr1, hr);  pushChartValue(charts.hr2, hr);
-  pushChartValue(charts.sound1, snd); pushChartValue(charts.sound2, snd);
-  pushChartValue(charts.spo21, spo); pushChartValue(charts.spo22, spo);
-
-  pushChartValue(charts.lumens, lum);
-  pushChartValue(charts.lux, lx);
-  pushChartValue(charts.fc, fc);
-  pushChartValue(charts.misc, cd);
-}
-
-/* update status display & hash */
-function updateStatus(){
-  clockEl.textContent = new Date().toLocaleTimeString();
-  eegEl.textContent = `EEG Hertz: ${format00_0(combinedEEGHz)} Hz`;
-  hrEl.textContent = `Heart Rate: ${format00_0(heartRate)} BPM`;
-  spo2El.textContent = `SpO₂: ${format00_0(derivedSpO2)} %`;
-  soundEl.textContent = `Sound: ${format00_0(soundDB)} dB`;
-  if (typeof RIPEMD320 === 'function'){
-    try{
-      const payload = `${Number(combinedEEGHz||0).toFixed(1)}|${Number(heartRate||0).toFixed(1)}|${Number(derivedSpO2||0).toFixed(1)}|${Number(soundDB||0).toFixed(1)}`;
-      hashEl.textContent = `EEG Process: ${RIPEMD320(payload)}`;
-    }catch(e){ hashEl.textContent = 'EEG Process: err'; }
-  } else hashEl.textContent = 'EEG Process: missing';
-}
-
-/* -----------------------
-  Countdown UI / controls
-------------------------*/
-let countdownMs = parseHHMMSS(document.getElementById('timerInput').value) || 30*60*1000;
-let countdownTimer = null;
-function parseHHMMSS(s){
-  const p = s.split(':').map(x=>Number(x));
-  if (p.length!==3) return null; const [h,m,sec]=p;
-  return (h*3600 + m*60 + sec) * 1000;
-}
-function formatHHMMSS(ms){ const s=Math.max(0,Math.floor(ms/1000)); const hh=String(Math.floor(s/3600)).padStart(2,'0'); const mm=String(Math.floor((s%3600)/60)).padStart(2,'0'); const ss=String(s%60).padStart(2,'0'); return `${hh}:${mm}:${ss}`; }
-document.getElementById('timerInput').addEventListener('change', ()=>{ const val=parseHHMMSS(document.getElementById('timerInput').value); if (val!==null) countdownMs = val; document.getElementById('timer').textContent = formatHHMMSS(countdownMs); });
-
-function startCountdown(){
-  if (countdownTimer) clearInterval(countdownTimer);
-  countdownTimer = setInterval(async ()=>{
-    if (countdownMs <= 0){
-      clearInterval(countdownTimer);
-      await downloadChartsSnapshotCSVPCAP();
-      document.body.classList.add('stopped'); stopped=true;
-      return;
-    }
-    countdownMs -= 1000;
-    document.getElementById('timer').textContent = formatHHMMSS(countdownMs);
-  },1000);
-}
-
-/* Gamma button opens gamma_dashboard.html in new tab */
-document.getElementById('gammaBtn').onclick = ()=>{ window.open('gamma_dashboard.html','_blank'); };
-
-/* -----------------------
-  Downloads & helpers
-------------------------*/
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-function downloadChartsSnapshotCSVPCAP(){
-  const canvasIds = [
-    'chart_eeg_1','chart_hr_1','chart_sound_1','chart_spo2_1',
-    'chart_eeg_2','chart_hr_2','chart_sound_2','chart_spo2_2',
-    'chart_lumens','chart_lux','chart_fc','chart_light_misc'
-  ];
-  (async ()=>{
-    for (let i=0;i<canvasIds.length;i++){
-      const c = document.getElementById(canvasIds[i]);
-      await sleep(80);
-      if (!c) continue;
-      c.toBlob(b=>{
-        const a = document.createElement('a'); a.href = URL.createObjectURL(b);
-        a.download = `chart_${i+1}_${new Date().toISOString().replace(/[:.]/g,'-')}.png`; a.click(); URL.revokeObjectURL(a.href);
-      }, 'image/png');
-      await sleep(180);
-    }
-    // camera snapshot
-    await sleep(200);
-    const snap = document.createElement('canvas'); snap.width=1280; snap.height=720;
-    const sctx = snap.getContext('2d'); try { sctx.drawImage(video,0,0,snap.width,snap.height); } catch(e){}
-    snap.toBlob(b=>{
-      const a = document.createElement('a'); a.href = URL.createObjectURL(b);
-      a.download = `snapshot_${new Date().toISOString().replace(/[:.]/g,'-')}.png`; a.click(); URL.revokeObjectURL(a.href);
-    }, 'image/png');
-    await sleep(300);
-    // CSV
-    const header = ['timestamp','EEG_Hz','BPM','SpO2','SoundDB'];
-    const csv = [header.join(',')].concat(csvRows.map(r=>r.join(','))).join('\n');
-    const blob = new Blob([csv], {type:'text/csv'}); const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = `EEG_Data_${new Date().toISOString().replace(/[:.]/g,'-')}.csv`; a.click(); URL.revokeObjectURL(a.href);
-    await sleep(200);
-    // PCAP simulated
-    const pcap = makePCAP(csvRows.slice(-120));
-    const blobP = new Blob([pcap], {type:'application/vnd.tcpdump.pcap'});
-    const ap = document.createElement('a'); ap.href = URL.createObjectURL(blobP); ap.download = `metrics_capture_${new Date().toISOString().replace(/[:.]/g,'-')}.pcap`; ap.click(); URL.revokeObjectURL(ap.href);
-  })();
-}
-
-function makePCAP(rows){
-  const enc = new TextEncoder();
-  const GLOBAL = new Uint8Array(24); const dv = new DataView(GLOBAL.buffer);
-  dv.setUint32(0, 0xa1b2c3d4, true); dv.setUint16(4,2,true); dv.setUint16(6,4,true); dv.setInt32(8,0,true);
-  dv.setUint32(12,0,true); dv.setUint32(16,65535,true); dv.setUint32(20,1,true);
-  const parts=[GLOBAL];
-  for (let i=0;i<rows.length;i++){
-    const [ts,EEG,BPM,SpO2,Sound] = rows[i];
-    const t = new Date(ts); const sec = Math.floor(t.getTime()/1000); const usec = (t.getTime()%1000)*1000;
-    const payload = enc.encode(`SOUND|${Number(Sound).toFixed(1)}\nOXIM|${Number(SpO2).toFixed(1)}\nEEG|${Number(EEG).toFixed(1)}\nHR|${Number(BPM).toFixed(1)}\n`);
-    const ph = new Uint8Array(16); const dvp = new DataView(ph.buffer);
-    dvp.setUint32(0,sec,true); dvp.setUint32(4,usec,true); dvp.setUint32(8,payload.length,true); dvp.setUint32(12,payload.length,true);
-    parts.push(ph); parts.push(payload);
-  }
-  let total=0; parts.forEach(p=> total += p.length);
-  const out = new Uint8Array(total); let off=0; parts.forEach(p=>{ out.set(p, off); off += p.length; });
-  return out.buffer;
-}
-
-/* set initial timer display */
-document.getElementById('timer').textContent = (function(){ return formatHHMMSS(countdownMs); })();
-
-/* -----------------------
-  Auto-start on load (attempt)
-------------------------*/
-window.addEventListener('load', async ()=>{
-  const ok = await startDevices();
-  if (!ok) {
-    gestureOverlay.style.display = 'flex';
-  }
-});
+/* Kick off once */
+updateCharts();
 </script>
 </body>
 </html>
