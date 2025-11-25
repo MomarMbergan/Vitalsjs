@@ -8,9 +8,11 @@
     :root {
       --bg: #000;
       --fg: #fff;
-      --panel-bg: rgba(0,0,0,0.05);
+      --panel-bg: rgba(0,0,0,0.06);
       --font-size: 18px;
       --fusion-font-size: 20px;
+      --footer-bg: rgba(0,0,0,0.35);
+      --accent: #0ff;
     }
 
     body {
@@ -18,11 +20,11 @@
       background: var(--bg);
       color: var(--fg);
       font-family: Arial, Helvetica, sans-serif;
-      text-align: center;
-      overflow: hidden;
       font-size: var(--font-size);
+      overflow: hidden;
     }
 
+    /* Fullscreen camera */
     #camera {
       position: fixed;
       inset: 0;
@@ -33,6 +35,30 @@
       background: #111;
     }
 
+    /* Status badge (Analyzing) */
+    #statusBadge {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 4;
+      background: rgba(0,0,0,0.5);
+      color: #9cf;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-weight: 700;
+      border: 1px solid rgba(153,204,255,0.6);
+      letter-spacing: 0.3px;
+    }
+
+    /* Forehead ROI box */
+    #foreheadBox {
+      position: absolute;
+      border: 2px solid red;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Panels grid */
     .dashboard {
       position: relative;
       z-index: 1;
@@ -41,7 +67,7 @@
       gap: 10px;
       width: 95vw;
       max-width: 1300px;
-      margin: 10px auto 120px auto;
+      margin: 10px auto 110px auto; /* leave room for footer */
       pointer-events: none;
     }
 
@@ -50,7 +76,6 @@
       border-radius: 10px;
       padding: 10px;
       pointer-events: auto;
-      cursor: move;
       backdrop-filter: blur(2px);
     }
 
@@ -76,72 +101,90 @@
       background: linear-gradient(to right, blue, cyan, yellow, red);
     }
 
-    #foreheadBox {
-      position: absolute;
-      border: 2px solid red;
-      pointer-events: none;
-      z-index: 2;
-    }
-
-    .controls {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 3;
-      background: rgba(0,0,0,0.35);
-      padding: 12px;
-      border-radius: 10px;
-      display: inline-block;
-      text-align: left;
-      font-size: var(--fusion-font-size);
-    }
-
-    .controls button, .controls input[type=range] {
-      margin: 6px;
-    }
-
-    .controls .row {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .controls label {
-      margin: 0 8px 0 16px;
-      font-weight: 600;
-    }
-
+    /* Fusion box with MathJax */
     #fusionOutput {
       margin-top: 8px;
       font-size: var(--fusion-font-size);
       line-height: 1.35;
     }
 
-    #cameraStatus {
+    /* Footer controls: icon-only + sliders */
+    .footer {
       position: fixed;
-      top: 10px;
-      right: 10px;
-      z-index: 4;
-      background: rgba(0,0,0,0.5);
-      color: #0f0;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-weight: 700;
-      border: 1px solid rgba(0,255,0,0.5);
-    }
-    #cameraStatus.error {
-      color: #f33;
-      border-color: rgba(255,0,0,0.6);
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 3;
+      background: var(--footer-bg);
+      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(4px);
+      border-top: 1px solid rgba(255,255,255,0.08);
     }
 
+    .footer .icons {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .icon-btn {
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    .icon-btn:hover { background: rgba(255,255,255,0.14); }
+    .icon-btn:active { background: rgba(255,255,255,0.18); }
+
+    .footer .sliders {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .slider-wrap {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+    .slider-wrap .label {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    input[type=range] {
+      width: 100%;
+    }
+
+    .footer .right {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    #countdown {
+      font-size: 14px;
+      color: #9cf;
+      opacity: 0.95;
+    }
+
+    /* Drag visual (reserved if you add draggable later) */
     .dragging { opacity: 0.85; outline: 1px dashed #888; }
-
-    #snapshotBtn { font-weight: 700; border: 1px solid #fff; }
   </style>
 
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- html2canvas for snapshots -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <!-- Polyfill + MathJax -->
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
   <script id="MathJax-script" async
     src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -149,33 +192,33 @@
 <body>
 
 <video id="camera" autoplay muted playsinline></video>
-<div id="cameraStatus">Camera Active</div>
+<div id="statusBadge">Analyzing</div>
 <div id="foreheadBox"></div>
 
 <div class="dashboard" id="dashboard">
-  <div class="panel" draggable="true" id="panel-rppg">
+  <div class="panel" id="panel-rppg">
     <h3>rPPG heart signal alluvial</h3>
     <canvas id="rppgChart"></canvas>
     <div class="colorbar"></div>
   </div>
 
-  <div class="panel" draggable="true" id="panel-eeg">
+  <div class="panel" id="panel-eeg">
     <h3>EEG signal thermal line</h3>
     <canvas id="eegChart"></canvas>
     <div class="colorbar"></div>
   </div>
 
-  <div class="panel" draggable="true" id="panel-rppg-fft">
+  <div class="panel" id="panel-rppg-fft">
     <h3>rPPG spectrum (FFT)</h3>
     <canvas id="rppgFFT"></canvas>
   </div>
 
-  <div class="panel" draggable="true" id="panel-eeg-fft">
+  <div class="panel" id="panel-eeg-fft">
     <h3>EEG spectrum (FFT)</h3>
     <canvas id="eegFFT"></canvas>
   </div>
 
-  <div class="panel" draggable="true" id="panel-fusion">
+  <div class="panel" id="panel-fusion">
     <h3>Fusion metrics</h3>
     <div id="fusionOutput">
       <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
@@ -188,67 +231,81 @@
   </div>
 </div>
 
-<div class="controls">
-  <div class="row">
-    <button onclick="toggleThermal('rppg')">Toggle rPPG Thermal</button>
-    <button onclick="toggleThermal('eeg')">Toggle EEG Thermal</button>
-    <button onclick="toggleAnnotations()">Toggle Annotations</button>
-    <button onclick="toggleSpectra()">Toggle Spectra</button>
-    <button id="snapshotBtn" onclick="captureDashboard()">📸 Capture Frame</button>
+<!-- Footer controls (icon-only) -->
+<div class="footer">
+  <div class="icons">
+    <button class="icon-btn" id="btnThermal" title="Toggle thermal view (rPPG & EEG)">🌡️</button>
+    <button class="icon-btn" id="btnEEG" title="Toggle EEG thermal only">🧠</button>
+    <button class="icon-btn" id="btnAnnotations" title="Toggle annotations">✳️</button>
+    <button class="icon-btn" id="btnSpectra" title="Toggle spectra overlays">📈</button>
+    <button class="icon-btn" id="btnSnapshot" title="Capture snapshot now">📸</button>
   </div>
-  <div class="row">
-    <label>Smoothing</label>
-    <input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.4">
-    <label>FFT Window</label>
-    <input type="range" id="fftWindow" min="128" max="1024" step="128" value="512">
-    <label>Amplitude Scale</label>
-    <input type="range" id="ampScale" min="1" max="5" step="0.5" value="1">
+
+  <div class="sliders">
+    <div class="slider-wrap" title="Smoothing">
+      <div class="label">🎚️</div>
+      <input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.4">
+    </div>
+    <div class="slider-wrap" title="FFT window size">
+      <div class="label">🪄</div>
+      <input type="range" id="fftWindow" min="128" max="1024" step="128" value="512">
+    </div>
+    <div class="slider-wrap" title="Amplitude scale">
+      <div class="label">🔊</div>
+      <input type="range" id="ampScale" min="1" max="5" step="0.5" value="1">
+    </div>
+  </div>
+
+  <div class="right">
+    <div id="countdown" title="Auto-save snapshot countdown">Next auto-save: 60s</div>
   </div>
 </div>
 
 <script>
-/* Camera init with status */
+/* -------------------------------
+   Camera initialization
+-------------------------------- */
 const video = document.getElementById('camera');
-const cameraStatus = document.getElementById('cameraStatus');
+const statusBadge = document.getElementById('statusBadge');
 
 async function initCamera() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
     video.srcObject = stream;
-    cameraStatus.textContent = "Camera Active";
-    cameraStatus.classList.remove('error');
+    statusBadge.textContent = "Analyzing";
   } catch (err) {
-    cameraStatus.textContent = "Camera Error";
-    cameraStatus.classList.add('error');
+    statusBadge.textContent = "Analyzing (Camera error)";
     console.error("Camera initialization failed:", err);
-    alert("Camera access failed. Please allow permissions and reload (HTTPS required).");
+    alert("Camera access failed. Please allow camera permissions (HTTPS required) and reload.");
   }
 }
 initCamera();
 
-/* Buffers and flags */
+/* -------------------------------
+   State
+-------------------------------- */
 let rData = [];
 let eegData = [];
 let showAnnotations = true;
 let showSpectra = true;
+let thermalBoth = true; // global thermal toggle
 
-/* Ironbow colormap */
+/* -------------------------------
+   Ironbow colormap
+-------------------------------- */
 function ironbowColor(value, min, max) {
   const ratio = Math.max(0, Math.min(1, (value - min) / (max - min)));
   let r=0,g=0,b=0;
-  if (ratio < 0.25) {
-    const t = ratio / 0.25; r = 0; g = Math.round(128 + 127*t); b = 255;
-  } else if (ratio < 0.5) {
-    const t = (ratio-0.25)/0.25; r = Math.round(0 + 128*t); g = 255; b = Math.round(255 - 255*t);
-  } else if (ratio < 0.75) {
-    const t = (ratio-0.5)/0.25; r = Math.round(128 + 127*t); g = Math.round(255 - 64*t); b = 0;
-  } else {
-    const t = (ratio-0.75)/0.25; r = 255; g = Math.round(191 - 191*t); b = 0;
-  }
+  if (ratio < 0.25) { const t = ratio / 0.25; r = 0; g = Math.round(128 + 127*t); b = 255; }
+  else if (ratio < 0.5) { const t = (ratio-0.25)/0.25; r = Math.round(0 + 128*t); g = 255; b = Math.round(255 - 255*t); }
+  else if (ratio < 0.75) { const t = (ratio-0.5)/0.25; r = Math.round(128 + 127*t); g = Math.round(255 - 64*t); b = 0; }
+  else { const t = (ratio-0.75)/0.25; r = 255; g = Math.round(191 - 191*t); b = 0; }
   return `rgb(${r},${g},${b})`;
 }
 
-/* Charts */
+/* -------------------------------
+   Charts
+-------------------------------- */
 const rppgCtx = document.getElementById('rppgChart').getContext('2d');
 const rppgChart = new Chart(rppgCtx, {
   type: 'line',
@@ -306,42 +363,93 @@ const eegFFTChart = new Chart(eegFFTCtx, {
     plugins: { legend: { display: false } } }
 });
 
-/* Thermal toggles */
-function toggleThermal(signal) {
-  if (signal === 'rppg') {
-    const ds = rppgChart.data.datasets[0];
-    const isThermal = typeof ds.segment.borderColor === 'function';
-    ds.segment = isThermal
-      ? { borderColor: "red", backgroundColor: "rgba(255,0,0,0.25)" }
-      : { borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20),
-          backgroundColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20) };
-    rppgChart.update();
+/* -------------------------------
+   Global thermal toggle + EEG-only toggle
+-------------------------------- */
+function applyThermalModes() {
+  // rPPG
+  const rds = rppgChart.data.datasets[0];
+  if (thermalBoth) {
+    rds.segment = {
+      borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20),
+      backgroundColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20)
+    };
+  } else {
+    rds.segment = { borderColor: "red", backgroundColor: "rgba(255,0,0,0.25)" };
   }
-  if (signal === 'eeg') {
-    const ds = eegChart.data.datasets[0];
-    const isThermal = typeof ds.segment.borderColor === 'function';
-    ds.segment = isThermal ? { borderColor: "cyan" }
-      : { borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -100, 100) };
-    eegChart.update();
-  }
+  rppgChart.update();
+
+  // EEG (respect its own toggle state stored on ds._thermal)
+  const eds = eegChart.data.datasets[0];
+  const eegThermal = eds._thermal !== false; // default true unless flipped
+  eds.segment = (eegThermal)
+    ? { borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -100, 100) }
+    : { borderColor: "cyan" };
+  eegChart.update();
 }
 
-/* Annotation + spectra toggles */
-function toggleAnnotations() {
+document.getElementById('btnThermal').addEventListener('click', () => {
+  thermalBoth = !thermalBoth;
+  applyThermalModes();
+});
+
+document.getElementById('btnEEG').addEventListener('click', () => {
+  const eds = eegChart.data.datasets[0];
+  eds._thermal = !(eds._thermal === false);
+  applyThermalModes();
+});
+
+/* -------------------------------
+   Annotations + spectra toggles
+-------------------------------- */
+document.getElementById('btnAnnotations').addEventListener('click', () => {
   showAnnotations = !showAnnotations;
-  // Clear annotations immediately
-  rppgChart.data.datasets[1] = showAnnotations ? rppgChart.data.datasets[1] : undefined;
-  eegChart.data.datasets[1] = showAnnotations ? eegChart.data.datasets[1] : undefined;
-  rppgChart.update(); eegChart.update();
-}
+  // Clear immediately if disabled
+  if (!showAnnotations) {
+    rppgChart.data.datasets[1] = undefined;
+    eegChart.data.datasets[1] = undefined;
+    rppgChart.update(); eegChart.update();
+  }
+});
 
-function toggleSpectra() {
+document.getElementById('btnSpectra').addEventListener('click', () => {
   showSpectra = !showSpectra;
   document.getElementById('panel-rppg-fft').style.display = showSpectra ? '' : 'none';
   document.getElementById('panel-eeg-fft').style.display = showSpectra ? '' : 'none';
-}
+});
 
-/* rPPG frame reader and peaks */
+/* -------------------------------
+   Snapshot: manual and auto-save
+-------------------------------- */
+async function captureDashboard() {
+  try {
+    const canvas = await html2canvas(document.body, { useCORS: true, logging: false, scale: 1 });
+    const link = document.createElement('a');
+    link.download = `dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (e) {
+    console.error("Snapshot failed:", e);
+  }
+}
+document.getElementById('btnSnapshot').addEventListener('click', captureDashboard);
+
+/* Auto-save every 60s with countdown */
+let countdown = 60;
+const countdownEl = document.getElementById('countdown');
+
+setInterval(() => {
+  countdown -= 1;
+  if (countdown <= 0) {
+    captureDashboard();
+    countdown = 60;
+  }
+  countdownEl.textContent = `Next auto-save: ${countdown}s`;
+}, 1000);
+
+/* -------------------------------
+   rPPG frame reader and peaks
+-------------------------------- */
 setInterval(() => {
   if (!video.videoWidth) return;
 
@@ -396,7 +504,9 @@ setInterval(() => {
   rppgChart.update();
 }, 50);
 
-/* EEG mock + amplitude band annotation */
+/* -------------------------------
+   EEG mock + amplitude band annotation
+-------------------------------- */
 setInterval(() => {
   const ampScale = parseFloat(document.getElementById('ampScale').value);
   const newVal = Math.sin(Date.now() / 120) * 50 * ampScale;
@@ -420,7 +530,9 @@ setInterval(() => {
   eegChart.update();
 }, 50);
 
-/* Windowed DFT (demo) */
+/* -------------------------------
+   Windowed DFT (demo) + Fusion
+-------------------------------- */
 function applyHannWindow(arr) {
   const N = arr.length;
   return arr.map((x, n) => x * (0.5 - 0.5 * Math.cos((2*Math.PI*n)/(N-1))));
@@ -442,7 +554,6 @@ function fftMagnitude(signal, bins) {
   return mags;
 }
 
-/* Fusion + FFT overlays update */
 setInterval(() => {
   if (rData.length < 128 || eegData.length < 128) return;
 
@@ -460,6 +571,7 @@ setInterval(() => {
     eegFFTChart.update();
   }
 
+  // Fusion metrics (demo frequency index units)
   const fusedFFT = rFFT.map((val, i) => val + (eFFT[i] || 0));
   const freqFusion = fusedFFT.indexOf(Math.max(...fusedFFT));
   document.getElementById("freqFusion").textContent = "1. Frequency-Domain Fusion: " + freqFusion + " Hz";
@@ -479,7 +591,9 @@ setInterval(() => {
   document.getElementById("coherenceFusion").textContent = "3. Cross-Spectral Coherence: " + coherence.toFixed(3);
 }, 400);
 
-/* Smoothing control */
+/* -------------------------------
+   Smoothing control
+-------------------------------- */
 document.getElementById('smoothing').addEventListener('input', (e) => {
   const t = parseFloat(e.target.value);
   rppgChart.options.elements.line.tension = t;
@@ -489,54 +603,8 @@ document.getElementById('smoothing').addEventListener('input', (e) => {
   rppgChart.update(); eegChart.update();
 });
 
-/* Drag-and-drop panels */
-const panels = document.querySelectorAll('.panel');
-panels.forEach(panel => {
-  panel.addEventListener('dragstart', (e) => {
-    panel.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', panel.id);
-  });
-  panel.addEventListener('dragend', () => panel.classList.remove('dragging'));
-});
-const dashboard = document.getElementById('dashboard');
-dashboard.addEventListener('dragover', (e) => {
-  e.preventDefault();
-  const afterElement = getDragAfterElement(dashboard, e.clientY);
-  const id = e.dataTransfer.getData('text/plain');
-  const draggable = document.getElementById(id);
-  if (afterElement == null) {
-    dashboard.appendChild(draggable);
-  } else {
-    dashboard.insertBefore(draggable, afterElement);
-  }
-});
-function getDragAfterElement(container, y) {
-  const draggableElements = [...container.querySelectorAll('.panel:not(.dragging)')];
-  return draggableElements.reduce((closest, child) => {
-    const box = child.getBoundingClientRect();
-    const offset = y - box.top - box.height / 2;
-    if (offset < 0 && offset > closest.offset) {
-      return { offset: offset, element: child };
-    } else {
-      return closest;
-    }
-  }, { offset: Number.NEGATIVE_INFINITY }).element;
-}
-
-/* Snapshot: capture full dashboard */
-async function captureDashboard() {
-  try {
-    const canvas = await html2canvas(document.body, { useCORS: true, logging: false, scale: 1 });
-    const link = document.createElement('a');
-    link.download = `dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  } catch (e) {
-    console.error("Snapshot failed:", e);
-    alert("Snapshot failed. Try again.");
-  }
-}
+/* Initialize thermal modes at start */
+applyThermalModes();
 </script>
 </body>
 </html>
