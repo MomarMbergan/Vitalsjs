@@ -53,7 +53,7 @@
       text-align: left;
     }
 
-    #colorbar {
+    #colorbarEEG, #colorbarRPPG {
       width: 90%;
       height: 20px;
       margin: 10px auto;
@@ -71,8 +71,10 @@
 <div id="foreheadBox"></div>
 
 <canvas id="rppgChart"></canvas>
+<div id="colorbarRPPG"></div>
+
 <canvas id="eegChart"></canvas>
-<div id="colorbar"></div>
+<div id="colorbarEEG"></div>
 
 <div id="fusionOutput">
   <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
@@ -85,31 +87,11 @@
    CAMERA FULL SCREEN + rPPG
 -------------------------------- */
 const video = document.getElementById('camera');
-
 navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }})
 .then(stream => video.srcObject = stream);
 
 let rData = [];
 let eegData = [];
-
-const rppgCtx = document.getElementById('rppgChart').getContext('2d');
-const rppgChart = new Chart(rppgCtx, {
-  type: 'line',
-  data: {
-    labels: Array(300).fill(""),
-    datasets: [{
-      label: "rPPG Heart Signal",
-      data: Array(300).fill(0),
-      borderColor: "red",
-      borderWidth: 2,
-      pointRadius: 0
-    }]
-  },
-  options: {
-    animation: false,
-    scales: { y: { min: -20, max: 20 } }
-  }
-});
 
 /* -------------------------------
    Iron Bow Colormap
@@ -122,6 +104,43 @@ function ironbowColor(value, min, max) {
   return `rgb(${r},${g},${b})`;
 }
 
+/* -------------------------------
+   rPPG Heart Signal (Alluvial)
+-------------------------------- */
+const rppgCtx = document.getElementById('rppgChart').getContext('2d');
+const rppgChart = new Chart(rppgCtx, {
+  type: 'line',
+  data: {
+    labels: Array(300).fill(""),
+    datasets: [{
+      label: "rPPG Heart Signal",
+      data: Array(300).fill(0),
+      borderWidth: 2,
+      pointRadius: 0,
+      fill: true,
+      segment: {
+        borderColor: ctx => {
+          const val = ctx.p0.parsed.y;
+          return ironbowColor(val, -20, 20);
+        },
+        backgroundColor: ctx => {
+          const val = ctx.p0.parsed.y;
+          return ironbowColor(val, -20, 20);
+        }
+      }
+    }]
+  },
+  options: {
+    animation: false,
+    elements: { line: { tension: 0.4 } }, // smooth flow
+    scales: { y: { min: -20, max: 20 } },
+    plugins: { legend: { display: false } }
+  }
+});
+
+/* -------------------------------
+   EEG Signal (Thermal Line)
+-------------------------------- */
 const eegCtx = document.getElementById('eegChart').getContext('2d');
 const eegChart = new Chart(eegCtx, {
   type: 'line',
@@ -147,7 +166,9 @@ const eegChart = new Chart(eegCtx, {
   }
 });
 
-// rPPG frame reader
+/* -------------------------------
+   rPPG frame reader
+-------------------------------- */
 setInterval(() => {
   if (!video.videoWidth) return;
 
@@ -190,7 +211,9 @@ setInterval(() => {
   rppgChart.update();
 }, 50);
 
-// EEG mock signal update
+/* -------------------------------
+   EEG mock signal update
+-------------------------------- */
 setInterval(() => {
   const newVal = Math.sin(Date.now() / 120) * 50;
   eegData.push(newVal);
@@ -229,19 +252,4 @@ setInterval(() => {
   const rPeak = rFFT.indexOf(Math.max(...rFFT));
   const ePeak = eFFT.indexOf(Math.max(...eFFT));
   const peakFusion = 0.5 * rPeak + 0.5 * ePeak;
-  document.getElementById("peakFusion").textContent = "2. Peak-Based Fusion: " + peakFusion.toFixed(2) + " Hz";
-
-  let cross = 0, rPow = 0, ePow = 0;
-  for (let i = 0; i < rFFT.length; i++) {
-    cross += rFFT[i] * (eFFT[i] || 0);
-    rPow += rFFT[i] * rFFT[i];
-    ePow += (eFFT[i] || 0) * (eFFT[i] || 0);
-  }
-  const coherence = (cross*cross) / (rPow * ePow + 1e-9);
-  document.getElementById("coherenceFusion").textContent = "3. Cross-Spectral Coherence: " + coherence.toFixed(3);
-}, 1000);
-
-</script>
-
-</body>
-</html>
+  document.getElementById("peakFusion").textContent = "2. Peak-Based
