@@ -25,6 +25,18 @@
   canvas.chart{width:100%;height:100%}
   .row2 .panel{background:rgba(255,255,255,0.01);border:1px solid rgba(255,255,255,0.02)}
   .stopped *{color:#ff0000 !important}
+
+  /* fallback fullscreen overlay to request user gesture if needed */
+  #gestureOverlay{
+    display:none;
+    position:fixed; inset:0; z-index:9999;
+    background:linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0.6));
+    color:#fff; align-items:center; justify-content:center; text-align:center;
+    font-family:inherit; font-size:18px;
+    cursor:pointer;
+  }
+  #gestureOverlay .msg { max-width:720px; padding:24px; border-radius:12px; backdrop-filter: blur(6px); }
+  #gestureOverlay .hint { font-size:13px; color:#ddd; margin-top:8px; }
 </style>
 </head>
 <body>
@@ -35,9 +47,6 @@
   <div id="topbar">
     <button id="gammaBtn">Γ Gamma</button>
     <input id="timerInput" value="00:30:00" style="width:120px;padding:6px;border-radius:6px;background:#111;color:#fff;border:0" />
-    <button id="setBtn">Set</button>
-    <button id="startBtn">Start</button>
-    <button id="stopBtn">Stop</button>
     <div id="timer" style="margin-left:12px">00:30:00</div>
   </div>
 
@@ -65,6 +74,14 @@
     <div class="panel"><div class="title">Lux (lx)</div><canvas id="chart_lux" class="chart"></canvas></div>
     <div class="panel"><div class="title">Foot-candle</div><canvas id="chart_fc" class="chart"></canvas></div>
     <div class="panel"><div class="title">Candela / Nits / CRI</div><canvas id="chart_light_misc" class="chart"></canvas></div>
+  </div>
+
+  <!-- Gesture overlay shown only when automatic activation fails (click anywhere to allow) -->
+  <div id="gestureOverlay" role="button" aria-label="Click to allow camera and microphone">
+    <div class="msg">
+      <div style="font-size:22px;font-weight:700">Click anywhere to enable camera & microphone</div>
+      <div class="hint">Your browser requires a user interaction to allow camera/mic. Click to continue.</div>
+    </div>
   </div>
 
 <script>
@@ -95,6 +112,7 @@ const hrEl = document.getElementById('hr');
 const spo2El = document.getElementById('spo2');
 const soundEl = document.getElementById('sound');
 const hashEl = document.getElementById('hash');
+const gestureOverlay = document.getElementById('gestureOverlay');
 
 function resize() {
   overlayCanvas.width = window.innerWidth;
@@ -106,12 +124,10 @@ resize();
 /* Charts */
 const charts = {};
 function colorToRGBA(color, alpha=0.06){
-  // handle 'rgb(r,g,b)' or hex '#rrggbb'
   if (!color) return `rgba(255,255,255,${alpha})`;
   if (color.startsWith('rgb')) {
     return color.replace('rgb(', 'rgba(').replace(')', `,${alpha})`);
   }
-  // hex -> rgba
   const hex = color.replace('#','');
   if (hex.length === 3) {
     const r = parseInt(hex[0]+hex[0],16);
@@ -127,7 +143,6 @@ function colorToRGBA(color, alpha=0.06){
 
 function createLine(id, color){
   const canvas = document.getElementById(id);
-  // set a reasonable internal resolution
   canvas.width = 1280; canvas.height = 360;
   const ctx = canvas.getContext('2d');
   return new Chart(ctx, {
@@ -188,7 +203,7 @@ function pushChartValue(chart, v){
 ------------------------*/
 let audioCtx=null, analyser=null, audioData=null;
 
-/* Start devices now triggered by a user gesture (Start button) */
+/* Start devices (camera + mic) */
 async function startDevices(){
   try{
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -206,11 +221,26 @@ async function startDevices(){
     audioData = new Float32Array(analyser.fftSize);
     audioLoop();
     frameLoop();
+
+    // hide gesture overlay if visible
+    gestureOverlay.style.display = 'none';
+
+    // start countdown when devices are running
+    startCountdown();
+    return true;
   } catch(e){
-    console.error('getUserMedia error', e);
-    alert('Camera & mic access required. Please allow permission and try again.');
+    console.warn('getUserMedia error', e);
+    // show the overlay asking for a user gesture if automatic start fails
+    gestureOverlay.style.display = 'flex';
+    return false;
   }
 }
+
+gestureOverlay.addEventListener('click', async ()=>{
+  gestureOverlay.style.pointerEvents = 'none';
+  await startDevices();
+  gestureOverlay.style.pointerEvents = 'auto';
+});
 
 function audioLoop(){
   if (!analyser) return;
@@ -293,11 +323,9 @@ const EEG_BANDS = {
 };
 
 function computeBands(signal){
-  // ensure length is power of two for FFT.js
   const N = signal.length;
   const fft = new FFT(N);
   const out = fft.createComplexArray();
-  // FFT.js expects a Float32Array for realTransform; convert if needed
   const signalArr = (signal instanceof Float32Array) ? signal : Float32Array.from(signal);
   fft.realTransform(out, signalArr);
   fft.completeSpectrum(out);
@@ -352,6 +380,7 @@ function updateStatus(){
 
 /* -----------------------
   Countdown UI / controls
+  (set/start/stop buttons removed; countdown auto-starts once devices are active)
 ------------------------*/
 let countdownMs = parseHHMMSS(document.getElementById('timerInput').value) || 30*60*1000;
 let countdownTimer = null;
@@ -362,17 +391,12 @@ function parseHHMMSS(s){
 }
 function formatHHMMSS(ms){ const s=Math.max(0,Math.floor(ms/1000)); const hh=String(Math.floor(s/3600)).padStart(2,'0'); const mm=String(Math.floor((s%3600)/60)).padStart(2,'0'); const ss=String(s%60).padStart(2,'0'); return `${hh}:${mm}:${ss}`; }
 document.getElementById('timerInput').addEventListener('change', ()=>{ const val=parseHHMMSS(document.getElementById('timerInput').value); if (val!==null) countdownMs = val; document.getElementById('timer').textContent = formatHHMMSS(countdownMs); });
-document.getElementById('setBtn').onclick = ()=>{ const v = parseHHMMSS(document.getElementById('timerInput').value); if (v!==null) { countdownMs = v; document.getElementById('timer').textContent = formatHHMMSS(countdownMs); } };
 
-/* Start button now triggers device start (user gesture required) and countdown */
-document.getElementById('startBtn').onclick = async ()=>{
-  // start camera + mic (user gesture)
-  await startDevices();
+function startCountdown(){
   if (countdownTimer) clearInterval(countdownTimer);
   countdownTimer = setInterval(async ()=>{
     if (countdownMs <= 0){
       clearInterval(countdownTimer);
-      // trigger downloads (keeps original behavior)
       await downloadChartsSnapshotCSVPCAP();
       document.body.classList.add('stopped'); stopped=true;
       return;
@@ -380,9 +404,7 @@ document.getElementById('startBtn').onclick = async ()=>{
     countdownMs -= 1000;
     document.getElementById('timer').textContent = formatHHMMSS(countdownMs);
   },1000);
-};
-
-document.getElementById('stopBtn').onclick = ()=>{ if (countdownTimer) clearInterval(countdownTimer); };
+}
 
 /* Gamma button opens gamma_dashboard.html in new tab */
 document.getElementById('gammaBtn').onclick = ()=>{ window.open('gamma_dashboard.html','_blank'); };
@@ -392,7 +414,6 @@ document.getElementById('gammaBtn').onclick = ()=>{ window.open('gamma_dashboard
 ------------------------*/
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-/* Download snapshot/CSV/pcap sequence (unchanged except for minor safety) */
 function downloadChartsSnapshotCSVPCAP(){
   const canvasIds = [
     'chart_eeg_1','chart_hr_1','chart_sound_1','chart_spo2_1',
@@ -453,6 +474,18 @@ function makePCAP(rows){
 
 /* set initial timer display */
 document.getElementById('timer').textContent = (function(){ return formatHHMMSS(countdownMs); })();
+
+/* -----------------------
+  Auto-start on load (attempt) — if blocked, user can click overlay
+------------------------*/
+window.addEventListener('load', async ()=>{
+  // try to start devices automatically
+  const ok = await startDevices();
+  if (!ok) {
+    // overlay will prompt the user to click once
+    gestureOverlay.style.display = 'flex';
+  }
+});
 </script>
 </body>
 </html>
