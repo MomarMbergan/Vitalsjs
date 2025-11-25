@@ -9,7 +9,6 @@
       --bg: #000;
       --fg: #fff;
       --panel-bg: rgba(0,0,0,0.05);
-      --accent: #0ff;
       --font-size: 18px;
       --fusion-font-size: 20px;
     }
@@ -24,7 +23,6 @@
       font-size: var(--font-size);
     }
 
-    /* Fullscreen camera behind everything */
     #camera {
       position: fixed;
       inset: 0;
@@ -35,7 +33,6 @@
       background: #111;
     }
 
-    /* Draggable panels container */
     .dashboard {
       position: relative;
       z-index: 1;
@@ -45,7 +42,7 @@
       width: 95vw;
       max-width: 1300px;
       margin: 10px auto 120px auto;
-      pointer-events: none; /* panels themselves re-enable */
+      pointer-events: none;
     }
 
     .panel {
@@ -53,7 +50,7 @@
       border-radius: 10px;
       padding: 10px;
       pointer-events: auto;
-      cursor: move; /* draggable */
+      cursor: move;
       backdrop-filter: blur(2px);
     }
 
@@ -79,7 +76,6 @@
       background: linear-gradient(to right, blue, cyan, yellow, red);
     }
 
-    /* Forehead ROI box */
     #foreheadBox {
       position: absolute;
       border: 2px solid red;
@@ -87,7 +83,6 @@
       z-index: 2;
     }
 
-    /* Controls */
     .controls {
       position: fixed;
       bottom: 20px;
@@ -117,14 +112,12 @@
       font-weight: 600;
     }
 
-    /* Fusion box with MathJax */
     #fusionOutput {
       margin-top: 8px;
       font-size: var(--fusion-font-size);
       line-height: 1.35;
     }
 
-    /* Status badge */
     #cameraStatus {
       position: fixed;
       top: 10px;
@@ -142,24 +135,13 @@
       border-color: rgba(255,0,0,0.6);
     }
 
-    /* Drag ghost style */
-    .dragging {
-      opacity: 0.85;
-      outline: 1px dashed #888;
-    }
+    .dragging { opacity: 0.85; outline: 1px dashed #888; }
 
-    /* Snapshot button */
-    #snapshotBtn {
-      font-weight: 700;
-      border: 1px solid #fff;
-    }
+    #snapshotBtn { font-weight: 700; border: 1px solid #fff; }
   </style>
 
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- html2canvas for snapshots -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <!-- Polyfill + MathJax -->
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
   <script id="MathJax-script" async
     src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -206,11 +188,12 @@
   </div>
 </div>
 
-<!-- Controls -->
 <div class="controls">
   <div class="row">
     <button onclick="toggleThermal('rppg')">Toggle rPPG Thermal</button>
     <button onclick="toggleThermal('eeg')">Toggle EEG Thermal</button>
+    <button onclick="toggleAnnotations()">Toggle Annotations</button>
+    <button onclick="toggleSpectra()">Toggle Spectra</button>
     <button id="snapshotBtn" onclick="captureDashboard()">📸 Capture Frame</button>
   </div>
   <div class="row">
@@ -224,9 +207,7 @@
 </div>
 
 <script>
-/* -------------------------------
-   Camera initialization with status
--------------------------------- */
+/* Camera init with status */
 const video = document.getElementById('camera');
 const cameraStatus = document.getElementById('cameraStatus');
 
@@ -240,54 +221,34 @@ async function initCamera() {
     cameraStatus.textContent = "Camera Error";
     cameraStatus.classList.add('error');
     console.error("Camera initialization failed:", err);
-    alert("Camera access failed. Please allow camera permissions and reload.");
+    alert("Camera access failed. Please allow permissions and reload (HTTPS required).");
   }
 }
 initCamera();
 
-/* -------------------------------
-   Data buffers
--------------------------------- */
+/* Buffers and flags */
 let rData = [];
 let eegData = [];
-let rFFTData = [];
-let eFFTData = [];
+let showAnnotations = true;
+let showSpectra = true;
 
-/* -------------------------------
-   Iron Bow colormap
--------------------------------- */
+/* Ironbow colormap */
 function ironbowColor(value, min, max) {
   const ratio = Math.max(0, Math.min(1, (value - min) / (max - min)));
-  // Approximate ironbow: deep blue → cyan → yellow → red
-  // We'll blend in segments for smoother mapping
   let r=0,g=0,b=0;
-  if (ratio < 0.25) { // blue to cyan
-    const t = ratio / 0.25;
-    r = 0;
-    g = Math.round(128 + 127*t);
-    b = 255;
-  } else if (ratio < 0.5) { // cyan to greenish-yellow
-    const t = (ratio-0.25)/0.25;
-    r = Math.round(0 + 128*t);
-    g = 255;
-    b = Math.round(255 - 255*t);
-  } else if (ratio < 0.75) { // yellow
-    const t = (ratio-0.5)/0.25;
-    r = Math.round(128 + 127*t);
-    g = Math.round(255 - 64*t);
-    b = 0;
-  } else { // to red-hot
-    const t = (ratio-0.75)/0.25;
-    r = Math.round(255);
-    g = Math.round(191 - 191*t);
-    b = 0;
+  if (ratio < 0.25) {
+    const t = ratio / 0.25; r = 0; g = Math.round(128 + 127*t); b = 255;
+  } else if (ratio < 0.5) {
+    const t = (ratio-0.25)/0.25; r = Math.round(0 + 128*t); g = 255; b = Math.round(255 - 255*t);
+  } else if (ratio < 0.75) {
+    const t = (ratio-0.5)/0.25; r = Math.round(128 + 127*t); g = Math.round(255 - 64*t); b = 0;
+  } else {
+    const t = (ratio-0.75)/0.25; r = 255; g = Math.round(191 - 191*t); b = 0;
   }
   return `rgb(${r},${g},${b})`;
 }
 
-/* -------------------------------
-   Charts
--------------------------------- */
+/* Charts */
 const rppgCtx = document.getElementById('rppgChart').getContext('2d');
 const rppgChart = new Chart(rppgCtx, {
   type: 'line',
@@ -314,9 +275,7 @@ const eegChart = new Chart(eegCtx, {
     data: Array(300).fill(0),
     borderWidth: 2,
     pointRadius: 0,
-    segment: {
-      borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -100, 100)
-    }
+    segment: { borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -100, 100) }
   }]},
   options: { animation: false, scales: { y: { min: -100, max: 100 } },
     plugins: { legend: { display: false } } }
@@ -347,34 +306,42 @@ const eegFFTChart = new Chart(eegFFTCtx, {
     plugins: { legend: { display: false } } }
 });
 
-/* -------------------------------
-   Thermal toggles
--------------------------------- */
+/* Thermal toggles */
 function toggleThermal(signal) {
   if (signal === 'rppg') {
     const ds = rppgChart.data.datasets[0];
     const isThermal = typeof ds.segment.borderColor === 'function';
     ds.segment = isThermal
       ? { borderColor: "red", backgroundColor: "rgba(255,0,0,0.25)" }
-      : {
-          borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20),
-          backgroundColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20)
-        };
+      : { borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20),
+          backgroundColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20) };
     rppgChart.update();
   }
   if (signal === 'eeg') {
     const ds = eegChart.data.datasets[0];
     const isThermal = typeof ds.segment.borderColor === 'function';
-    ds.segment = isThermal
-      ? { borderColor: "cyan" }
+    ds.segment = isThermal ? { borderColor: "cyan" }
       : { borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -100, 100) };
     eegChart.update();
   }
 }
 
-/* -------------------------------
-   rPPG frame reader (ROI)
--------------------------------- */
+/* Annotation + spectra toggles */
+function toggleAnnotations() {
+  showAnnotations = !showAnnotations;
+  // Clear annotations immediately
+  rppgChart.data.datasets[1] = showAnnotations ? rppgChart.data.datasets[1] : undefined;
+  eegChart.data.datasets[1] = showAnnotations ? eegChart.data.datasets[1] : undefined;
+  rppgChart.update(); eegChart.update();
+}
+
+function toggleSpectra() {
+  showSpectra = !showSpectra;
+  document.getElementById('panel-rppg-fft').style.display = showSpectra ? '' : 'none';
+  document.getElementById('panel-eeg-fft').style.display = showSpectra ? '' : 'none';
+}
+
+/* rPPG frame reader and peaks */
 setInterval(() => {
   if (!video.videoWidth) return;
 
@@ -393,76 +360,71 @@ setInterval(() => {
   box.style.height = (foreheadH * scaleY) + "px";
 
   const temp = document.createElement("canvas");
-  temp.width = foreheadW;
-  temp.height = foreheadH;
+  temp.width = foreheadW; temp.height = foreheadH;
   const tctx = temp.getContext("2d");
   tctx.drawImage(video, foreheadX, foreheadY, foreheadW, foreheadH, 0, 0, foreheadW, foreheadH);
 
   const frame = tctx.getImageData(0, 0, foreheadW, foreheadH);
   let sum = 0, count = 0;
-  for (let i = 0; i < frame.data.length; i += 4) {
-    sum += frame.data[i]; // Red channel
-    count++;
-  }
+  for (let i = 0; i < frame.data.length; i += 4) { sum += frame.data[i]; count++; }
 
   const ampScale = parseFloat(document.getElementById('ampScale').value);
   const val = ((sum / count) - 128) * ampScale;
-  rData.push(val);
-  if (rData.length > 300) rData.shift();
-
-  // Peak annotations: mark local maxima
-  const peaks = [];
-  for (let i = 1; i < rData.length - 1; i++) {
-    if (rData[i] > rData[i-1] && rData[i] > rData[i+1] && rData[i] > 2) {
-      peaks.push({ x: i, y: rData[i] });
-    }
-  }
+  rData.push(val); if (rData.length > 300) rData.shift();
 
   rppgChart.data.datasets[0].data = rData;
-  // Add peak marker dataset (overlay)
-  rppgChart.data.datasets[1] = {
-    type: 'scatter',
-    label: 'Peaks',
-    data: peaks.map(p => ({ x: p.x, y: p.y })),
-    pointRadius: 3,
-    pointBackgroundColor: '#ffea00',
-    showLine: false
-  };
+
+  if (showAnnotations) {
+    const peaks = [];
+    for (let i = 1; i < rData.length - 1; i++) {
+      if (rData[i] > rData[i-1] && rData[i] > rData[i+1] && rData[i] > 2) {
+        peaks.push({ x: i, y: rData[i] });
+      }
+    }
+    rppgChart.data.datasets[1] = {
+      type: 'scatter',
+      label: 'Peaks',
+      data: peaks.map(p => ({ x: p.x, y: p.y })),
+      pointRadius: 3,
+      pointBackgroundColor: '#ffea00',
+      showLine: false
+    };
+  } else {
+    rppgChart.data.datasets[1] = undefined;
+  }
+
   rppgChart.update();
 }, 50);
 
-/* -------------------------------
-   EEG mock signal + annotations
--------------------------------- */
+/* EEG mock + amplitude band annotation */
 setInterval(() => {
   const ampScale = parseFloat(document.getElementById('ampScale').value);
   const newVal = Math.sin(Date.now() / 120) * 50 * ampScale;
-  eegData.push(newVal);
-  if (eegData.length > 300) eegData.shift();
+  eegData.push(newVal); if (eegData.length > 300) eegData.shift();
 
   eegChart.data.datasets[0].data = eegData;
 
-  // Amplitude band highlights (optional second dataset)
-  const band = eegData.map(v => (Math.abs(v) > 35 ? v : null));
-  eegChart.data.datasets[1] = {
-    type: 'line',
-    data: band,
-    borderColor: 'rgba(255,255,0,0.5)',
-    borderWidth: 2,
-    pointRadius: 0
-  };
+  if (showAnnotations) {
+    const band = eegData.map(v => (Math.abs(v) > 35 ? v : null));
+    eegChart.data.datasets[1] = {
+      type: 'line',
+      data: band,
+      borderColor: 'rgba(255,255,0,0.5)',
+      borderWidth: 2,
+      pointRadius: 0
+    };
+  } else {
+    eegChart.data.datasets[1] = undefined;
+  }
 
   eegChart.update();
 }, 50);
 
-/* -------------------------------
-   Naive DFT (demo) with windowing
--------------------------------- */
+/* Windowed DFT (demo) */
 function applyHannWindow(arr) {
   const N = arr.length;
   return arr.map((x, n) => x * (0.5 - 0.5 * Math.cos((2*Math.PI*n)/(N-1))));
 }
-
 function fftMagnitude(signal, bins) {
   const N = signal.length;
   const windowed = applyHannWindow(signal);
@@ -480,9 +442,7 @@ function fftMagnitude(signal, bins) {
   return mags;
 }
 
-/* -------------------------------
-   Fusion + FFT overlays update
--------------------------------- */
+/* Fusion + FFT overlays update */
 setInterval(() => {
   if (rData.length < 128 || eegData.length < 128) return;
 
@@ -490,19 +450,16 @@ setInterval(() => {
   const rFFT = fftMagnitude(rData.slice(-bins), bins);
   const eFFT = fftMagnitude(eegData.slice(-bins), bins);
 
-  rFFTData = rFFT;
-  eFFTData = eFFT;
+  if (showSpectra) {
+    rppgFFTChart.data.labels = rFFT.map((_, i) => i);
+    rppgFFTChart.data.datasets[0].data = rFFT.map(x => x);
+    rppgFFTChart.update();
 
-  // Update FFT charts
-  rppgFFTChart.data.labels = rFFT.map((_, i) => i);
-  rppgFFTChart.data.datasets[0].data = rFFT.map(x => x);
-  rppgFFTChart.update();
+    eegFFTChart.data.labels = eFFT.map((_, i) => i);
+    eegFFTChart.data.datasets[0].data = eFFT.map(x => x);
+    eegFFTChart.update();
+  }
 
-  eegFFTChart.data.labels = eFFT.map((_, i) => i);
-  eegFFTChart.data.datasets[0].data = eFFT.map(x => x);
-  eegFFTChart.update();
-
-  // Fusion metrics
   const fusedFFT = rFFT.map((val, i) => val + (eFFT[i] || 0));
   const freqFusion = fusedFFT.indexOf(Math.max(...fusedFFT));
   document.getElementById("freqFusion").textContent = "1. Frequency-Domain Fusion: " + freqFusion + " Hz";
@@ -522,35 +479,26 @@ setInterval(() => {
   document.getElementById("coherenceFusion").textContent = "3. Cross-Spectral Coherence: " + coherence.toFixed(3);
 }, 400);
 
-/* -------------------------------
-   Smoothing control
--------------------------------- */
+/* Smoothing control */
 document.getElementById('smoothing').addEventListener('input', (e) => {
   const t = parseFloat(e.target.value);
   rppgChart.options.elements.line.tension = t;
   eegChart.options.elements = eegChart.options.elements || {};
   eegChart.options.elements.line = eegChart.options.elements.line || {};
   eegChart.options.elements.line.tension = t;
-  rppgChart.update();
-  eegChart.update();
+  rppgChart.update(); eegChart.update();
 });
 
-/* -------------------------------
-   Drag-and-drop panels
--------------------------------- */
+/* Drag-and-drop panels */
 const panels = document.querySelectorAll('.panel');
-let dragSrcEl = null;
-
 panels.forEach(panel => {
   panel.addEventListener('dragstart', (e) => {
-    dragSrcEl = panel;
     panel.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', panel.id);
   });
   panel.addEventListener('dragend', () => panel.classList.remove('dragging'));
 });
-
 const dashboard = document.getElementById('dashboard');
 dashboard.addEventListener('dragover', (e) => {
   e.preventDefault();
@@ -563,7 +511,6 @@ dashboard.addEventListener('dragover', (e) => {
     dashboard.insertBefore(draggable, afterElement);
   }
 });
-
 function getDragAfterElement(container, y) {
   const draggableElements = [...container.querySelectorAll('.panel:not(.dragging)')];
   return draggableElements.reduce((closest, child) => {
@@ -577,14 +524,10 @@ function getDragAfterElement(container, y) {
   }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-/* -------------------------------
-   Snapshot: capture full dashboard
--------------------------------- */
+/* Snapshot: capture full dashboard */
 async function captureDashboard() {
-  // Temporarily show fusion and controls prominently
-  const shotArea = document.body; // full page: camera + overlays + panels
   try {
-    const canvas = await html2canvas(shotArea, { useCORS: true, logging: false, scale: 1 });
+    const canvas = await html2canvas(document.body, { useCORS: true, logging: false, scale: 1 });
     const link = document.createElement('a');
     link.download = `dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
     link.href = canvas.toDataURL('image/png');
