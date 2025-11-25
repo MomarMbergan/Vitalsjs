@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>EEG + rPPG Dashboard (Fusion Methods)</title>
+  <title>SkyNet Biometric Dashboard</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <style>
     :root {
       --bg: #000;
       --fg: #fff;
-      --panel-bg: rgba(0,0,0,0.06);
+      --panel-bg: rgba(255,255,255,0.06);
       --font-size: 18px;
       --fusion-font-size: 20px;
       --footer-bg: rgba(0,0,0,0.35);
-      --accent: #0ff;
+      --accent: #39FF14; /* neon green */
+      --icon-bg: rgba(255,255,255,0.08);
+      --icon-border: rgba(255,255,255,0.22);
     }
 
     body {
@@ -35,19 +37,20 @@
       background: #111;
     }
 
-    /* Status badge (Analyzing) */
+    /* Status badge (Analyzing, neon green) */
     #statusBadge {
       position: fixed;
-      top: 10px;
-      right: 10px;
-      z-index: 4;
-      background: rgba(0,0,0,0.5);
-      color: #9cf;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-weight: 700;
-      border: 1px solid rgba(153,204,255,0.6);
-      letter-spacing: 0.3px;
+      top: 12px;
+      left: 12px;
+      z-index: 5;
+      background: rgba(0,0,0,0.55);
+      color: var(--accent);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: 800;
+      border: 1px solid rgba(57,255,20,0.6);
+      letter-spacing: 0.4px;
+      text-shadow: 0 0 6px rgba(57,255,20,0.7), 0 0 10px rgba(57,255,20,0.4);
     }
 
     /* Forehead ROI box */
@@ -108,7 +111,7 @@
       line-height: 1.35;
     }
 
-    /* Footer controls: icon-only + sliders */
+    /* Footer sliders + countdown */
     .footer {
       position: fixed;
       bottom: 0;
@@ -118,30 +121,12 @@
       background: var(--footer-bg);
       padding: 10px 12px;
       display: grid;
-      grid-template-columns: auto 1fr auto;
+      grid-template-columns: 1fr auto;
       align-items: center;
       gap: 8px;
       backdrop-filter: blur(4px);
       border-top: 1px solid rgba(255,255,255,0.08);
     }
-
-    .footer .icons {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .icon-btn {
-      background: rgba(255,255,255,0.08);
-      color: #fff;
-      border: 1px solid rgba(255,255,255,0.22);
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 18px;
-      cursor: pointer;
-    }
-    .icon-btn:hover { background: rgba(255,255,255,0.14); }
-    .icon-btn:active { background: rgba(255,255,255,0.18); }
 
     .footer .sliders {
       display: grid;
@@ -160,24 +145,70 @@
       font-size: 14px;
       opacity: 0.9;
     }
-    input[type=range] {
-      width: 100%;
-    }
+    input[type=range] { width: 100%; }
 
     .footer .right {
       display: flex;
       gap: 12px;
       align-items: center;
     }
+    #countdown { font-size: 14px; color: #9cf; opacity: 0.95; }
 
-    #countdown {
-      font-size: 14px;
-      color: #9cf;
-      opacity: 0.95;
+    /* Slide-out vertical toggle panel (right) */
+    #togglePanel {
+      position: fixed;
+      top: 0;
+      right: -72px; /* hidden off-screen default */
+      width: 72px;
+      height: 100vh;
+      z-index: 4;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(5px);
+      border-left: 1px solid rgba(255,255,255,0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 8px;
+      gap: 10px;
+      transition: right 0.25s ease;
     }
+    #togglePanel.open { right: 0; }
 
-    /* Drag visual (reserved if you add draggable later) */
-    .dragging { opacity: 0.85; outline: 1px dashed #888; }
+    .icon-btn {
+      width: 52px;
+      height: 52px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--icon-bg);
+      color: #fff;
+      border: 1px solid var(--icon-border);
+      border-radius: 12px;
+      font-size: 22px;
+      cursor: pointer;
+    }
+    .icon-btn:hover { background: rgba(255,255,255,0.14); }
+    .icon-btn:active { background: rgba(255,255,255,0.18); }
+
+    /* Handle to slide panel */
+    #panelHandle {
+      position: fixed;
+      top: 50%;
+      right: 0;
+      transform: translateY(-50%);
+      z-index: 5;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-right: none;
+      padding: 8px 10px;
+      border-top-left-radius: 8px;
+      border-bottom-left-radius: 8px;
+      cursor: pointer;
+      font-size: 18px;
+      backdrop-filter: blur(4px);
+    }
+    #panelHandle:hover { background: rgba(255,255,255,0.12); }
   </style>
 
   <!-- Chart.js -->
@@ -186,14 +217,23 @@
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <!-- Polyfill + MathJax -->
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-  <script id="MathJax-script" async
-    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 
 <video id="camera" autoplay muted playsinline></video>
 <div id="statusBadge">Analyzing</div>
 <div id="foreheadBox"></div>
+
+<!-- Slide-out right toggle panel -->
+<div id="togglePanel" aria-label="Control panel">
+  <button class="icon-btn" id="btnThermal" title="Toggle thermal view (rPPG & EEG)">🌡️</button>
+  <button class="icon-btn" id="btnEEG" title="Toggle EEG thermal only">🧠</button>
+  <button class="icon-btn" id="btnAnnotations" title="Toggle annotations">✳️</button>
+  <button class="icon-btn" id="btnSpectra" title="Toggle spectra overlays">📈</button>
+  <button class="icon-btn" id="btnSnapshot" title="Capture snapshot now">📸</button>
+</div>
+<div id="panelHandle" title="Show/Hide controls">›</div>
 
 <div class="dashboard" id="dashboard">
   <div class="panel" id="panel-rppg">
@@ -231,16 +271,8 @@
   </div>
 </div>
 
-<!-- Footer controls (icon-only) -->
+<!-- Footer sliders + countdown -->
 <div class="footer">
-  <div class="icons">
-    <button class="icon-btn" id="btnThermal" title="Toggle thermal view (rPPG & EEG)">🌡️</button>
-    <button class="icon-btn" id="btnEEG" title="Toggle EEG thermal only">🧠</button>
-    <button class="icon-btn" id="btnAnnotations" title="Toggle annotations">✳️</button>
-    <button class="icon-btn" id="btnSpectra" title="Toggle spectra overlays">📈</button>
-    <button class="icon-btn" id="btnSnapshot" title="Capture snapshot now">📸</button>
-  </div>
-
   <div class="sliders">
     <div class="slider-wrap" title="Smoothing">
       <div class="label">🎚️</div>
@@ -255,7 +287,6 @@
       <input type="range" id="ampScale" min="1" max="5" step="0.5" value="1">
     </div>
   </div>
-
   <div class="right">
     <div id="countdown" title="Auto-save snapshot countdown">Next auto-save: 60s</div>
   </div>
@@ -263,23 +294,151 @@
 
 <script>
 /* -------------------------------
-   Camera initialization
+   Camera + microphone initialization and one-time 60s recording
 -------------------------------- */
 const video = document.getElementById('camera');
 const statusBadge = document.getElementById('statusBadge');
 
-async function initCamera() {
+let mediaStream = null;
+let oneTimeRecorded = false;
+
+async function initMedia() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
-    video.srcObject = stream;
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user" },
+      audio: true
+    });
+    video.srcObject = mediaStream;
     statusBadge.textContent = "Analyzing";
+    startOneTimeRecording(mediaStream);
   } catch (err) {
-    statusBadge.textContent = "Analyzing (Camera error)";
-    console.error("Camera initialization failed:", err);
-    alert("Camera access failed. Please allow camera permissions (HTTPS required) and reload.");
+    statusBadge.textContent = "Analyzing (Media error)";
+    console.error("Media initialization failed:", err);
+    alert("Camera/Microphone access failed. Please allow permissions (HTTPS required) and reload.");
   }
 }
-initCamera();
+initMedia();
+
+/* One-time 60s recorder: produces SkyNet.mp4 and SkyNet.wav, plus Screenshot.png and SkyNet.pcap */
+async function startOneTimeRecording(stream) {
+  if (oneTimeRecorded) return; // safety
+  oneTimeRecorded = true;
+
+  // Combined A/V recording via MediaRecorder
+  let avChunks = [];
+  let avMime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus") ? "video/webm;codecs=vp9,opus" :
+               MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus") ? "video/webm;codecs=vp8,opus" :
+               "video/webm";
+  const avRecorder = new MediaRecorder(stream, { mimeType: avMime });
+
+  avRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) avChunks.push(e.data); };
+  avRecorder.onstop = async () => {
+    try {
+      const avBlob = new Blob(avChunks, { type: avMime });
+      downloadBlob(avBlob, "SkyNet.mp4"); // name as mp4 for your workflow
+
+      // Extract audio to WAV using Web Audio PCM capture in parallel buffer
+      const wavBlob = buildWAVFromPCM(audioPCMBuffer, audioSampleRate);
+      if (wavBlob) downloadBlob(wavBlob, "SkyNet.wav");
+
+      // One-time Screenshot + PCAP at the end of recording
+      const snapName = `Screenshot_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
+      await captureDashboardPNG(snapName);
+      const metrics = currentMetrics;
+      const payload = buildPayload(snapName, metrics);
+      const pcapText = buildPCAPText(payload);
+      downloadTextAsFile(pcapText, "SkyNet.pcap");
+    } catch (e) {
+      console.error("Finalization failed:", e);
+    }
+  };
+
+  // Parallel audio PCM capture via Web Audio for WAV
+  const audioPCMBuffer = [];
+  let audioSampleRate = 48000;
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioSampleRate = audioCtx.sampleRate;
+    const source = audioCtx.createMediaStreamSource(stream);
+    const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+    source.connect(processor);
+    processor.connect(audioCtx.destination);
+    processor.onaudioprocess = (e) => {
+      const ch = e.inputBuffer.getChannelData(0);
+      // Copy the Float32 samples
+      audioPCMBuffer.push(new Float32Array(ch));
+    };
+    // Stop audio processor after 60s
+    setTimeout(() => {
+      processor.disconnect();
+      source.disconnect();
+      audioCtx.close().catch(()=>{});
+    }, 60000);
+  } catch (e) {
+    console.warn("WAV capture failed; audio WAV may be unavailable:", e);
+  }
+
+  // Start combined A/V recording for 60s
+  avRecorder.start(1000);
+  setTimeout(() => {
+    if (avRecorder.state !== "inactive") avRecorder.stop();
+  }, 60000);
+}
+
+/* Utility: build WAV Blob from PCM Float32 arrays */
+function buildWAVFromPCM(chunks, sampleRate) {
+  try {
+    // Merge Float32 chunks
+    let totalLength = chunks.reduce((acc, arr) => acc + arr.length, 0);
+    const pcm = new Float32Array(totalLength);
+    let offset = 0;
+    for (const arr of chunks) { pcm.set(arr, offset); offset += arr.length; }
+
+    // Convert Float32 [-1,1] to 16-bit PCM
+    const buffer = new ArrayBuffer(44 + pcm.length * 2);
+    const view = new DataView(buffer);
+
+    // WAV header
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + pcm.length * 2, true);
+    writeString(view, 8, 'WAVE');
+    writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true); // PCM chunk size
+    view.setUint16(20, 1, true);  // audio format = PCM
+    view.setUint16(22, 1, true);  // mono
+    view.setUint32(24, sampleRate, true);
+    const byteRate = sampleRate * 2; // mono 16-bit
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, 2, true); // block align
+    view.setUint16(34, 16, true); // bits per sample
+    writeString(view, 36, 'data');
+    view.setUint32(40, pcm.length * 2, true);
+
+    // PCM data
+    let idx = 44;
+    for (let i = 0; i < pcm.length; i++) {
+      let s = Math.max(-1, Math.min(1, pcm[i]));
+      view.setInt16(idx, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      idx += 2;
+    }
+
+    return new Blob([view], { type: "audio/wav" });
+  } catch (e) {
+    console.error("WAV build failed:", e);
+    return null;
+  }
+}
+function writeString(view, offset, str) { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); }
+
+/* -------------------------------
+   Slide-out panel controls
+-------------------------------- */
+const togglePanel = document.getElementById('togglePanel');
+const panelHandle = document.getElementById('panelHandle');
+panelHandle.addEventListener('click', () => {
+  togglePanel.classList.toggle('open');
+  panelHandle.textContent = togglePanel.classList.contains('open') ? '‹' : '›';
+});
 
 /* -------------------------------
    State
@@ -289,6 +448,81 @@ let eegData = [];
 let showAnnotations = true;
 let showSpectra = true;
 let thermalBoth = true; // global thermal toggle
+let deviceIP = "unknown";
+let currentMetrics = { freqFusion: 0, peakFusion: 0, coherence: 0 };
+
+/* -------------------------------
+   Device metadata + IP + GPU info
+-------------------------------- */
+function gatherDeviceMetadata() {
+  const ua = navigator.userAgent || "unknown";
+  const platform = navigator.platform || "unknown";
+  const lang = navigator.language || "unknown";
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown";
+  const srW = window.screen.width || 0;
+  const srH = window.screen.height || 0;
+  const colorDepth = window.screen.colorDepth || 0;
+  return {
+    userAgent: ua,
+    platform,
+    language: lang,
+    timeZone: tz,
+    screenResolution: `${srW}x${srH}`,
+    colorDepth: `${colorDepth}-bit`
+  };
+}
+const deviceMeta = gatherDeviceMetadata();
+
+async function getLocalIP() {
+  try {
+    const pc = new RTCPeerConnection({ iceServers: [] });
+    pc.createDataChannel("x");
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    pc.onicecandidate = (e) => {
+      if (!e || !e.candidate) return;
+      const c = e.candidate.candidate;
+      const ipMatch = c.match(/candidate:\S+ \d+ \S+ \d+ ([0-9\.A-Fa-f:]+) \d+ typ/);
+      if (ipMatch && ipMatch[1]) deviceIP = ipMatch[1];
+    };
+    setTimeout(() => pc.close(), 2000);
+  } catch(e) {
+    console.warn("Local IP discovery failed:", e);
+  }
+}
+getLocalIP();
+
+/* GPU vendor/renderer and approximate memory bytes if available */
+function getGPUInfo() {
+  let gpuVendor = "unknown", gpuRenderer = "unknown";
+  let gpuMemoryBytes = "unknown";
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (gl) {
+      const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+      if (dbg) {
+        gpuVendor = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL);
+        gpuRenderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
+      }
+      // Most browsers do not expose GPU memory; leave as unknown
+    }
+  } catch (e) {
+    console.warn("GPU info unavailable:", e);
+  }
+  return { gpuVendor, gpuRenderer, gpuMemoryBytes };
+}
+const gpuInfo = getGPUInfo();
+
+/* CPU memory bytes via performance.memory if available */
+function getCPUMemoryBytes() {
+  try {
+    if (performance && performance.memory && performance.memory.usedJSHeapSize) {
+      return performance.memory.usedJSHeapSize;
+    }
+  } catch (e) {}
+  return "unknown";
+}
 
 /* -------------------------------
    Ironbow colormap
@@ -404,7 +638,6 @@ document.getElementById('btnEEG').addEventListener('click', () => {
 -------------------------------- */
 document.getElementById('btnAnnotations').addEventListener('click', () => {
   showAnnotations = !showAnnotations;
-  // Clear immediately if disabled
   if (!showAnnotations) {
     rppgChart.data.datasets[1] = undefined;
     eegChart.data.datasets[1] = undefined;
@@ -419,29 +652,109 @@ document.getElementById('btnSpectra').addEventListener('click', () => {
 });
 
 /* -------------------------------
-   Snapshot: manual and auto-save
+   Snapshot: manual and auto-save PNG + PCAP
 -------------------------------- */
-async function captureDashboard() {
-  try {
-    const canvas = await html2canvas(document.body, { useCORS: true, logging: false, scale: 1 });
-    const link = document.createElement('a');
-    link.download = `dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  } catch (e) {
-    console.error("Snapshot failed:", e);
-  }
+async function captureDashboardPNG(customName=null) {
+  const canvas = await html2canvas(document.body, { useCORS: true, logging: false, scale: 1 });
+  const link = document.createElement('a');
+  const fname = customName || `dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
+  link.download = fname;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
 }
-document.getElementById('btnSnapshot').addEventListener('click', captureDashboard);
 
-/* Auto-save every 60s with countdown */
+function buildPCAPText(payloadText) {
+  const now = new Date();
+  const tsSec = Math.floor(now.getTime() / 1000);
+  const tsUsec = (now.getTime() % 1000) * 1000; // microseconds from ms
+  const capturedLen = payloadText.length;
+  const originalLen = capturedLen;
+
+  const lines = [];
+  // Global header
+  lines.push("PCAP GLOBAL HEADER");
+  lines.push("Magic Number: 0xa1b2c3d4");
+  lines.push("Version: 2.4");
+  lines.push("Snaplen: 65535");
+  lines.push("Network: 1");
+  lines.push("");
+  // Packet header
+  lines.push("PCAP PACKET HEADER");
+  lines.push(`Timestamp Seconds: ${tsSec}`);
+  lines.push(`Timestamp Microseconds: ${tsUsec}`);
+  lines.push(`Captured Length: ${capturedLen}`);
+  lines.push(`Original Length: ${originalLen}`);
+  lines.push("");
+  // Payload
+  lines.push("PAYLOAD START");
+  lines.push(payloadText.trim());
+  lines.push("PAYLOAD END");
+
+  return lines.join("\n");
+}
+
+function buildPayload(snapshotName, metrics) {
+  const nowISO = new Date().toISOString();
+  const meta = deviceMeta;
+  const cpuBytes = getCPUMemoryBytes();
+  const gpu = gpuInfo;
+
+  return `
+Snapshot Filename: ${snapshotName}
+Timestamp: ${nowISO}
+Device IP Address: ${deviceIP}
+Device Metadata:
+- User Agent: ${meta.userAgent}
+- Platform: ${meta.platform}
+- Language: ${meta.language}
+- Screen Resolution: ${meta.screenResolution}
+- Color Depth: ${meta.colorDepth}
+- Timezone: ${meta.timeZone}
+Fusion Metrics:
+- Frequency-Domain Fusion: ${metrics.freqFusion} Hz
+- Peak-Based Fusion: ${metrics.peakFusion} Hz
+- Cross-Spectral Coherence: ${metrics.coherence}
+Browser Resource Metrics:
+- CPU Memory Bytes: ${cpuBytes}
+- GPU Memory Bytes: ${gpu.gpuMemoryBytes}
+- GPU Vendor: ${gpu.gpuVendor}
+- GPU Renderer: ${gpu.gpuRenderer}
+`.trim();
+}
+
+function downloadTextAsFile(text, filename) {
+  const blob = new Blob([text], { type: "text/plain" });
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 3000);
+}
+
+async function captureAndSavePNGAndPCAP() {
+  const snapName = `dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
+  await captureDashboardPNG(snapName);
+  const metrics = currentMetrics;
+  const payload = buildPayload(snapName, metrics);
+  const pcapText = buildPCAPText(payload);
+  downloadTextAsFile(pcapText, "SkyNet.pcap");
+}
+
+/* Manual snapshot button */
+document.getElementById('btnSnapshot').addEventListener('click', async () => {
+  try {
+    await captureAndSavePNGAndPCAP();
+  } catch (e) { console.error("Snapshot/PCAP failed:", e); }
+});
+
+/* Auto-save every 60s with countdown (after initial 60s bundle also continues) */
 let countdown = 60;
 const countdownEl = document.getElementById('countdown');
 
-setInterval(() => {
+setInterval(async () => {
   countdown -= 1;
   if (countdown <= 0) {
-    captureDashboard();
+    try { await captureAndSavePNGAndPCAP(); } catch (e) { console.error("Auto snapshot/PCAP failed:", e); }
     countdown = 60;
   }
   countdownEl.textContent = `Next auto-save: ${countdown}s`;
@@ -589,6 +902,12 @@ setInterval(() => {
   }
   const coherence = (cross*cross) / (rPow * ePow + 1e-9);
   document.getElementById("coherenceFusion").textContent = "3. Cross-Spectral Coherence: " + coherence.toFixed(3);
+
+  currentMetrics = {
+    freqFusion,
+    peakFusion: parseFloat(peakFusion.toFixed(2)),
+    coherence: parseFloat(coherence.toFixed(3))
+  };
 }, 400);
 
 /* -------------------------------
@@ -602,6 +921,17 @@ document.getElementById('smoothing').addEventListener('input', (e) => {
   eegChart.options.elements.line.tension = t;
   rppgChart.update(); eegChart.update();
 });
+
+/* -------------------------------
+   Helpers
+-------------------------------- */
+function downloadBlob(blob, filename) {
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 3000);
+}
 
 /* Initialize thermal modes at start */
 applyThermalModes();
