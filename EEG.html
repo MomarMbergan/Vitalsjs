@@ -52,6 +52,14 @@
       z-index: 3;
       text-align: left;
     }
+
+    #colorbar {
+      width: 90%;
+      height: 20px;
+      margin: 10px auto;
+      border-radius: 5px;
+      background: linear-gradient(to right, blue, cyan, yellow, red);
+    }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -64,6 +72,7 @@
 
 <canvas id="rppgChart"></canvas>
 <canvas id="eegChart"></canvas>
+<div id="colorbar"></div>
 
 <div id="fusionOutput">
   <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
@@ -102,6 +111,17 @@ const rppgChart = new Chart(rppgCtx, {
   }
 });
 
+/* -------------------------------
+   Iron Bow Colormap
+-------------------------------- */
+function ironbowColor(value, min, max) {
+  const ratio = (value - min) / (max - min);
+  const r = Math.min(255, Math.max(0, 255 * ratio));        
+  const g = Math.min(255, Math.max(0, 255 * (1 - Math.abs(ratio - 0.5) * 2))); 
+  const b = Math.min(255, Math.max(0, 255 * (1 - ratio)));  
+  return `rgb(${r},${g},${b})`;
+}
+
 const eegCtx = document.getElementById('eegChart').getContext('2d');
 const eegChart = new Chart(eegCtx, {
   type: 'line',
@@ -110,14 +130,20 @@ const eegChart = new Chart(eegCtx, {
     datasets: [{
       label: "EEG Signal",
       data: Array(300).fill(0),
-      borderColor: "cyan",
       borderWidth: 2,
-      pointRadius: 0
+      pointRadius: 0,
+      segment: {
+        borderColor: ctx => {
+          const val = ctx.p0.parsed.y;
+          return ironbowColor(val, -100, 100);
+        }
+      }
     }]
   },
   options: {
     animation: false,
-    scales: { y: { min: -100, max: 100 } }
+    scales: { y: { min: -100, max: 100 } },
+    plugins: { legend: { display: false } }
   }
 });
 
@@ -164,7 +190,7 @@ setInterval(() => {
   rppgChart.update();
 }, 50);
 
-// EEG mock signal
+// EEG mock signal update
 setInterval(() => {
   const newVal = Math.sin(Date.now() / 120) * 50;
   eegData.push(newVal);
@@ -176,8 +202,6 @@ setInterval(() => {
 /* -------------------------------
    Fusion Methods
 -------------------------------- */
-
-// Simple FFT helper (naive DFT for demo)
 function fftMagnitude(signal) {
   const N = signal.length;
   let mags = [];
@@ -196,20 +220,17 @@ function fftMagnitude(signal) {
 setInterval(() => {
   if (rData.length < 100 || eegData.length < 100) return;
 
-  // 1. Frequency-Domain Fusion
   const rFFT = fftMagnitude(rData);
   const eFFT = fftMagnitude(eegData);
   const fusedFFT = rFFT.map((val, i) => val + (eFFT[i] || 0));
   const freqFusion = fusedFFT.indexOf(Math.max(...fusedFFT));
   document.getElementById("freqFusion").textContent = "1. Frequency-Domain Fusion: " + freqFusion + " Hz";
 
-  // 2. Peak-Based Fusion
   const rPeak = rFFT.indexOf(Math.max(...rFFT));
   const ePeak = eFFT.indexOf(Math.max(...eFFT));
   const peakFusion = 0.5 * rPeak + 0.5 * ePeak;
   document.getElementById("peakFusion").textContent = "2. Peak-Based Fusion: " + peakFusion.toFixed(2) + " Hz";
 
-  // 3. Cross-Spectral Coherence (simplified)
   let cross = 0, rPow = 0, ePow = 0;
   for (let i = 0; i < rFFT.length; i++) {
     cross += rFFT[i] * (eFFT[i] || 0);
