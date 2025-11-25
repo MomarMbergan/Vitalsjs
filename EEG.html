@@ -11,86 +11,98 @@
 <!-- FFT -->
 <script src="https://cdn.jsdelivr.net/npm/fft.js@0.3.0/dist/fft.min.js"></script>
 
-<!-- CryptoJS (SHA-256 available) -->
+<!-- CryptoJS core + RIPEMD-320 extension -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/ripemd320.js"></script>
 
 <style>
-  body {
-    margin: 0;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-    background: black;
-  }
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+  background: black;
+}
 
-  /* Camera video behind everything */
-  #cameraFeed {
-    position: fixed;
-    top:0; left:0;
-    width:100vw;
-    height:100vh;
-    object-fit: cover;
-    z-index:0;
-  }
+/* Camera video behind everything */
+#cameraFeed {
+  position: fixed;
+  top:0; left:0;
+  width:100vw;
+  height:100vh;
+  object-fit: cover;
+  z-index:0;
+}
 
-  /* Charts float like AR HUD, super transparent */
-  .chartBox {
-    /* remove absolute so CSS grid can place items */
-    backdrop-filter: blur(2px);
-    background: rgba(0,0,0,0.18);
-    border-radius: 20px;
-    padding: 6px;
-    z-index: 20;
-    /* make charts readable */
-    box-shadow: 0 4px 12px rgba(0,0,0,0.35);
-  }
+/* Charts float like AR HUD, 90% transparent */
+.chartBox {
+  backdrop-filter: blur(2px);
+  background: rgba(0,0,0,0.1); /* 90% transparent */
+  border-radius: 20px;
+  padding: 6px;
+  z-index: 20;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+}
 
-  /* Layout: flexible grid overlay */
-  #chartsGrid {
-    position: absolute;
-    top:0; left:0;
-    width:100%; height:100%;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-auto-rows: 33vh; /* three rows fill viewport height; auto flow beyond */
-    gap: 8px;
-    padding: 8px;
-    z-index: 20;
-  }
+/* Layout: flexible grid overlay */
+#chartsGrid {
+  position: absolute;
+  top:0; left:0;
+  width:100%; height:100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 33vh;
+  gap: 8px;
+  padding: 8px;
+  z-index: 20;
+}
 
-  /* Size canvases to box */
-  .chartBox canvas {
-    width: 100%;
-    height: 100%;
-  }
+.chartBox canvas {
+  width: 100%;
+  height: 100%;
+}
 
-  /* Camera button */
-  #snapBtn {
-    position: fixed;
-    bottom: 20px;
-    left: calc(50% - 35px);
-    width: 70px; height: 70px;
-    border-radius: 50%;
-    background: red;
-    border: 4px solid white;
-    z-index: 50;
-    cursor: pointer;
-  }
+/* Camera button */
+#snapBtn {
+  position: fixed;
+  bottom: 20px;
+  left: calc(50% - 35px);
+  width: 70px; height: 70px;
+  border-radius: 50%;
+  background: red;
+  border: 4px solid white;
+  z-index: 50;
+  cursor: pointer;
+}
 
-  /* Flip camera */
-  #flipBtn {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 60px; height: 60px;
-    border-radius: 50%;
-    background: white;
-    color: black;
-    text-align: center;
-    line-height: 60px;
-    font-size: 22px;
-    z-index: 50;
-    cursor: pointer;
-  }
+/* Flip camera */
+#flipBtn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: white;
+  color: black;
+  text-align: center;
+  line-height: 60px;
+  font-size: 22px;
+  z-index: 50;
+  cursor: pointer;
+}
+
+/* FPS + CPU overlay */
+#fpsCounter {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  font-family: monospace;
+  font-size: 18px;
+  color: lime;
+  background: rgba(0,0,0,0.4);
+  padding: 6px 10px;
+  border-radius: 8px;
+  z-index: 100;
+}
 </style>
 </head>
 
@@ -102,6 +114,7 @@
 <button id="flipBtn" title="Flip">⇆</button>
 
 <div id="chartsGrid"></div>
+<div id="fpsCounter">FPS: 0 | CPU: 0 ms</div>
 
 <script>
 /* ======================================================
@@ -137,48 +150,31 @@ startCamera();
 /* ======================================================
    CONSTANTS
 ====================================================== */
-const SAMPLE_RATE = 256;             // EEG sampling
+const SAMPLE_RATE = 256;
 const BUFFER_SIZE = 256;
 
 const fft = new FFT(BUFFER_SIZE);
 const rppgBuffer = new Float32Array(BUFFER_SIZE);
 const eegBuffer  = new Float32Array(BUFFER_SIZE);
 
-/* Hann window to reduce spectral leakage */
+/* Hann window */
 const hann = new Float32Array(BUFFER_SIZE);
 for (let i = 0; i < BUFFER_SIZE; i++) {
   hann[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (BUFFER_SIZE - 1)));
 }
 
-/* ======================================================
-   COMBINED rPPG + EEG EQUATION (frequency domain magnitude)
-====================================================== */
+/* Combined HE */
 function computeCombinedHE(rppgAmp, eegAmp) {
   return Math.sqrt(rppgAmp * rppgAmp + eegAmp * eegAmp);
 }
 
-/* ======================================================
-   HASH ENGINE — SHA-256 for stability
-====================================================== */
+/* RIPEMD-320 Hash */
 function hashFrame(dataArray) {
   const json = JSON.stringify(dataArray);
-  return CryptoJS.SHA256(json).toString();
+  return CryptoJS.RIPEMD320(json).toString();
 }
 
-/* ======================================================
-   COLORS
-====================================================== */
-const spectrum = [
-  "rgba(0, 80, 255, 0.5)",
-  "rgba(0, 200, 80, 0.5)",
-  "rgba(230, 220, 0, 0.5)",
-  "rgba(255, 140, 0, 0.5)",
-  "rgba(255, 40, 0, 0.5)"
-];
-
-const lineColor = "rgba(0, 200, 255, 0.85)";
-
-/* EEG bands in Hz */
+/* EEG bands */
 const eegBands = {
   Delta:  [0.5, 4],
   Theta:  [4, 8],
@@ -196,20 +192,19 @@ const charts = [];
 function addChart(title) {
   const box = document.createElement("div");
   box.className = "chartBox";
-
   const c = document.createElement("canvas");
   box.appendChild(c);
   grid.appendChild(box);
 
-  const chart = new Chart(c, {
+  return new Chart(c, {
     type: "line",
     data: {
       labels: Array(60).fill(""),
       datasets: [{
         label: title,
         data: Array(60).fill(0),
-        borderColor: lineColor,
-        backgroundColor: "rgba(0, 200, 255, 0.12)",
+        borderColor: "rgba(0,200,255,0.85)",
+        backgroundColor: "rgba(0,200,255,0.12)",
         borderWidth: 3,
         pointRadius: 0,
         tension: 0.25
@@ -219,114 +214,70 @@ function addChart(title) {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
-      scales:{
-        x:{ display:false },
-        y:{ display:false }
-      },
-      plugins:{
-        legend:{ display:false }
-      }
+      scales:{ x:{display:false}, y:{display:false} },
+      plugins:{ legend:{display:false} }
     }
   });
-
-  return chart;
 }
 
 const chartNames = [
   "Combined HE (Hz)", "Delta", "Theta", "Alpha", "Beta", "Gamma",
   "rPPG", "EEG Raw", "FFT Spectrum", "Heart Rate", "Breathing Rate", "Hash"
 ];
-
 chartNames.forEach(n => charts.push(addChart(n)));
+
+/* ======================================================
+   FPS + CPU Monitor
+====================================================== */
+let lastFrameTime = performance.now();
+let frameCount = 0;
+let fps = 0;
+let cpuTime = 0;
+
+function updateFPS(startTime) {
+  const now = performance.now();
+  frameCount++;
+  cpuTime = (now - startTime).toFixed(1);
+  if (now - lastFrameTime >= 1000) {
+    fps = frameCount;
+    frameCount = 0;
+    lastFrameTime = now;
+  }
+  document.getElementById("fpsCounter").textContent = `FPS: ${fps} | CPU: ${cpuTime} ms`;
+}
 
 /* ======================================================
    REAL-TIME LOOP (throttled)
 ====================================================== */
 function updateCharts() {
+  const startTime = performance.now();
   const t = performance.now();
 
-  /* Fake signal generator — replace with real EEG + rPPG inputs */
+  // Fake signals
   for (let i = 0; i < BUFFER_SIZE; i++) {
     eegBuffer[i]  = Math.sin(i * 0.1  + t / 300) * hann[i];
     rppgBuffer[i] = Math.sin(i * 0.03 + t / 400) * hann[i];
   }
 
-  /* FFT of EEG */
+  // FFT
   const input  = fft.createComplexArray();
   const output = fft.createComplexArray();
-
-  // real parts
   for (let i = 0; i < BUFFER_SIZE; i++) {
-    input[2 * i]     = eegBuffer[i];
-    input[2 * i + 1] = 0; // imag = 0
+    input[2*i] = eegBuffer[i];
+    input[2*i+1] = 0;
   }
-
   fft.transform(output, input);
 
-  /* Magnitudes for positive frequencies */
-  const mags = new Float32Array(BUFFER_SIZE / 2);
-  for (let i = 0; i < BUFFER_SIZE / 2; i++){
-    const real = output[2 * i];
-    const imag = output[2 * i + 1];
-    mags[i] = Math.sqrt(real * real + imag * imag);
+  const mags = new Float32Array(BUFFER_SIZE/2);
+  for (let i = 0; i < BUFFER_SIZE/2; i++) {
+    const real = output[2*i], imag = output[2*i+1];
+    mags[i] = Math.sqrt(real*real + imag*imag);
   }
 
-  /* Combined HE (using current sample proxies) */
-  const combined = computeCombinedHE(
-    Math.abs(rppgBuffer[10] ?? 0),
-    Math.abs(eegBuffer[10]  ?? 0)
-  );
-
-  /* HASH of spectrum */
-  const hashValue = hashFrame(mags);
-
-  /* Update charts */
+  // Combined HE
+  const combined = computeCombinedHE(Math.abs(rppgBuffer[10]), Math.abs(eegBuffer[10]));
   charts[0].data.datasets[0].data.push(combined);
 
-  /* EEG bands */
+  // EEG bands
   let idx = 1;
-  for (const [bandName, [lo, hi]] of Object.entries(eegBands)) {
-    const binHz = SAMPLE_RATE / BUFFER_SIZE;
-    const loBin = Math.max(0, Math.floor(lo / binHz));
-    const hiBin = Math.min(mags.length, Math.ceil(hi / binHz));
-    const len = Math.max(1, hiBin - loBin);
-    let sum = 0;
-    for (let k = loBin; k < hiBin; k++) sum += mags[k];
-    const avg = sum / len;
-    charts[idx].data.datasets[0].data.push(avg);
-    idx++;
-  }
-
-  /* rPPG + EEG time series */
-  charts[6].data.datasets[0].data.push(rppgBuffer[128]);
-  charts[7].data.datasets[0].data.push(eegBuffer[128]);
-
-  /* Spectrum (first 60 bins to match labels) */
-  charts[8].data.datasets[0].data = Array.from(mags.slice(0, 60));
-
-  /* Heart rate estimate (mock, stabilized) */
-  charts[9].data.datasets[0].data.push(60 + 40 * Math.abs(rppgBuffer[100]));
-
-  /* Respiration estimate (mock, stabilized) */
-  charts[10].data.datasets[0].data.push(14 + 6 * Math.abs(rppgBuffer[20]));
-
-  /* Hash chart: map to a small numeric range */
-  charts[11].data.datasets[0].data.push(hashValue.charCodeAt(0) % 30);
-
-  /* Trim & draw */
-  for (const ch of charts) {
-    const d = ch.data.datasets[0].data;
-    while (d.length > 60) d.shift();
-    ch.update('none'); // no animation for speed
-  }
-}
-
-/* Throttle to ~25 FPS */
-const UPDATE_MS = 40;
-setInterval(updateCharts, UPDATE_MS);
-
-/* Kick off once */
-updateCharts();
-</script>
-</body>
-</html>
+  for (const [
