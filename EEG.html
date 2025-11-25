@@ -1,33 +1,55 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>EEG + rPPG Dashboard (First Version)</title>
+  <title>EEG + rPPG Dashboard (Full Screen)</title>
   <style>
     body {
+      margin: 0;
       background: #000;
       color: #fff;
       font-family: Arial;
       text-align: center;
+      overflow: hidden;
     }
 
     video {
-      width: 260px;
-      border-radius: 10px;
-      margin-top: 10px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: 0;
     }
 
     canvas {
       width: 90%;
       height: 200px;
-      background: #111;
+      background: rgba(0,0,0,0.05); /* 95% transparent */
       margin-top: 10px;
       border-radius: 10px;
+      z-index: 1;
+      position: relative;
     }
 
     #foreheadBox {
       position: absolute;
       border: 2px solid red;
       pointer-events: none;
+      z-index: 2;
+    }
+
+    #combinedOutput {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 15px;
+      color: white;
+      background: rgba(0,0,0,0.3);
+      padding: 5px 10px;
+      border-radius: 5px;
+      z-index: 3;
     }
   </style>
 
@@ -36,17 +58,17 @@
 
 <body>
 
-<h2>EEG + rPPG Heartbeat Dashboard (Original Version)</h2>
-
 <video id="camera" autoplay muted playsinline></video>
 <div id="foreheadBox"></div>
 
 <canvas id="rppgChart"></canvas>
 <canvas id="eegChart"></canvas>
 
+<div id="combinedOutput">Combined rPPG + EEG: 0 Hz</div>
+
 <script>
 /* -------------------------------
-   CAMERA + rPPG (FIRST VERSION)
+   CAMERA FULL SCREEN + rPPG
 -------------------------------- */
 const video = document.getElementById('camera');
 
@@ -54,7 +76,7 @@ navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }})
 .then(stream => video.srcObject = stream);
 
 let rData = [];
-let rIndex = 0;
+let eegData = [];
 
 const rppgCtx = document.getElementById('rppgChart').getContext('2d');
 const rppgChart = new Chart(rppgCtx, {
@@ -75,7 +97,26 @@ const rppgChart = new Chart(rppgCtx, {
   }
 });
 
-// Main rPPG frame reader
+const eegCtx = document.getElementById('eegChart').getContext('2d');
+const eegChart = new Chart(eegCtx, {
+  type: 'line',
+  data: {
+    labels: Array(300).fill(""),
+    datasets: [{
+      label: "EEG Signal",
+      data: Array(300).fill(0),
+      borderColor: "cyan",
+      borderWidth: 2,
+      pointRadius: 0
+    }]
+  },
+  options: {
+    animation: false,
+    scales: { y: { min: -100, max: 100 } }
+  }
+});
+
+// rPPG frame reader
 setInterval(() => {
   if (!video.videoWidth) return;
 
@@ -96,7 +137,6 @@ setInterval(() => {
   box.style.width  = foreheadW * scaleX + "px";
   box.style.height = foreheadH * scaleY + "px";
 
-  // draw forehead into a buffer canvas
   const temp = document.createElement("canvas");
   temp.width = foreheadW;
   temp.height = foreheadH;
@@ -111,7 +151,7 @@ setInterval(() => {
     count++;
   }
 
-  const val = (sum / count) - 128; // center baseline
+  const val = (sum / count) - 128;
   rData.push(val);
   if (rData.length > 300) rData.shift();
 
@@ -119,38 +159,22 @@ setInterval(() => {
   rppgChart.update();
 }, 50);
 
-/* -------------------------------
-   EEG SECTION (FIRST VERSION)
--------------------------------- */
-let eegData = [];
-for (let i = 0; i < 300; i++) eegData.push(0);
-
-const eegCtx = document.getElementById('eegChart').getContext('2d');
-const eegChart = new Chart(eegCtx, {
-  type: 'line',
-  data: {
-    labels: Array(300).fill(""),
-    datasets: [{
-      label: "EEG Signal",
-      data: eegData,
-      borderColor: "cyan",
-      borderWidth: 2,
-      pointRadius: 0
-    }]
-  },
-  options: {
-    animation: false,
-    scales: { y: { min: -100, max: 100 } }
-  }
-});
-
-// Mock EEG signal (first version demo)
+// EEG mock signal
 setInterval(() => {
   const newVal = Math.sin(Date.now() / 120) * 50;
   eegData.push(newVal);
   if (eegData.length > 300) eegData.shift();
+  eegChart.data.datasets[0].data = eegData;
   eegChart.update();
 }, 50);
+
+// Combined output in Hertz (simple demo calculation)
+setInterval(() => {
+  const rppgFreq = Math.abs(rData[rData.length-1] || 0) / 10;
+  const eegFreq = Math.abs(eegData[eegData.length-1] || 0) / 10;
+  const combined = (rppgFreq + eegFreq).toFixed(2);
+  document.getElementById("combinedOutput").textContent = "Combined rPPG + EEG: " + combined + " Hz";
+}, 500);
 
 </script>
 
