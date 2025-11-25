@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html>
 <head>
   <title>EEG + rPPG Dashboard (Fusion Methods)</title>
@@ -10,6 +10,7 @@
       font-family: Arial;
       text-align: center;
       overflow: hidden;
+      font-size: 18px; /* 3 sizes bigger */
     }
 
     video {
@@ -25,7 +26,7 @@
     canvas {
       width: 90%;
       height: 200px;
-      background: rgba(0,0,0,0.05); /* 95% transparent */
+      background: rgba(0,0,0,0.05);
       margin-top: 10px;
       border-radius: 10px;
       z-index: 1;
@@ -44,7 +45,7 @@
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 15px;
+      font-size: 20px;
       color: white;
       background: rgba(0,0,0,0.3);
       padding: 10px;
@@ -60,9 +61,22 @@
       border-radius: 5px;
       background: linear-gradient(to right, blue, cyan, yellow, red);
     }
+
+    .controls {
+      margin: 15px;
+    }
+
+    button, input[type=range] {
+      margin: 5px;
+    }
   </style>
 
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- MathJax -->
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 
 <body>
@@ -76,10 +90,26 @@
 <canvas id="eegChart"></canvas>
 <div id="colorbarEEG"></div>
 
+<!-- Spectrum overlays -->
+<canvas id="rppgFFT"></canvas>
+<canvas id="eegFFT"></canvas>
+
+<!-- Controls -->
+<div class="controls">
+  <button onclick="toggleThermal('rppg')">Toggle rPPG Thermal</button>
+  <button onclick="toggleThermal('eeg')">Toggle EEG Thermal</button><br>
+  <label>Smoothing</label><input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.4">
+  <label>FFT Window</label><input type="range" id="fftWindow" min="64" max="512" step="64" value="256">
+  <label>Amplitude Scale</label><input type="range" id="ampScale" min="1" max="5" step="0.5" value="1">
+</div>
+
 <div id="fusionOutput">
   <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
   <div id="peakFusion">2. Peak-Based Fusion: 0 Hz</div>
   <div id="coherenceFusion">3. Cross-Spectral Coherence: 0</div>
+  <div>
+    $$F_{fusion}(f) = FFT_{rPPG}(f) + FFT_{EEG}(f)$$
+  </div>
 </div>
 
 <script>
@@ -110,32 +140,19 @@ function ironbowColor(value, min, max) {
 const rppgCtx = document.getElementById('rppgChart').getContext('2d');
 const rppgChart = new Chart(rppgCtx, {
   type: 'line',
-  data: {
-    labels: Array(300).fill(""),
-    datasets: [{
-      label: "rPPG Heart Signal",
-      data: Array(300).fill(0),
-      borderWidth: 2,
-      pointRadius: 0,
-      fill: true,
-      segment: {
-        borderColor: ctx => {
-          const val = ctx.p0.parsed.y;
-          return ironbowColor(val, -20, 20);
-        },
-        backgroundColor: ctx => {
-          const val = ctx.p0.parsed.y;
-          return ironbowColor(val, -20, 20);
-        }
-      }
-    }]
-  },
-  options: {
-    animation: false,
-    elements: { line: { tension: 0.4 } }, // smooth flow
-    scales: { y: { min: -20, max: 20 } },
-    plugins: { legend: { display: false } }
-  }
+  data: { labels: Array(300).fill(""), datasets: [{
+    label: "rPPG Heart Signal",
+    data: Array(300).fill(0),
+    borderWidth: 2,
+    pointRadius: 0,
+    fill: true,
+    segment: {
+      borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20),
+      backgroundColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20)
+    }
+  }]},
+  options: { animation: false, elements: { line: { tension: 0.4 } },
+    scales: { y: { min: -20, max: 20 } }, plugins: { legend: { display: false } } }
 });
 
 /* -------------------------------
@@ -144,112 +161,62 @@ const rppgChart = new Chart(rppgCtx, {
 const eegCtx = document.getElementById('eegChart').getContext('2d');
 const eegChart = new Chart(eegCtx, {
   type: 'line',
-  data: {
-    labels: Array(300).fill(""),
-    datasets: [{
-      label: "EEG Signal",
-      data: Array(300).fill(0),
-      borderWidth: 2,
-      pointRadius: 0,
-      segment: {
-        borderColor: ctx => {
-          const val = ctx.p0.parsed.y;
-          return ironbowColor(val, -100, 100);
-        }
-      }
-    }]
-  },
-  options: {
-    animation: false,
-    scales: { y: { min: -100, max: 100 } },
-    plugins: { legend: { display: false } }
-  }
+  data: { labels: Array(300).fill(""), datasets: [{
+    label: "EEG Signal",
+    data: Array(300).fill(0),
+    borderWidth: 2,
+    pointRadius: 0,
+    segment: {
+      borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -100, 100)
+    }
+  }]},
+  options: { animation: false, scales: { y: { min: -100, max: 100 } },
+    plugins: { legend: { display: false } } }
 });
+
+/* -------------------------------
+   Toggle Thermal Views
+-------------------------------- */
+function toggleThermal(signal) {
+  if (signal === 'rppg') {
+    const ds = rppgChart.data.datasets[0];
+    if (ds.segment.borderColor) {
+      ds.segment = { borderColor: "red", backgroundColor: "rgba(255,0,0,0.3)" };
+    } else {
+      ds.segment = {
+        borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20),
+        backgroundColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20)
+      };
+    }
+    rppgChart.update();
+  }
+  if (signal === 'eeg') {
+    const ds = eegChart.data.datasets[0];
+    if (ds.segment.borderColor) {
+      ds.segment = { borderColor: "cyan" };
+    } else {
+      ds.segment = {
+        borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -100, 100)
+      };
+    }
+    eegChart.update();
+  }
+}
 
 /* -------------------------------
    rPPG frame reader
 -------------------------------- */
 setInterval(() => {
   if (!video.videoWidth) return;
-
-  const w = video.videoWidth;
-  const h = video.videoHeight;
-
-  const foreheadW = w * 0.30;
-  const foreheadH = h * 0.10;
-  const foreheadX = w * 0.35;
-  const foreheadY = h * 0.15;
-
+  const w = video.videoWidth, h = video.videoHeight;
+  const foreheadW = w * 0.30, foreheadH = h * 0.10;
+  const foreheadX = w * 0.35, foreheadY = h * 0.15;
   const box = document.getElementById("foreheadBox");
   const rect = video.getBoundingClientRect();
-  const scaleX = rect.width / w;
-  const scaleY = rect.height / h;
+  const scaleX = rect.width / w, scaleY = rect.height / h;
   box.style.left = (rect.left + foreheadX * scaleX) + "px";
   box.style.top  = (rect.top + foreheadY * scaleY) + "px";
   box.style.width  = foreheadW * scaleX + "px";
   box.style.height = foreheadH * scaleY + "px";
 
   const temp = document.createElement("canvas");
-  temp.width = foreheadW;
-  temp.height = foreheadH;
-  const tctx = temp.getContext("2d");
-  tctx.drawImage(video, foreheadX, foreheadY, foreheadW, foreheadH, 0, 0, foreheadW, foreheadH);
-
-  const frame = tctx.getImageData(0, 0, foreheadW, foreheadH);
-  let sum = 0, count = 0;
-
-  for (let i = 0; i < frame.data.length; i += 4) {
-    sum += frame.data[i]; // Red channel average
-    count++;
-  }
-
-  const val = (sum / count) - 128;
-  rData.push(val);
-  if (rData.length > 300) rData.shift();
-
-  rppgChart.data.datasets[0].data = rData;
-  rppgChart.update();
-}, 50);
-
-/* -------------------------------
-   EEG mock signal update
--------------------------------- */
-setInterval(() => {
-  const newVal = Math.sin(Date.now() / 120) * 50;
-  eegData.push(newVal);
-  if (eegData.length > 300) eegData.shift();
-  eegChart.data.datasets[0].data = eegData;
-  eegChart.update();
-}, 50);
-
-/* -------------------------------
-   Fusion Methods
--------------------------------- */
-function fftMagnitude(signal) {
-  const N = signal.length;
-  let mags = [];
-  for (let k = 0; k < N/2; k++) {
-    let re = 0, im = 0;
-    for (let n = 0; n < N; n++) {
-      const angle = (2 * Math.PI * k * n) / N;
-      re += signal[n] * Math.cos(angle);
-      im -= signal[n] * Math.sin(angle);
-    }
-    mags.push(Math.sqrt(re*re + im*im));
-  }
-  return mags;
-}
-
-setInterval(() => {
-  if (rData.length < 100 || eegData.length < 100) return;
-
-  const rFFT = fftMagnitude(rData);
-  const eFFT = fftMagnitude(eegData);
-  const fusedFFT = rFFT.map((val, i) => val + (eFFT[i] || 0));
-  const freqFusion = fusedFFT.indexOf(Math.max(...fusedFFT));
-  document.getElementById("freqFusion").textContent = "1. Frequency-Domain Fusion: " + freqFusion + " Hz";
-
-  const rPeak = rFFT.indexOf(Math.max(...rFFT));
-  const ePeak = eFFT.indexOf(Math.max(...eFFT));
-  const peakFusion = 0.5 * rPeak + 0.5 * ePeak;
-  document.getElementById("peakFusion").textContent = "2. Peak-Based
