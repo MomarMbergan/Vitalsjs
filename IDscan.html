@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dual Camera Eye Tracker</title>
+  <title>Dual Camera Hotspot Monitor with Eye Tracking</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/js/pico.js"></script>
   <script src="/js/iploc.js"></script>
@@ -26,6 +26,7 @@
       background: #00e5ff; border: none; border-radius: 4px;
       cursor: pointer; color: black;
     }
+    .status { margin-top: 6px; font-size: 0.85rem; }
     .hud {
       position: absolute; top: 120px; left: 10px;
       color: #00e5ff; font-size: 1rem; line-height: 1.6;
@@ -38,9 +39,7 @@
       display: flex; justify-content: space-evenly; align-items: center;
       background: rgba(0,0,0,0.4); z-index: 10;
     }
-    canvas.chartCanvas {
-      flex: 1; max-width: 48%; height: 100%; background: transparent;
-    }
+    canvas.chartCanvas { flex: 1; max-width: 48%; height: 100%; background: transparent; }
     @media (max-width: 768px) {
       .container { flex-direction: column; }
       .screen { height: 50%; }
@@ -57,6 +56,7 @@
         <input id="frontIp" type="text" placeholder="Hotspot IP"/>
         <input id="frontMac" type="text" placeholder="MAC Address"/>
         <button onclick="connectFrontHotspot()">Connect Hotspot</button>
+        <div id="frontStatus" class="status" style="color:#ff4081;">Status: Not Connected</div>
       </div>
       <video id="frontCam" autoplay playsinline muted></video>
       <canvas id="frontOverlay" class="overlay"></canvas>
@@ -79,6 +79,7 @@
         <input id="rearIp" type="text" placeholder="Hotspot IP"/>
         <input id="rearMac" type="text" placeholder="MAC Address"/>
         <button onclick="connectRearHotspot()">Connect Hotspot</button>
+        <div id="rearStatus" class="status" style="color:#ff4081;">Status: Not Connected</div>
       </div>
       <video id="rearCam" autoplay playsinline muted></video>
       <canvas id="rearOverlay" class="overlay"></canvas>
@@ -95,87 +96,79 @@
   </div>
 
   <script>
-    let facefinderClassifyRegion;
-    fetch('/js/facefinder.dat')
-      .then(res => res.arrayBuffer())
-      .then(buf => {
-        const cascade = new Int8Array(buf);
-        facefinderClassifyRegion = pico.unpack_cascade(cascade);
-      });
-
-    function detectEyes(videoId, canvasId) {
-      const video = document.getElementById(videoId);
-      const canvas = document.getElementById(canvasId);
-      const ctx = canvas.getContext('2d');
-      const memory = pico.instantiate_detection_memory(5);
-      const update = () => {
-        if (video.videoWidth === 0) return;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const gray = new Uint8Array(canvas.width * canvas.height);
-        for (let i = 0; i < gray.length; i++) {
-          const r = imgData.data[i * 4];
-          const g = imgData.data[i * 4 + 1];
-          const b = imgData.data[i * 4 + 2];
-          gray[i] = (r + g + b) / 3;
-        }
-        const params = {
-          pixels: gray,
-          nrows: canvas.height,
-          ncols: canvas.width,
-          ldim: canvas.width,
-          scalefactor: 1.1,
-          stride: 2,
-          minsize: 100,
-          maxsize: 1000,
-          cascade: facefinderClassifyRegion,
-          angle: 0.0
-        };
-        const faces = pico.run_cascade(params, memory);
-        const clusters = pico.cluster_detections(faces, 0.2);
-        clusters.forEach(face => {
-          const [x, y, size] = face;
-          const eyes = iploc.locate(gray, canvas.width, canvas.height, x, y, size);
-          ctx.fillStyle = "red";
-          eyes.forEach(([ex, ey]) => {
-            ctx.beginPath();
-            ctx.arc(ex, ey, 3, 0, 2 * Math.PI);
-            ctx.fill();
-          });
-        });
-      };
-      setInterval(update, 100);
-    }
-
     async function connectFrontLocal() {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
-      document.getElementById("frontCam").srcObject = stream;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+        document.getElementById("frontCam").srcObject = stream;
+        document.getElementById("frontStatus").textContent = "Status: ✅ Connected to Local Camera";
+        document.getElementById("frontStatus").style.color = "#00e676";
+      } catch (err) {
+        document.getElementById("frontStatus").textContent = "Status: ❌ Camera Access Denied";
+        document.getElementById("frontStatus").style.color = "#ff4081";
+      }
     }
     async function connectRearLocal() {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
-      document.getElementById("rearCam").srcObject = stream;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+        document.getElementById("rearCam").srcObject = stream;
+        document.getElementById("rearStatus").textContent = "Status: ✅ Connected to Local Camera";
+        document.getElementById("rearStatus").style.color = "#00e676";
+      } catch (err) {
+        document.getElementById("rearStatus").textContent = "Status: ❌ Camera Access Denied";
+        document.getElementById("rearStatus").style.color = "#ff4081";
+      }
     }
+
     function connectFrontHotspot() {
       const ip = document.getElementById("frontIp").value.trim();
       const mac = document.getElementById("frontMac").value.trim();
       const video = document.getElementById("frontCam");
+      if (!ip) {
+        document.getElementById("frontStatus").textContent = "Status: ❌ Missing Hotspot IP";
+        document.getElementById("frontStatus").style.color = "#ff4081";
+        return;
+      }
       video.srcObject = null;
       video.src = `http://${ip}/live.mp4?mac=${encodeURIComponent(mac)}`;
-      video.play();
+      video.play()
+        .then(() => {
+          document.getElementById("frontStatus").textContent = "Status: ✅ Connected to Hotspot Camera";
+          document.getElementById("frontStatus").style.color = "#00e676";
+        })
+        .catch(() => {
+          document.getElementById("frontStatus").textContent = "Status: ❌ Hotspot Unreachable";
+          document.getElementById("frontStatus").style.color = "#ff4081";
+        });
     }
+
     function connectRearHotspot() {
       const ip = document.getElementById("rearIp").value.trim();
       const mac = document.getElementById("rearMac").value.trim();
       const video = document.getElementById("rearCam");
+      if (!ip) {
+        document.getElementById("rearStatus").textContent = "Status: ❌ Missing Hotspot IP";
+        document.getElementById("rearStatus").style.color = "#ff4081";
+        return;
+      }
       video.srcObject = null;
       video.src = `http://${ip}/live.mp4?mac=${encodeURIComponent(mac)}`;
-      video.play();
+      video.play()
+        .then(() => {
+          document.getElementById("rearStatus").textContent = "Status: ✅ Connected to Hotspot Camera";
+          document.getElementById("rearStatus").style.color = "#00e676";
+        })
+        .catch(() => {
+          document.getElementById("rearStatus").textContent = "Status: ❌ Hotspot Unreachable";
+          document.getElementById("rearStatus").style.color = "#ff4081";
+        });
     }
 
-    function makeChart(ctx, label, color) {
-      return new Chart(ctx, {
-        type: 'line',
-        data: { labels: [], datasets
+    // Auto-init both local cameras on load
+    window.onload = () => {
+      connectFrontLocal();
+      connectRearLocal();
+      // TODO: initialize pico.js + iploc.js detection here
+    };
+  </script>
+</body>
+</html>
