@@ -1,3 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SkyNet Biometric Dashboard</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <style>
+    :root {
+      --bg: #000;
+      --fg: #fff;
+      --panel-bg: rgba(255,255,255,0.06);
+      --accent: #39FF14;
+      --hd-face: #00E5FF;
+      --hd-eye: #FF2EF9;
+      --hd-shadow: rgba(0,229,255,0.6);
+      --hd-shadow2: rgba(255,46,249,0.6);
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: Arial, Helvetica, sans-serif;
+      overflow: hidden;
+    }
+    #camera, #overlay {
+      width: 100%;
+      height: auto;
+      max-height: 100vh;
+      object-fit: cover;
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+    #overlay { z-index: 1; pointer-events: none; }
+    #statusBadge {
+      position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+      z-index: 6; background: rgba(0,0,0,0.55); color: var(--accent);
+      padding: 8px 20px; border-radius: 8px; font-weight: 800;
+    }
+    #flipCameraBtn {
+      position: fixed; top: 12px; right: 12px; z-index: 6;
+      background: rgba(0,0,0,0.55); color: #fff; padding: 8px 12px;
+      border-radius: 8px; cursor: pointer;
+    }
+    #dashboardWrap {
+      position: relative; z-index: 2; width: 100%;
+      height: calc(100vh - 110px); margin-top: 64px; overflow-y: auto;
+    }
+    .dashboard {
+      display: grid; grid-template-columns: 1fr; gap: 10px;
+      width: 95%; max-width: 1300px; margin: 0 auto;
+    }
+    .panel { background: var(--panel-bg); border-radius: 10px; padding: 10px; }
+    canvas.chart { width: 100%; height: 220px; }
+    .footer {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.35); padding: 10px 12px;
+      display: grid; grid-template-columns: 1fr auto; gap: 8px;
+    }
+    .footer .sliders { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    @media (max-width: 600px) {
+      .footer .sliders { grid-template-columns: 1fr; }
+    }
+    @media (min-width: 768px) {
+      .dashboard { grid-template-columns: 1fr 1fr; }
+    }
+    @media (min-width: 1200px) {
+      .dashboard { grid-template-columns: 1fr 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<video id="camera" autoplay muted playsinline></video>
+<canvas id="overlay"></canvas>
+
+<div id="statusBadge">Analyzing</div>
+<button id="flipCameraBtn">Flip Camera</button>
+
+<div id="togglePanel">
+  <button class="icon-btn" id="btnThermal">🌡️</button>
+  <button class="icon-btn" id="btnEEG">🧠</button>
+  <button class="icon-btn" id="btnAnnotations">✳️</button>
+  <button class="icon-btn" id="btnSpectra">📈</button>
+  <button class="icon-btn" id="btnSnapshot">📸</button>
+</div>
+<div id="panelHandle">›</div>
+
+<div id="dashboardWrap">
+  <div class="dashboard">
+    <div class="panel"><h3>Heart Rate</h3><canvas id="rppgChart" class="chart"></canvas></div>
+    <div class="panel"><h3>EEG</h3><canvas id="eegChart" class="chart"></canvas></div>
+    <div class="panel"><h3>rPPG</h3><canvas id="rppgFFT" class="chart"></canvas></div>
+    <div class="panel">
+      <h3>Fusion</h3>
+      <div id="fusionOutput">
+        <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
+        <div id="peakFusion">2. Peak-Based Fusion: 0 Hz</div>
+        <div id="coherenceFusion">3. Cross-Spectral Coherence: 0</div>
+      </div>
+      <div id="fusionEq">
+        $$F_{\text{fusion}}(f) = \text{FFT}_{\text{EEG}}(f) + \text{FFT}_{\text{rPPG}}(f) + \text{FFT}_{\text{HR}}(f)$$
+      </div>
+    </div>
+    <div class="panel"><h3>CPU/GPU</h3><canvas id="sysFlow" class="chart"></canvas></div>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="sliders">
+    <div class="slider-wrap"><div class="label">🎚️</div><input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.5"></div>
+    <div class="slider-wrap"><div class="label">🪄</div><input type="range" id="fftWindow" min="128" max="1024" step="128" value="512"></div>
+    <div class="slider-wrap"><div class="label">🔊</div><input type="range" id="ampScale" min="1" max="5" step="0.5" value="1"></div>
+  </div>
+  <div class="right"><div id="countdown">Next auto-save: 60s</div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<script>
+// Camera init + flip
+let facingMode = "user";
+function startCamera() {
+  navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false })
+    .then(stream => { document.getElementById('camera').srcObject = stream; })
+    .catch(err => { console.error("Camera error:", err); });
+}
+startCamera();
+document.getElementById('flipCameraBtn').addEventListener('click', () => {
+  facingMode = (facingMode === "user") ? "environment" : "user";
+  startCamera();
+});
+
+// Screenshot fix: capture full dashboard including all charts + LaTeX
 async function captureDashboardPNG(customName=null){
   const target = document.getElementById('dashboardWrap');
   const canvas = await html2canvas(target, {
@@ -15,45 +152,9 @@ async function captureDashboardPNG(customName=null){
   link.click();
 }
 
-function buildPayload(snapshotName, metrics, vision){
-  const nowISO=new Date().toISOString(); const meta=deviceMeta; const cpuBytes=getCPUMemoryBytes(); const gpu=gpuInfo;
-  const facesBlock = vision.entries.map(e => {
-    const leftEye = e.eyes.left ? `(${e.eyes.left.x},${e.eyes.left.y})` : "none";
-    const rightEye = e.eyes.right ? `(${e.eyes.right.x},${e.eyes.right.y})` : "none";
-    const pixelsStr = `[${e.pixels.join(',')}]`;
-    return `  - ${e.id}:
-    - Center: (${e.center.x}, ${e.center.y})
-    - Size: ${e.size}
-    - Box: ${e.box.w} × ${e.box.h}
-    - Left Eye: ${leftEye}
-    - Right Eye: ${rightEye}
-    - Pixels: ${pixelsStr}`;
-  }).join('\n');
-
-  return `
-Snapshot Filename: ${snapshotName}
-Timestamp: ${nowISO}
-Device IP Address: ${deviceIP}
-Device Metadata:
-- User Agent: ${meta.userAgent}
-- Platform: ${meta.platform}
-- Language: ${meta.language}
-- Screen Resolution: ${meta.screenResolution}
-- Color Depth: ${meta.colorDepth}
-- Timezone: ${meta.timeZone}
-Fusion Metrics:
-- Frequency-Domain Fusion: ${metrics.freqFusion} Hz
-- Peak-Based Fusion: ${metrics.peakFusion} Hz
-- Cross-Spectral Coherence: ${metrics.coherence}
-Vision Metrics:
-- Face Count: ${vision.faces}
-- Avg Confidence: ${vision.avgConfidence}
-- Faces:
-${facesBlock || '  - none'}
-Browser Resource Metrics:
-- CPU Memory Bytes: ${cpuBytes}
-- GPU Memory Bytes: ${gpu.gpuMemoryBytes}
-- GPU Vendor: ${gpu.gpuVendor}
-- GPU Renderer: ${gpu.gpuRenderer}
-`.trim();
-}
+// Example chart init
+const rppgCtx=document.getElementById('rppgChart').getContext('2d');
+const rppgChart=new Chart(rppgCtx,{type:'line',data:{labels:[],datasets:[{label:'Heart Rate',data:[]}]},options:{responsive:true}});
+</script>
+</body>
+</html>
