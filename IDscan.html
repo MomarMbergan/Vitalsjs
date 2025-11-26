@@ -23,10 +23,29 @@
       width: 100%; height: 100%;
       object-fit: cover;
     }
-    .cameraSelect {
+    .cameraControls {
       position: absolute;
-      top: 10px; right: 10px;
+      top: 10px; left: 10px;
       z-index: 20;
+      background: rgba(0,0,0,0.6);
+      padding: 8px;
+      border-radius: 6px;
+      color: #00e5ff;
+      font-size: 0.9rem;
+    }
+    .cameraControls input {
+      display: block;
+      margin: 4px 0;
+      width: 160px;
+    }
+    .cameraControls button {
+      margin-top: 4px;
+      padding: 4px 8px;
+      background: #00e5ff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      color: black;
     }
 
     /* Stack vertically on small screens */
@@ -37,7 +56,7 @@
 
     .hud {
       position: absolute;
-      top: 40px; left: 10px;
+      top: 100px; left: 10px;
       color: #00e5ff;
       font-size: 1rem;
       background: rgba(0,0,0,0.5);
@@ -68,12 +87,18 @@
   <div class="container">
     <!-- Left / Top: Front camera -->
     <div class="screen">
-      <select id="frontCamSelect" class="cameraSelect"></select>
+      <div class="cameraControls">
+        <label>Front Camera:</label>
+        <button onclick="connectFrontLocal()">Use Local</button>
+        <input id="frontIp" type="text" placeholder="Hotspot IP">
+        <input id="frontMac" type="text" placeholder="MAC Address">
+        <button onclick="connectFrontHotspot()">Connect Hotspot</button>
+      </div>
       <video id="frontCam" autoplay playsinline></video>
       <div class="hud">
-        📱 Front<br>
-        ❤️ HR: <span id="hrFront">--</span> bpm<br>
-        🌬 SpO₂: <span id="spo2Front">--</span> %
+        Front Camera<br>
+        HR: <span id="hrFront">--</span> bpm<br>
+        SpO₂: <span id="spo2Front">--</span> %
       </div>
       <div class="charts">
         <canvas id="ppgFront"></canvas>
@@ -83,12 +108,18 @@
 
     <!-- Right / Bottom: Rear camera -->
     <div class="screen">
-      <select id="rearCamSelect" class="cameraSelect"></select>
+      <div class="cameraControls">
+        <label>Rear Camera:</label>
+        <button onclick="connectRearLocal()">Use Local</button>
+        <input id="rearIp" type="text" placeholder="Hotspot IP">
+        <input id="rearMac" type="text" placeholder="MAC Address">
+        <button onclick="connectRearHotspot()">Connect Hotspot</button>
+      </div>
       <video id="rearCam" autoplay playsinline></video>
       <div class="hud">
-        📡 Rear<br>
-        ❤️ HR: <span id="hrRear">--</span> bpm<br>
-        🌬 SpO₂: <span id="spo2Rear">--</span> %
+        Rear Camera<br>
+        HR: <span id="hrRear">--</span> bpm<br>
+        SpO₂: <span id="spo2Rear">--</span> %
       </div>
       <div class="charts">
         <canvas id="ppgRear"></canvas>
@@ -98,70 +129,46 @@
   </div>
 
   <script>
-    // Example hotspot cameras (replace with your actual IPs/URLs)
-    const hotspotCameras = [
-      { name: "Hotspot Cam 1", url: "http://192.168.0.1/live.mp4" },
-      { name: "Hotspot Cam 2", url: "http://192.168.0.2/live.mp4" },
-      { name: "Hotspot Cam 3", url: "http://192.168.0.3/live.mp4" }
-    ];
-
-    function populateCameraSelect(selectId) {
-      const select = document.getElementById(selectId);
-      select.innerHTML = "<option value='local'>Local Device Camera</option>";
-      hotspotCameras.forEach(cam => {
-        const opt = document.createElement("option");
-        opt.value = cam.url;
-        opt.textContent = cam.name;
-        select.appendChild(opt);
+    // Local camera connections
+    async function connectFrontLocal() {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" }, audio: false
       });
+      document.getElementById("frontCam").srcObject = stream;
     }
 
-    populateCameraSelect("frontCamSelect");
-    populateCameraSelect("rearCamSelect");
+    async function connectRearLocal() {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }, audio: false
+      });
+      document.getElementById("rearCam").srcObject = stream;
+    }
 
-    async function connectFrontCamera() {
-      const choice = document.getElementById("frontCamSelect").value;
+    // Hotspot camera connections (IP + MAC entered manually)
+    function connectFrontHotspot() {
+      const ip = document.getElementById("frontIp").value.trim();
+      const mac = document.getElementById("frontMac").value.trim();
+      if (!ip) { alert("Enter Hotspot IP"); return; }
       const video = document.getElementById("frontCam");
-
-      if (choice === "local") {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" }, audio: false
-        });
-        video.srcObject = stream;
-      } else {
-        video.srcObject = null;
-        video.src = choice;
-        video.type = "video/mp4";
-        video.play();
-      }
+      video.srcObject = null;
+      // Example: append MAC as query param (depends on your backend/camera API)
+      video.src = `http://${ip}/live.mp4?mac=${encodeURIComponent(mac)}`;
+      video.type = "video/mp4";
+      video.play();
     }
 
-    async function connectRearCamera() {
-      const choice = document.getElementById("rearCamSelect").value;
+    function connectRearHotspot() {
+      const ip = document.getElementById("rearIp").value.trim();
+      const mac = document.getElementById("rearMac").value.trim();
+      if (!ip) { alert("Enter Hotspot IP"); return; }
       const video = document.getElementById("rearCam");
-
-      if (choice === "local") {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" }, audio: false
-        });
-        video.srcObject = stream;
-      } else {
-        video.srcObject = null;
-        video.src = choice;
-        video.type = "video/mp4";
-        video.play();
-      }
+      video.srcObject = null;
+      video.src = `http://${ip}/live.mp4?mac=${encodeURIComponent(mac)}`;
+      video.type = "video/mp4";
+      video.play();
     }
 
-    // Bind events
-    document.getElementById("frontCamSelect").addEventListener("change", connectFrontCamera);
-    document.getElementById("rearCamSelect").addEventListener("change", connectRearCamera);
-
-    // Initialize defaults
-    connectFrontCamera();
-    connectRearCamera();
-
-    // Chart.js setup for each screen
+    // Chart.js setup
     function makeChart(ctx, label, color) {
       return new Chart(ctx, {
         type: 'line',
