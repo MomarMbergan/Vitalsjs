@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -137,7 +137,7 @@
       if (!ip) { alert("Enter Hotspot IP"); return; }
       const video = document.getElementById("frontCam");
       video.srcObject = null;
-      video.src = `http://${ip}/live.mp4?mac=${encodeURIComponent(mac)}`;
+      video.src = http://${ip}/live.mp4?mac=${encodeURIComponent(mac)};
       video.type = "video/mp4";
       video.play();
     }
@@ -147,7 +147,7 @@
       if (!ip) { alert("Enter Hotspot IP"); return; }
       const video = document.getElementById("rearCam");
       video.srcObject = null;
-      video.src = `http://${ip}/live.mp4?mac=${encodeURIComponent(mac)}`;
+      video.src = http://${ip}/live.mp4?mac=${encodeURIComponent(mac)};
       video.type = "video/mp4";
       video.play();
     }
@@ -187,6 +187,8 @@
       }, 100);
     }
 
+    initFaceAPI();
+
     // Chart.js setup
     function makeChart(ctx, label, color) {
       return new Chart(ctx, {
@@ -196,10 +198,4 @@
       });
     }
     const ppgFront = makeChart(document.getElementById('ppgFront').getContext('2d'), 'PPG Front', '#00e5ff');
-    const spo2FrontChart = makeChart(document.getElementById('spo2FrontChart').getContext('2d'), 'SpO₂ Front', '#ff4081');
-    const ppgRear = makeChart(document.getElementById('ppgRear').getContext('2d'), 'PPG Rear', '#00e5ff');
-    const spo2RearChart = makeChart(document.getElementById('spo2RearChart').getContext('2d'), 'SpO₂ Rear', '#ff4081');
-
-    // Simulated data update
-    setInterval(() => {
-      const hr =
+    const spo2
