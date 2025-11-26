@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dual Camera Health Monitor</title>
+  <title>Thermal Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/js/pico.js"></script>
   <script src="/js/iploc.js"></script>
@@ -26,9 +26,11 @@
       background: #00e5ff; border: none; border-radius: 4px;
       cursor: pointer; color: black;
     }
-    .status {
-      margin-top: 8px; font-size: 0.85rem;
-      color: #ff4081;
+    .statusBlock {
+      position: absolute; top: 100px; left: 10px;
+      font-size: 0.85rem; color: #ff4081;
+      background: rgba(0,0,0,0.6); padding: 6px 10px;
+      border-radius: 4px; z-index: 20;
     }
     .analyzing {
       position: absolute; top: 10px; left: 50%;
@@ -39,7 +41,7 @@
       z-index: 30;
     }
     .hud {
-      position: absolute; top: 120px; left: 10px;
+      position: absolute; top: 140px; left: 10px;
       color: #00e5ff; font-size: 1rem; line-height: 1.6;
       background: rgba(0,0,0,0.5); padding: 8px 12px;
       border-radius: 6px; z-index: 10;
@@ -58,7 +60,8 @@
       color: #00e5ff; font-size: 0.9rem; margin-bottom: 4px;
     }
     .chartCanvas {
-      width: 100%; height: 100%; background: transparent;
+      width: 100%; height: 100%;
+      background: transparent;
     }
     @media (max-width: 768px) {
       .container { flex-direction: column; }
@@ -77,8 +80,8 @@
         <input id="frontIp" type="text" placeholder="Hotspot IP"/>
         <input id="frontMac" type="text" placeholder="MAC Address"/>
         <button onclick="connectFrontHotspot()">Connect Hotspot</button>
-        <div id="frontStatus" class="status">Status: Not Connected</div>
       </div>
+      <div id="frontStatus" class="statusBlock">Status: Not Connected</div>
       <video id="frontCam" autoplay playsinline muted></video>
       <canvas id="frontOverlay" class="overlay"></canvas>
       <div class="hud">
@@ -107,8 +110,8 @@
         <input id="rearIp" type="text" placeholder="Hotspot IP"/>
         <input id="rearMac" type="text" placeholder="MAC Address"/>
         <button onclick="connectRearHotspot()">Connect Hotspot</button>
-        <div id="rearStatus" class="status">Status: Not Connected</div>
       </div>
+      <div id="rearStatus" class="statusBlock">Status: Not Connected</div>
       <video id="rearCam" autoplay playsinline muted></video>
       <canvas id="rearOverlay" class="overlay"></canvas>
       <div class="hud">
@@ -170,10 +173,4 @@
           document.getElementById("frontStatus").style.color = "#00e676";
         })
         .catch(() => {
-          document.getElementById("frontStatus").textContent = "Status: ❌ Hotspot Unreachable";
-          document.getElementById("frontStatus").style.color = "#ff4081";
-        });
-    }
-
-    function connectRearHotspot() {
-      const ip = document.getElementById("
+          document.getElementById("frontStatus").textContent
