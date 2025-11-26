@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dual Camera Hotspot Monitor</title>
+  <title>Dual Camera Hotspot Monitor with Eye Tracking</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Face API for eye recognition -->
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: black; font-family: Arial, sans-serif; }
 
     .container {
       display: flex;
-      flex-direction: row;   /* side by side by default */
+      flex-direction: row;
       width: 100vw; height: 100vh;
     }
     .screen {
@@ -19,9 +21,11 @@
       flex: 1;
       overflow: hidden;
     }
-    video {
+    video, canvas.overlay {
       width: 100%; height: 100%;
       object-fit: cover;
+      position: absolute;
+      top: 0; left: 0;
     }
     .cameraControls {
       position: absolute;
@@ -33,27 +37,16 @@
       color: #00e5ff;
       font-size: 0.9rem;
     }
-    .cameraControls input {
-      display: block;
-      margin: 4px 0;
-      width: 160px;
-    }
+    .cameraControls input { display: block; margin: 4px 0; width: 160px; }
     .cameraControls button {
-      margin-top: 4px;
-      padding: 4px 8px;
-      background: #00e5ff;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      color: black;
+      margin-top: 4px; padding: 4px 8px;
+      background: #00e5ff; border: none; border-radius: 4px;
+      cursor: pointer; color: black;
     }
-
-    /* Stack vertically on small screens */
     @media (max-width: 768px) {
       .container { flex-direction: column; }
       .screen { height: 50%; }
     }
-
     .hud {
       position: absolute;
       top: 100px; left: 10px;
@@ -64,7 +57,6 @@
       border-radius: 6px;
       z-index: 10;
     }
-
     .charts {
       position: absolute;
       bottom: 0; left: 0;
@@ -75,17 +67,14 @@
       background: rgba(0,0,0,0.4);
       z-index: 10;
     }
-    canvas {
-      flex: 1;
-      max-width: 48%;
-      height: 100%;
-      background: transparent;
+    canvas.chartCanvas {
+      flex: 1; max-width: 48%; height: 100%; background: transparent;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Left / Top: Front camera -->
+    <!-- Front camera -->
     <div class="screen">
       <div class="cameraControls">
         <label>Front Camera:</label>
@@ -95,18 +84,19 @@
         <button onclick="connectFrontHotspot()">Connect Hotspot</button>
       </div>
       <video id="frontCam" autoplay playsinline></video>
+      <canvas id="frontOverlay" class="overlay"></canvas>
       <div class="hud">
         Front Camera<br>
         HR: <span id="hrFront">--</span> bpm<br>
         SpO₂: <span id="spo2Front">--</span> %
       </div>
       <div class="charts">
-        <canvas id="ppgFront"></canvas>
-        <canvas id="spo2FrontChart"></canvas>
+        <canvas id="ppgFront" class="chartCanvas"></canvas>
+        <canvas id="spo2FrontChart" class="chartCanvas"></canvas>
       </div>
     </div>
 
-    <!-- Right / Bottom: Rear camera -->
+    <!-- Rear camera -->
     <div class="screen">
       <div class="cameraControls">
         <label>Rear Camera:</label>
@@ -116,14 +106,15 @@
         <button onclick="connectRearHotspot()">Connect Hotspot</button>
       </div>
       <video id="rearCam" autoplay playsinline></video>
+      <canvas id="rearOverlay" class="overlay"></canvas>
       <div class="hud">
         Rear Camera<br>
         HR: <span id="hrRear">--</span> bpm<br>
         SpO₂: <span id="spo2Rear">--</span> %
       </div>
       <div class="charts">
-        <canvas id="ppgRear"></canvas>
-        <canvas id="spo2RearChart"></canvas>
+        <canvas id="ppgRear" class="chartCanvas"></canvas>
+        <canvas id="spo2RearChart" class="chartCanvas"></canvas>
       </div>
     </div>
   </div>
@@ -131,32 +122,25 @@
   <script>
     // Local camera connections
     async function connectFrontLocal() {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" }, audio: false
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
       document.getElementById("frontCam").srcObject = stream;
     }
-
     async function connectRearLocal() {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }, audio: false
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
       document.getElementById("rearCam").srcObject = stream;
     }
 
-    // Hotspot camera connections (IP + MAC entered manually)
+    // Hotspot camera connections
     function connectFrontHotspot() {
       const ip = document.getElementById("frontIp").value.trim();
       const mac = document.getElementById("frontMac").value.trim();
       if (!ip) { alert("Enter Hotspot IP"); return; }
       const video = document.getElementById("frontCam");
       video.srcObject = null;
-      // Example: append MAC as query param (depends on your backend/camera API)
       video.src = `http://${ip}/live.mp4?mac=${encodeURIComponent(mac)}`;
       video.type = "video/mp4";
       video.play();
     }
-
     function connectRearHotspot() {
       const ip = document.getElementById("rearIp").value.trim();
       const mac = document.getElementById("rearMac").value.trim();
@@ -168,41 +152,65 @@
       video.play();
     }
 
-    // Chart.js setup
-    function makeChart(ctx, label, color) {
-      return new Chart(ctx, {
-        type: 'line',
-        data: { labels: [], datasets: [{ label, data: [], borderColor: color, fill: false }] },
-        options: { animation: false, scales: { x: { display: false }, y: { display: true } } }
-      });
+    // Eye recognition with face-api.js
+    async function initFaceAPI() {
+      await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+      await faceapi.nets.faceLandmark68TinyNet.loadFromUri('/models');
+      startEyeTracking('frontCam', 'frontOverlay');
+      startEyeTracking('rearCam', 'rearOverlay');
     }
 
-    const ppgFront = makeChart(document.getElementById('ppgFront').getContext('2d'), 'PPG Front', '#00e5ff');
-    const spo2FrontChart = makeChart(document.getElementById('spo2FrontChart').getContext('2d'), 'SpO₂ Front', '#ff4081');
-    const ppgRear = makeChart(document.getElementById('ppgRear').getContext('2d'), 'PPG Rear', '#00e5ff');
-    const spo2RearChart = makeChart(document.getElementById('spo2RearChart').getContext('2d'), 'SpO₂ Rear', '#ff4081');
+    function startEyeTracking(videoId, canvasId) {
+      const video = document.getElementById(videoId);
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
 
-    // Simulated data update
-    setInterval(() => {
-      const hr = Math.floor(60 + Math.random() * 40);
-      const spo2 = Math.floor(95 + Math.random() * 5);
-      const t = new Date().toLocaleTimeString();
+      setInterval(async () => {
+        if (video.readyState < 2) return;
+        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+          .withFaceLandmarks(true);
 
-      document.getElementById('hrFront').textContent = hr;
-      document.getElementById('spo2Front').textContent = spo2;
-      document.getElementById('hrRear').textContent = hr;
-      document.getElementById('spo2Rear').textContent = spo2;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
 
-      [ppgFront, spo2FrontChart, ppgRear, spo2RearChart].forEach(chart => {
-        chart.data.labels.push(t);
-        chart.data.datasets[0].data.push(chart.data.datasets[0].label.includes('PPG') ? hr : spo2);
-        if (chart.data.labels.length > 20) {
-          chart.data.labels.shift();
-          chart.data.datasets[0].data.shift();
-        }
-        chart.update();
-      });
-    }, 1000);
-  </script>
-</body>
-</html>
+        detections.forEach(det => {
+          const landmarks = det.landmarks;
+          const leftEye = landmarks.getLeftEye();
+          const rightEye = landmarks.getRightEye();
+
+          // Draw red dots
+          ctx.fillStyle = "red";
+          [...leftEye, ...rightEye].forEach(pt => {
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, 3, 0, 2 * Math.PI);
+            ctx.fill();
+          });
+
+          // Enhance each eye region
+          [leftEye, rightEye].forEach(eyePoints => {
+            if (!eyePoints.length) return;
+            enhanceEyeSection(video, ctx, eyePoints);
+          });
+        });
+      }, 150);
+    }
+
+    function enhanceEyeSection(video, ctx, eyePoints) {
+      const xs = eyePoints.map(p => p.x);
+      const ys = eyePoints.map(p => p.y);
+      const x = Math.min(...xs);
+      const y = Math.min(...ys);
+      const w = Math.max(...xs) - x;
+      const h = Math.max(...ys) - y;
+
+      // Create offscreen canvas for eye crop
+      const eyeCanvas = document.createElement('canvas');
+      eyeCanvas.width = w * 2;
+      eyeCanvas.height = h * 2;
+      const eyeCtx = eyeCanvas.getContext('2d');
+      eyeCtx.filter = "contrast(150%) saturate(200%)";
+      eyeCtx.drawImage(video, x, y, w, h, 0, 0, w * 2, h * 2);
+
+      // Draw enhanced eye inset above the eye
+      ctx.drawImage(eyeCanvas, x, y - h - 30, w
