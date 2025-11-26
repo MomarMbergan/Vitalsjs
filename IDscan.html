@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dual Camera Heart Rate & SpO₂ Monitor</title>
+  <title>Dual Camera Hotspot Monitor</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -11,7 +11,7 @@
 
     .container {
       display: flex;
-      flex-direction: row;
+      flex-direction: row;   /* side by side by default */
       width: 100vw; height: 100vh;
     }
     .screen {
@@ -23,8 +23,13 @@
       width: 100%; height: 100%;
       object-fit: cover;
     }
+    .cameraSelect {
+      position: absolute;
+      top: 10px; right: 10px;
+      z-index: 20;
+    }
 
-    /* Responsive: stack vertically on small screens */
+    /* Stack vertically on small screens */
     @media (max-width: 768px) {
       .container { flex-direction: column; }
       .screen { height: 50%; }
@@ -32,7 +37,7 @@
 
     .hud {
       position: absolute;
-      top: 10px; left: 10px;
+      top: 40px; left: 10px;
       color: #00e5ff;
       font-size: 1rem;
       background: rgba(0,0,0,0.5);
@@ -61,10 +66,12 @@
 </head>
 <body>
   <div class="container">
-    <!-- Front camera screen -->
+    <!-- Left / Top: Front camera -->
     <div class="screen">
+      <select id="frontCamSelect" class="cameraSelect"></select>
       <video id="frontCam" autoplay playsinline></video>
       <div class="hud">
+        📱 Front<br>
         ❤️ HR: <span id="hrFront">--</span> bpm<br>
         🌬 SpO₂: <span id="spo2Front">--</span> %
       </div>
@@ -74,10 +81,12 @@
       </div>
     </div>
 
-    <!-- Rear camera screen -->
+    <!-- Right / Bottom: Rear camera -->
     <div class="screen">
+      <select id="rearCamSelect" class="cameraSelect"></select>
       <video id="rearCam" autoplay playsinline></video>
       <div class="hud">
+        📡 Rear<br>
         ❤️ HR: <span id="hrRear">--</span> bpm<br>
         🌬 SpO₂: <span id="spo2Rear">--</span> %
       </div>
@@ -89,22 +98,68 @@
   </div>
 
   <script>
-    async function initCameras() {
-      try {
-        const frontStream = await navigator.mediaDevices.getUserMedia({
+    // Example hotspot cameras (replace with your actual IPs/URLs)
+    const hotspotCameras = [
+      { name: "Hotspot Cam 1", url: "http://192.168.0.1/live.mp4" },
+      { name: "Hotspot Cam 2", url: "http://192.168.0.2/live.mp4" },
+      { name: "Hotspot Cam 3", url: "http://192.168.0.3/live.mp4" }
+    ];
+
+    function populateCameraSelect(selectId) {
+      const select = document.getElementById(selectId);
+      select.innerHTML = "<option value='local'>Local Device Camera</option>";
+      hotspotCameras.forEach(cam => {
+        const opt = document.createElement("option");
+        opt.value = cam.url;
+        opt.textContent = cam.name;
+        select.appendChild(opt);
+      });
+    }
+
+    populateCameraSelect("frontCamSelect");
+    populateCameraSelect("rearCamSelect");
+
+    async function connectFrontCamera() {
+      const choice = document.getElementById("frontCamSelect").value;
+      const video = document.getElementById("frontCam");
+
+      if (choice === "local") {
+        const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user" }, audio: false
         });
-        document.getElementById('frontCam').srcObject = frontStream;
-
-        const rearStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" }, audio: false
-        });
-        document.getElementById('rearCam').srcObject = rearStream;
-      } catch (err) {
-        alert("Camera error: " + err);
+        video.srcObject = stream;
+      } else {
+        video.srcObject = null;
+        video.src = choice;
+        video.type = "video/mp4";
+        video.play();
       }
     }
-    initCameras();
+
+    async function connectRearCamera() {
+      const choice = document.getElementById("rearCamSelect").value;
+      const video = document.getElementById("rearCam");
+
+      if (choice === "local") {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" }, audio: false
+        });
+        video.srcObject = stream;
+      } else {
+        video.srcObject = null;
+        video.src = choice;
+        video.type = "video/mp4";
+        video.play();
+      }
+    }
+
+    // Bind events
+    document.getElementById("frontCamSelect").addEventListener("change", connectFrontCamera);
+    document.getElementById("rearCamSelect").addEventListener("change", connectRearCamera);
+
+    // Initialize defaults
+    connectFrontCamera();
+    connectRearCamera();
 
     // Chart.js setup for each screen
     function makeChart(ctx, label, color) {
@@ -120,19 +175,17 @@
     const ppgRear = makeChart(document.getElementById('ppgRear').getContext('2d'), 'PPG Rear', '#00e5ff');
     const spo2RearChart = makeChart(document.getElementById('spo2RearChart').getContext('2d'), 'SpO₂ Rear', '#ff4081');
 
-    // Simulated data update (replace with real rPPG/SpO₂ algorithm)
+    // Simulated data update
     setInterval(() => {
       const hr = Math.floor(60 + Math.random() * 40);
       const spo2 = Math.floor(95 + Math.random() * 5);
       const t = new Date().toLocaleTimeString();
 
-      // Update HUD
       document.getElementById('hrFront').textContent = hr;
       document.getElementById('spo2Front').textContent = spo2;
       document.getElementById('hrRear').textContent = hr;
       document.getElementById('spo2Rear').textContent = spo2;
 
-      // Update charts
       [ppgFront, spo2FrontChart, ppgRear, spo2RearChart].forEach(chart => {
         chart.data.labels.push(t);
         chart.data.datasets[0].data.push(chart.data.datasets[0].label.includes('PPG') ? hr : spo2);
