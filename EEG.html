@@ -12,56 +12,223 @@
       --font-size: 18px;
       --fusion-font-size: 20px;
       --footer-bg: rgba(0,0,0,0.35);
-      --accent: #39FF14;
+      --accent: #39FF14; /* neon green */
       --icon-bg: rgba(255,255,255,0.10);
       --icon-border: rgba(255,255,255,0.25);
 
       /* HD overlay colors */
-      --hd-face: #00E5FF;      /* cyan */
-      --hd-eye: #FF2EF9;       /* magenta */
+      --hd-face: #00E5FF;      /* cyan neon */
+      --hd-eye: #FF2EF9;       /* magenta neon */
       --hd-shadow: rgba(0,229,255,0.6);
       --hd-shadow2: rgba(255,46,249,0.6);
     }
 
-    body { margin: 0; background: var(--bg); color: var(--fg); font-family: Arial, Helvetica, sans-serif; font-size: var(--font-size); overflow: hidden; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: var(--font-size);
+      overflow: hidden;
+    }
 
     /* Camera and overlay */
-    #camera { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; background: #111; filter: contrast(1.05) saturate(1.1); }
-    #overlay { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; }
+    #camera {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: 0;
+      background: #111;
+      filter: contrast(1.05) saturate(1.1);
+    }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      pointer-events: none;
+    }
 
     /* Centered status */
     #statusBadge {
-      position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
-      z-index: 5; background: rgba(0,0,0,0.55); color: var(--accent);
-      padding: 8px 20px; border-radius: 8px; font-weight: 800; font-size: 22px;
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 6;
+      background: rgba(0,0,0,0.55);
+      color: var(--accent);
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 22px;
       border: 1px solid rgba(57,255,20,0.6);
       text-shadow: 0 0 6px rgba(57,255,20,0.7), 0 0 10px rgba(57,255,20,0.4);
     }
 
-    /* Panels */
-    .dashboard { position: relative; z-index: 2; display: grid; grid-template-columns: 1fr; gap: 10px; width: 95vw; max-width: 1300px; margin: 64px auto 110px auto; pointer-events: none; }
-    .panel { background: var(--panel-bg); border-radius: 10px; padding: 10px; pointer-events: auto; backdrop-filter: blur(2px); }
-    .panel h3 { margin: 0 0 8px 0; font-weight: 700; font-size: 22px; text-align: left; }
-    canvas.chart { width: 100%; height: 220px; background: rgba(0,0,0,0.05); border-radius: 10px; }
-    .colorbar { width: 100%; height: 22px; margin-top: 8px; border-radius: 5px; background: linear-gradient(90deg, #00f, #0ff, #ff0, #f00); box-shadow: 0 0 12px rgba(255,255,255,0.15); }
+    /* Flip camera button (top-right) */
+    #flipCameraBtn {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 6;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.22);
+      cursor: pointer;
+      font-weight: 700;
+      box-shadow: inset 0 0 12px rgba(255,255,255,0.08), 0 0 10px rgba(0,0,0,0.4);
+    }
+    #flipCameraBtn:hover { background: rgba(255,255,255,0.16); }
 
-    #fusionOutput { margin-top: 8px; font-size: var(--fusion-font-size); line-height: 1.35; }
+    /* Panels grid wrapper (scrollable) */
+    #dashboardWrap {
+      position: relative;
+      z-index: 2;
+      width: 100vw;
+      height: calc(100vh - 110px);
+      margin-top: 64px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      width: 95vw;
+      max-width: 1300px;
+      margin: 0 auto 10px auto;
+      pointer-events: none;
+    }
+    .panel {
+      background: var(--panel-bg);
+      border-radius: 10px;
+      padding: 10px;
+      pointer-events: auto;
+      backdrop-filter: blur(2px);
+    }
+    .panel h3 {
+      margin: 0 0 8px 0;
+      font-weight: 700;
+      font-size: 22px;
+      text-align: left;
+    }
+    canvas.chart {
+      width: 100%;
+      height: 220px;
+      background: rgba(0,0,0,0.05);
+      border-radius: 10px;
+    }
+    .colorbar {
+      width: 100%;
+      height: 22px;
+      margin-top: 8px;
+      border-radius: 5px;
+      background: linear-gradient(90deg, #00f, #0ff, #ff0, #f00);
+      box-shadow: 0 0 12px rgba(255,255,255,0.15);
+    }
+
+    #fusionOutput {
+      margin-top: 8px;
+      font-size: var(--fusion-font-size);
+      line-height: 1.35;
+    }
+    #fusionEq {
+      margin-top: 8px;
+      text-align: center;
+      font-size: 20px;
+    }
 
     /* Footer */
-    .footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 3; background: var(--footer-bg); padding: 10px 12px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; backdrop-filter: blur(4px); border-top: 1px solid rgba(255,255,255,0.08); }
-    .footer .sliders { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: center; }
-    .slider-wrap { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; }
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 3;
+      background: var(--footer-bg);
+      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(4px);
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .footer .sliders {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+    .slider-wrap {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      align-items: center;
+    }
     .slider-wrap .label { font-size: 14px; opacity: 0.9; }
     input[type=range] { width: 100%; }
     .footer .right { display: flex; gap: 12px; align-items: center; }
     #countdown { font-size: 14px; color: #9cf; opacity: 0.95; }
 
     /* Right toggle panel */
-    #togglePanel { position: fixed; top: 0; right: -72px; width: 72px; height: 100vh; z-index: 4; background: rgba(0,0,0,0.45); backdrop-filter: blur(5px); border-left: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; align-items: center; padding: 10px 8px; gap: 10px; transition: right 0.25s ease; }
+    #togglePanel {
+      position: fixed;
+      top: 0;
+      right: -72px;
+      width: 72px;
+      height: 100vh;
+      z-index: 4;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(5px);
+      border-left: 1px solid rgba(255,255,255,0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px 8px;
+      gap: 10px;
+      transition: right 0.25s ease;
+    }
     #togglePanel.open { right: 0; }
-    .icon-btn { width: 52px; height: 52px; display: inline-flex; align-items: center; justify-content: center; background: var(--icon-bg); color: #fff; border: 1px solid var(--icon-border); border-radius: 12px; font-size: 22px; cursor: pointer; box-shadow: inset 0 0 12px rgba(255,255,255,0.08), 0 0 10px rgba(0,0,0,0.4); }
+    .icon-btn {
+      width: 52px;
+      height: 52px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--icon-bg);
+      color: #fff;
+      border: 1px solid var(--icon-border);
+      border-radius: 12px;
+      font-size: 22px;
+      cursor: pointer;
+      box-shadow: inset 0 0 12px rgba(255,255,255,0.08), 0 0 10px rgba(0,0,0,0.4);
+    }
     .icon-btn:hover { background: rgba(255,255,255,0.16); }
-    #panelHandle { position: fixed; top: 50%; right: 0; transform: translateY(-50%); z-index: 5; background: rgba(0,0,0,0.55); color: #fff; border: 1px solid rgba(255,255,255,0.22); border-right: none; padding: 8px 10px; border-top-left-radius: 8px; border-bottom-left-radius: 8px; cursor: pointer; font-size: 18px; backdrop-filter: blur(4px); }
+    #panelHandle {
+      position: fixed;
+      top: 50%;
+      right: 0;
+      transform: translateY(-50%);
+      z-index: 5;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-right: none;
+      padding: 8px 10px;
+      border-top-left-radius: 8px;
+      border-bottom-left-radius: 8px;
+      cursor: pointer;
+      font-size: 18px;
+      backdrop-filter: blur(4px);
+    }
     #panelHandle:hover { background: rgba(255,255,255,0.12); }
   </style>
 
@@ -74,7 +241,9 @@
 
 <video id="camera" autoplay muted playsinline></video>
 <canvas id="overlay"></canvas>
+
 <div id="statusBadge">Analyzing</div>
+<button id="flipCameraBtn">Flip Camera</button>
 
 <div id="togglePanel">
   <button class="icon-btn" id="btnThermal" title="Toggle thermal view">🌡️</button>
@@ -85,19 +254,24 @@
 </div>
 <div id="panelHandle">›</div>
 
-<div class="dashboard">
-  <div class="panel"><h3>Heart Rate</h3><canvas id="rppgChart" class="chart"></canvas><div class="colorbar"></div></div>
-  <div class="panel"><h3>EEG</h3><canvas id="eegChart" class="chart"></canvas><div class="colorbar"></div></div>
-  <div class="panel"><h3>rPPG</h3><canvas id="rppgFFT" class="chart"></canvas></div>
-  <div class="panel"><h3>Fusion</h3>
-    <div id="fusionOutput">
-      <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
-      <div id="peakFusion">2. Peak-Based Fusion: 0 Hz</div>
-      <div id="coherenceFusion">3. Cross-Spectral Coherence: 0</div>
-      <div>$$F_{\text{fusion}}(f) = FFT_{\text{rPPG}}(f) + FFT_{\text{EEG}}(f)$$</div>
+<div id="dashboardWrap">
+  <div class="dashboard">
+    <div class="panel"><h3>Heart Rate</h3><canvas id="rppgChart" class="chart"></canvas><div class="colorbar"></div></div>
+    <div class="panel"><h3>EEG</h3><canvas id="eegChart" class="chart"></canvas><div class="colorbar"></div></div>
+    <div class="panel"><h3>rPPG</h3><canvas id="rppgFFT" class="chart"></canvas></div>
+    <div class="panel">
+      <h3>Fusion</h3>
+      <div id="fusionOutput">
+        <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
+        <div id="peakFusion">2. Peak-Based Fusion: 0 Hz</div>
+        <div id="coherenceFusion">3. Cross-Spectral Coherence: 0</div>
+      </div>
+      <div id="fusionEq">
+        $$F_{\text{fusion}}(f) = \text{FFT}_{\text{EEG}}(f) + \text{FFT}_{\text{rPPG}}(f) + \text{FFT}_{\text{HR}}(f)$$
+      </div>
     </div>
+    <div class="panel"><h3>CPU/GPU</h3><canvas id="sysFlow" class="chart"></canvas></div>
   </div>
-  <div class="panel"><h3>CPU/GPU</h3><canvas id="sysFlow" class="chart"></canvas></div>
 </div>
 
 <div class="footer">
@@ -111,7 +285,7 @@
 
 <script>
 /* ============================
-   Pico.js + lploc runtime
+   Pico.js + lploc runtime (from your provided script structure)
    ============================ */
 const pico = {};
 pico.unpack_cascade = function(bytes){
@@ -245,33 +419,50 @@ lploc.unpack_localizer = function(bytes){
 };
 
 /* ============================
-   Media init + one-time 60s recording
+   Media init + flip camera + one-time 60s recording
    ============================ */
 const video = document.getElementById('camera');
 const overlay = document.getElementById('overlay');
 const octx = overlay.getContext('2d');
 const statusBadge = document.getElementById('statusBadge');
+const flipCameraBtn = document.getElementById('flipCameraBtn');
 
-let mediaStream = null, oneTimeRecorded = false;
+let mediaStream = null, oneTimeRecorded = false, facingMode = "user";
 
-async function initMedia(){
+async function startCamera() {
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(t => t.stop());
+  }
+  mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: true });
+  video.srcObject = mediaStream;
+  statusBadge.textContent = "Analyzing";
+}
+
+flipCameraBtn.addEventListener('click', async () => {
+  facingMode = facingMode === "user" ? "environment" : "user";
   try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
-    video.srcObject = mediaStream;
-    statusBadge.textContent = "Analyzing";
+    await startCamera();
+  } catch (err) {
+    console.error("Flip camera failed:", err);
+  }
+});
+
+function resizeOverlay(){ overlay.width = window.innerWidth; overlay.height = window.innerHeight; }
+window.addEventListener('resize', resizeOverlay);
+
+(async function initMedia(){
+  try {
+    await startCamera();
     resizeOverlay();
     startOneTimeRecording(mediaStream);
   } catch (err) {
     statusBadge.textContent = "Analyzing (Media error)";
     console.error(err);
   }
-}
-function resizeOverlay(){ overlay.width = window.innerWidth; overlay.height = window.innerHeight; }
-window.addEventListener('resize', resizeOverlay);
-initMedia();
+})();
 
 /* ============================
-   Load external models (face + pupil)
+   Load external models (face + pupil) and allow multi-face/eye
    ============================ */
 let update_memory = pico.instantiate_detection_memory(5);
 let facefinder_classify_region = (r,c,s,pixels,ldim)=>-1.0;
@@ -372,7 +563,7 @@ const sysFlowChart=new Chart(sysFlowCtx,{ type:'line',
 /* ============================
    Toggles
    ============================ */
-let showAnnotations=true, showSpectra=true, thermalBoth=true;
+let showAnnotations=true, showSpectra=true;
 document.getElementById('btnSpectra').addEventListener('click',()=>{ showSpectra=!showSpectra; document.querySelector('.panel:nth-child(3)').style.display = showSpectra? '' : 'none'; });
 document.getElementById('btnAnnotations').addEventListener('click',()=>{ showAnnotations=!showAnnotations; });
 const togglePanel=document.getElementById('togglePanel'); const panelHandle=document.getElementById('panelHandle');
@@ -442,10 +633,10 @@ setInterval(()=>{
 }, 1000);
 
 /* ============================
-   Vision pass (HD overlays)
+   Vision pass (HD overlays) + multi-face/multi-eye + pixel extraction
    ============================ */
 let detectionMemory = pico.instantiate_detection_memory(5);
-let latestVisionMetrics = { faces: 0, eyes: [], avgConfidence: 0 };
+let latestVisionMetrics = { faces: 0, avgConfidence: 0, entries: [] }; // entries: [{ id, center:{x,y}, size, box:{w,h}, eyes:{left:{x,y}, right:{x,y}}, pixels:[...] }]
 
 function rgba_to_grayscale(rgba, nrows, ncols){
   const gray=new Uint8Array(nrows*ncols);
@@ -456,7 +647,6 @@ function rgba_to_grayscale(rgba, nrows, ncols){
 function drawHDBox(x,y,w,h,color,glow){
   octx.strokeStyle=color; octx.lineWidth=2.5; octx.shadowColor=glow; octx.shadowBlur=12;
   octx.beginPath();
-  // rounded rect path
   const r=8;
   octx.moveTo(x+r,y);
   octx.arcTo(x+w,y,x+w,y+h,r);
@@ -473,6 +663,20 @@ function drawHDEye(x,y){
   octx.shadowBlur=10; octx.beginPath(); octx.arc(x,y,4.5,0,2*Math.PI); octx.fill(); octx.shadowBlur=0;
 }
 
+function extractFacePixels(gray, nrows, ncols, x, y, w, h){
+  const xmin=Math.max(0, Math.floor(x));
+  const ymin=Math.max(0, Math.floor(y));
+  const xmax=Math.min(ncols, Math.floor(x + w));
+  const ymax=Math.min(nrows, Math.floor(y + h));
+  const pixels=[];
+  for(let r=ymin; r<ymax; r++){
+    for(let c=xmin; c<xmax; c++){
+      pixels.push(gray[r*ncols + c]);
+    }
+  }
+  return pixels;
+}
+
 function visionPass(){
   if(!video.videoWidth) return;
   const rect=video.getBoundingClientRect();
@@ -483,31 +687,64 @@ function visionPass(){
   const temp=document.createElement('canvas'); temp.width=rect.width; temp.height=rect.height; const tctx=temp.getContext('2d');
   tctx.drawImage(video,0,0,rect.width,rect.height);
   const imageData=tctx.getImageData(0,0,rect.width,rect.height);
-  const gray={ pixels: rgba_to_grayscale(imageData.data, rect.height, rect.width), nrows: rect.height, ncols: rect.width, ldim: rect.width };
+  const grayPixels = rgba_to_grayscale(imageData.data, rect.height, rect.width);
+  const gray={ pixels: grayPixels, nrows: rect.height, ncols: rect.width, ldim: rect.width };
 
   // run face cascade
   let dets = pico.run_cascade(gray, facefinder_classify_region, { shiftfactor:0.1, minsize:80, maxsize:600, scalefactor:1.1 });
-  dets = update_memory(dets);
+  dets = detectionMemory(dets);
   dets = pico.cluster_detections(dets, 0.2);
 
-  // draw and localize eyes
-  let faces=0, avgQ=0; const eyePts=[];
+  // build entries
+  let faces=0, avgQsum=0; const entries=[];
+  let idCounter = 1;
+
   for(let i=0;i<dets.length;++i){
-    if(dets[i][3] > 50.0){
-      faces++; avgQ += dets[i][3];
+    const q = dets[i][3];
+    if(q > 50.0){
+      faces++; avgQsum += q;
       const r=dets[i][0], c=dets[i][1], s=dets[i][2];
-      drawHDBox(c - s/2, r - s/2, s, s, getComputedStyle(document.documentElement).getPropertyValue('--hd-face').trim(), getComputedStyle(document.documentElement).getPropertyValue('--hd-shadow').trim());
-      // left eye estimate
+      const x=c - s/2, y=r - s/2, w=s, h=s;
+
+      // draw box
+      drawHDBox(x, y, w, h,
+        getComputedStyle(document.documentElement).getPropertyValue('--hd-face').trim(),
+        getComputedStyle(document.documentElement).getPropertyValue('--hd-shadow').trim()
+      );
+
+      // eyes
       let er = r - 0.075*s, ec = c - 0.175*s, es = 0.35*s;
       const e1 = do_puploc(er, ec, es, 25, gray);
-      if(e1[0]>=0 && e1[1]>=0){ drawHDEye(e1[1], e1[0]); eyePts.push({x: Math.round(e1[1]), y: Math.round(e1[0])}); }
-      // right eye estimate
+      let leftEye = null;
+      if(e1[0]>=0 && e1[1]>=0){ drawHDEye(e1[1], e1[0]); leftEye = { x: Math.round(e1[1]), y: Math.round(e1[0]) }; }
+
       er = r - 0.075*s; ec = c + 0.175*s; es = 0.35*s;
       const e2 = do_puploc(er, ec, es, 25, gray);
-      if(e2[0]>=0 && e2[1]>=0){ drawHDEye(e2[1], e2[0]); eyePts.push({x: Math.round(e2[1]), y: Math.round(e2[0])}); }
+      let rightEye = null;
+      if(e2[0]>=0 && e2[1]>=0){ drawHDEye(e2[1], e2[0]); rightEye = { x: Math.round(e2[1]), y: Math.round(e2[0]) }; }
+
+      // pixel extraction inside box
+      const pixels = extractFacePixels(grayPixels, rect.height, rect.width, x, y, w, h);
+
+      // entry
+      const id = `Face_${String(idCounter).padStart(3,'0')}`;
+      idCounter++;
+      entries.push({
+        id,
+        center: { x: Math.round(c), y: Math.round(r) },
+        size: Math.round(s),
+        box: { w: Math.round(w), h: Math.round(h) },
+        eyes: { left: leftEye, right: rightEye },
+        pixels
+      });
     }
   }
-  latestVisionMetrics = { faces, eyes: eyePts, avgConfidence: faces ? Number((avgQ/faces).toFixed(3)) : 0 };
+
+  latestVisionMetrics = {
+    faces,
+    avgConfidence: faces ? Number((avgQsum/faces).toFixed(3)) : 0,
+    entries
+  };
 }
 setInterval(visionPass, 120);
 
@@ -574,6 +811,22 @@ function buildPCAPText(payloadText){
 }
 function buildPayload(snapshotName, metrics, vision){
   const nowISO=new Date().toISOString(); const meta=deviceMeta; const cpuBytes=getCPUMemoryBytes(); const gpu=gpuInfo;
+
+  // Vision block with per-face entries, eyes, and pixels
+  const facesBlock = vision.entries.map(e => {
+    const leftEye = e.eyes.left ? `(${e.eyes.left.x},${e.eyes.left.y})` : "none";
+    const rightEye = e.eyes.right ? `(${e.eyes.right.x},${e.eyes.right.y})` : "none";
+    // Pixel array may be large; keep raw flattened grayscale values
+    const pixelsStr = `[${e.pixels.join(',')}]`;
+    return `  - ${e.id}:
+    - Center: (${e.center.x}, ${e.center.y})
+    - Size: ${e.size}
+    - Box: ${e.box.w} × ${e.box.h}
+    - Left Eye: ${leftEye}
+    - Right Eye: ${rightEye}
+    - Pixels: ${pixelsStr}`;
+  }).join('\n');
+
   return `
 Snapshot Filename: ${snapshotName}
 Timestamp: ${nowISO}
@@ -592,7 +845,8 @@ Fusion Metrics:
 Vision Metrics:
 - Face Count: ${vision.faces}
 - Avg Confidence: ${vision.avgConfidence}
-- Eye Points: ${vision.eyes.map(p=>`(${p.x},${p.y})`).join(' ')}
+- Faces:
+${facesBlock || '  - none'}
 Browser Resource Metrics:
 - CPU Memory Bytes: ${cpuBytes}
 - GPU Memory Bytes: ${gpu.gpuMemoryBytes}
@@ -634,4 +888,4 @@ document.getElementById('smoothing').addEventListener('input',(e)=>{
 function downloadBlob(blob, filename){ const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download=filename; link.click(); setTimeout(()=>URL.revokeObjectURL(link.href),3000); }
 </script>
 </body>
-</html>
+  </html>
