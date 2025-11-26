@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dual Camera Hotspot Monitor with Eye Tracking</title>
+  <title>Dual Camera Health Monitor</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/js/pico.js"></script>
   <script src="/js/iploc.js"></script>
@@ -26,7 +26,18 @@
       background: #00e5ff; border: none; border-radius: 4px;
       cursor: pointer; color: black;
     }
-    .status { margin-top: 6px; font-size: 0.85rem; }
+    .status {
+      margin-top: 8px; font-size: 0.85rem;
+      color: #ff4081;
+    }
+    .analyzing {
+      position: absolute; top: 10px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.2rem;
+      color: #39ff14;
+      text-shadow: 0 0 8px #39ff14, 0 0 12px #39ff14;
+      z-index: 30;
+    }
     .hud {
       position: absolute; top: 120px; left: 10px;
       color: #00e5ff; font-size: 1rem; line-height: 1.6;
@@ -36,10 +47,19 @@
     .charts {
       position: absolute; bottom: 0; left: 0;
       width: 100%; height: 30%;
-      display: flex; justify-content: space-evenly; align-items: center;
+      display: flex; justify-content: space-evenly; align-items: flex-start;
+      gap: 20px; padding: 10px 20px;
       background: rgba(0,0,0,0.4); z-index: 10;
     }
-    canvas.chartCanvas { flex: 1; max-width: 48%; height: 100%; background: transparent; }
+    .chartBlock {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+    }
+    .chartLabel {
+      color: #00e5ff; font-size: 0.9rem; margin-bottom: 4px;
+    }
+    .chartCanvas {
+      width: 100%; height: 100%; background: transparent;
+    }
     @media (max-width: 768px) {
       .container { flex-direction: column; }
       .screen { height: 50%; }
@@ -50,13 +70,14 @@
   <div class="container">
     <!-- Front camera -->
     <div class="screen">
+      <div class="analyzing">Analyzing</div>
       <div class="cameraControls">
         <label>Front Camera</label>
         <button onclick="connectFrontLocal()">Use Local</button>
         <input id="frontIp" type="text" placeholder="Hotspot IP"/>
         <input id="frontMac" type="text" placeholder="MAC Address"/>
         <button onclick="connectFrontHotspot()">Connect Hotspot</button>
-        <div id="frontStatus" class="status" style="color:#ff4081;">Status: Not Connected</div>
+        <div id="frontStatus" class="status">Status: Not Connected</div>
       </div>
       <video id="frontCam" autoplay playsinline muted></video>
       <canvas id="frontOverlay" class="overlay"></canvas>
@@ -66,20 +87,27 @@
         SpO₂: <span id="spo2Front">--</span> %
       </div>
       <div class="charts">
-        <canvas id="ppgFront" class="chartCanvas"></canvas>
-        <canvas id="spo2FrontChart" class="chartCanvas"></canvas>
+        <div class="chartBlock">
+          <div class="chartLabel">PPG Signal</div>
+          <canvas id="ppgFront" class="chartCanvas"></canvas>
+        </div>
+        <div class="chartBlock">
+          <div class="chartLabel">SpO₂ Signal</div>
+          <canvas id="spo2FrontChart" class="chartCanvas"></canvas>
+        </div>
       </div>
     </div>
 
     <!-- Rear camera -->
     <div class="screen">
+      <div class="analyzing">Analyzing</div>
       <div class="cameraControls">
         <label>Rear Camera</label>
         <button onclick="connectRearLocal()">Use Local</button>
         <input id="rearIp" type="text" placeholder="Hotspot IP"/>
         <input id="rearMac" type="text" placeholder="MAC Address"/>
         <button onclick="connectRearHotspot()">Connect Hotspot</button>
-        <div id="rearStatus" class="status" style="color:#ff4081;">Status: Not Connected</div>
+        <div id="rearStatus" class="status">Status: Not Connected</div>
       </div>
       <video id="rearCam" autoplay playsinline muted></video>
       <canvas id="rearOverlay" class="overlay"></canvas>
@@ -89,8 +117,14 @@
         SpO₂: <span id="spo2Rear">--</span> %
       </div>
       <div class="charts">
-        <canvas id="ppgRear" class="chartCanvas"></canvas>
-        <canvas id="spo2RearChart" class="chartCanvas"></canvas>
+        <div class="chartBlock">
+          <div class="chartLabel">PPG Signal</div>
+          <canvas id="ppgRear" class="chartCanvas"></canvas>
+        </div>
+        <div class="chartBlock">
+          <div class="chartLabel">SpO₂ Signal</div>
+          <canvas id="spo2RearChart" class="chartCanvas"></canvas>
+        </div>
       </div>
     </div>
   </div>
@@ -142,33 +176,4 @@
     }
 
     function connectRearHotspot() {
-      const ip = document.getElementById("rearIp").value.trim();
-      const mac = document.getElementById("rearMac").value.trim();
-      const video = document.getElementById("rearCam");
-      if (!ip) {
-        document.getElementById("rearStatus").textContent = "Status: ❌ Missing Hotspot IP";
-        document.getElementById("rearStatus").style.color = "#ff4081";
-        return;
-      }
-      video.srcObject = null;
-      video.src = `http://${ip}/live.mp4?mac=${encodeURIComponent(mac)}`;
-      video.play()
-        .then(() => {
-          document.getElementById("rearStatus").textContent = "Status: ✅ Connected to Hotspot Camera";
-          document.getElementById("rearStatus").style.color = "#00e676";
-        })
-        .catch(() => {
-          document.getElementById("rearStatus").textContent = "Status: ❌ Hotspot Unreachable";
-          document.getElementById("rearStatus").style.color = "#ff4081";
-        });
-    }
-
-    // Auto-init both local cameras on load
-    window.onload = () => {
-      connectFrontLocal();
-      connectRearLocal();
-      // TODO: initialize pico.js + iploc.js detection here
-    };
-  </script>
-</body>
-</html>
+      const ip = document.getElementById("
