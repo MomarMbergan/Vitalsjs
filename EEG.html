@@ -3,21 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dual Camera Heart Rate & SpO₂ Monitor + Face & Eye Recognition</title>
+  <title>Biometric Fusion Dashboard</title>
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- D3 + Sankey for Alluvial -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+
   <!-- face-api.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
 
-  <!-- MathJax for LaTeX -->
+  <!-- MathJax (LaTeX) -->
   <script>
     window.MathJax = {
-      tex: {
-        inlineMath: [['\\(', '\\)'], ['$', '$']],
-        displayMath: [['\\[', '\\]']]
-      },
+      tex: { inlineMath: [['\\(', '\\)'], ['$', '$']], displayMath: [['\\[', '\\]']] },
       svg: { fontCache: 'global' }
     };
   </script>
@@ -28,21 +29,48 @@
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: black; font-family: Arial, sans-serif; }
+    body { background: black; color: #cfefff; font-family: Arial, sans-serif; overflow-x: hidden; }
 
-    .container {
-      display: flex;
-      flex-direction: row;
-      width: 100vw; height: 100vh;
+    .topbar {
+      position: fixed; top: 0; left: 0; width: 100%;
+      padding: 8px 12px; z-index: 50; text-align: right;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.65), rgba(0,0,0,0));
     }
-    .screen {
-      position: relative;
-      flex: 1;
-      overflow: hidden;
+    .btn {
+      background: rgba(0,229,255,0.15); color: #00e5ff;
+      border: 1px solid #00e5ff; padding: 6px 10px; border-radius: 6px; cursor: pointer;
     }
-    video {
+    .btn:hover { background: rgba(0,229,255,0.25); }
+
+    .container { display: flex; flex-direction: row; width: 100vw; height: 100vh; }
+    .screen { position: relative; flex: 1; overflow: hidden; }
+    video { width: 100%; height: 100%; object-fit: cover; }
+    .hud {
+      position: absolute; top: 10px; left: 10px; z-index: 10;
+      background: rgba(0,0,0,0.5); color: #00e5ff; padding: 6px 10px; border-radius: 6px; font-size: 0.95rem;
+    }
+    .latex-panel {
+      position: absolute; right: 10px; top: 10px; z-index: 12;
+      background: rgba(0,0,0,0.55); color: #00e5ff; padding: 8px 10px; border-radius: 6px; max-width: 42%;
+      font-size: 0.9rem;
+    }
+    .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
+
+    /* Fusion + charts ribbon */
+    .ribbon {
+      position: absolute; bottom: 0; left: 0; width: 100%; height: 34%;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px;
+      background: rgba(0,0,0,0.4); z-index: 10;
+    }
+    .panel {
+      position: relative; background: rgba(0,0,0,0.35); border: 1px solid rgba(0,229,255,0.25);
+      border-radius: 8px; padding: 8px;
+    }
+    .panel-title { color: #9cefff; font-size: 0.85rem; margin-bottom: 4px; }
+
+    /* Alluvial container */
+    #alluvialContainer {
       width: 100%; height: 100%;
-      object-fit: cover;
     }
 
     /* Responsive: stack vertically on small screens */
@@ -50,84 +78,9 @@
       .container { flex-direction: column; }
       .screen { height: 50%; }
     }
-
-    .hud {
-      position: absolute;
-      top: 10px; left: 10px;
-      color: #00e5ff;
-      font-size: 1rem;
-      background: rgba(0,0,0,0.5);
-      padding: 6px 10px;
-      border-radius: 6px;
-      z-index: 10;
-    }
-
-    .charts {
-      position: absolute;
-      bottom: 0; left: 0;
-      width: 100%; height: 30%;
-      display: flex;
-      justify-content: space-evenly;
-      align-items: center;
-      background: rgba(0,0,0,0.4);
-      z-index: 10;
-    }
-    canvas.chart {
-      flex: 1;
-      max-width: 48%;
-      height: 100%;
-      background: transparent;
-    }
-
-    /* Face/Eye overlay canvases */
-    .overlay {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      pointer-events: none;
-      z-index: 20;
-    }
-
-    /* Top control bar */
-    .topbar {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%;
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      padding: 8px 10px;
-      z-index: 50;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.65), rgba(0,0,0,0));
-    }
-    .btn {
-      background: rgba(0, 229, 255, 0.15);
-      color: #00e5ff;
-      border: 1px solid #00e5ff;
-      padding: 6px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .btn:hover {
-      background: rgba(0, 229, 255, 0.25);
-    }
-
-    /* LaTeX panel */
-    .latex-panel {
-      position: absolute;
-      right: 10px; top: 10px;
-      z-index: 12;
-      background: rgba(0,0,0,0.55);
-      color: #00e5ff;
-      padding: 8px 10px;
-      border-radius: 6px;
-      max-width: 40%;
-      font-size: 0.95rem;
-    }
   </style>
 </head>
 <body>
-  <!-- Control bar -->
   <div class="topbar">
     <button id="screenshotBtn" class="btn">Save full-page PNG</button>
   </div>
@@ -137,75 +90,67 @@
       <!-- Front camera screen -->
       <div class="screen" id="frontScreen">
         <video id="frontCam" autoplay playsinline></video>
-
-        <!-- HUD front -->
         <div class="hud">
-          ❤️ HR: <span id="hrFront">--</span> bpm<br>
-          🌬 SpO₂: <span id="spo2Front">--</span> %
+          Analyzing<br>
+          rPPG/EEG Fusion active
         </div>
-
-        <!-- LaTeX panel front -->
         <div class="latex-panel">
-          <!-- Example LaTeX: PPG, HR, SpO2 model placeholders -->
-          <div>
-            \\[
-              \\text{HR}_{\\text{est}} = \\frac{60}{T_{\\text{IBI}}}
-            \\]
-          </div>
-          <div>
-            \\[
-              \\text{SpO}_2 \\approx 100 - k \\cdot \\frac{A_{\\text{red}}}{A_{\\text{IR}}}
-            \\]
-          </div>
-          <div>
-            \\(
-              \\text{PPG}(t) = A\\,e^{-\\alpha t}\\sin(2\\pi f t + \\phi)
-            \\)
-          </div>
+          \\[
+            F_{\\text{fusion}}(t) = \\mathrm{FFT}_{\\text{EEG}}(t) + \\mathrm{FFT}_{\\text{PPG}}(t)
+          \\]
+          \\[
+            \\text{Coherence}(f) = \\frac{|S_{xy}(f)|^2}{S_{xx}(f)\\,S_{yy}(f)}
+          \\]
+          \\(
+            \\text{IBI} = t_{n+1} - t_n,\\quad \\text{HR}_{\\text{est}} = \\frac{60}{\\overline{\\text{IBI}}}
+          \\)
         </div>
-
-        <!-- Charts front -->
-        <div class="charts">
-          <canvas id="ppgFront" class="chart"></canvas>
-          <canvas id="spo2FrontChart" class="chart"></canvas>
-        </div>
-
-        <!-- Overlay front for face/eye -->
         <canvas id="overlayFront" class="overlay"></canvas>
+
+        <div class="ribbon">
+          <div class="panel">
+            <div class="panel-title">Fusion metrics</div>
+            <div id="fusionMetrics" style="font-size:0.9rem; line-height:1.4;">
+              <div>• Frequency-Domain Fusion: <span id="fdf">0.00 Hz</span></div>
+              <div>• Peak-Based Fusion: <span id="pbf">0.00 Hz</span></div>
+              <div>• Cross-Spectral Coherence: <span id="csc">0.000</span></div>
+            </div>
+            <canvas id="fftChart" style="width:100%; height:60%;"></canvas>
+          </div>
+          <div class="panel">
+            <div class="panel-title">CPU/GPU alluvial flow</div>
+            <div id="alluvialContainer"></div>
+          </div>
+        </div>
       </div>
 
       <!-- Rear camera screen -->
       <div class="screen" id="rearScreen">
         <video id="rearCam" autoplay playsinline></video>
-
-        <!-- HUD rear -->
         <div class="hud">
-          ❤️ HR: <span id="hrRear">--</span> bpm<br>
-          🌬 SpO₂: <span id="spo2Rear">--</span> %
+          Rear feed<br>
+          Face/Eye detection
         </div>
-
-        <!-- LaTeX panel rear -->
         <div class="latex-panel">
-          <div>
-            \\(
-              \\text{rPPG}_{\\text{ROI}} = \\frac{1}{N}\\sum_{i=1}^{N} I_{g}(i,t)
-            \\)
-          </div>
-          <div>
-            \\[
-              \\text{SNR} = 20\\log_{10}\\!\\left(\\frac{A_{\\text{pulse}}}{A_{\\text{noise}}}\\right)
-            \\]
-          </div>
+          \\[
+            \\text{rPPG}_{\\text{ROI}} = \\frac{1}{N}\\sum_{i=1}^{N} I_{g}(i,t)
+          \\]
+          \\[
+            \\text{SNR} = 20\\log_{10}\\!\\left(\\frac{A_{\\text{pulse}}}{A_{\\text{noise}}}\\right)
+          \\]
         </div>
-
-        <!-- Charts rear -->
-        <div class="charts">
-          <canvas id="ppgRear" class="chart"></canvas>
-          <canvas id="spo2RearChart" class="chart"></canvas>
-        </div>
-
-        <!-- Overlay rear for face/eye -->
         <canvas id="overlayRear" class="overlay"></canvas>
+
+        <div class="ribbon">
+          <div class="panel">
+            <div class="panel-title">EEG band powers</div>
+            <canvas id="eegBandsChart" style="width:100%; height:100%;"></canvas>
+          </div>
+          <div class="panel">
+            <div class="panel-title">rPPG temporal</div>
+            <canvas id="rppgTemporalChart" style="width:100%; height:100%;"></canvas>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -229,7 +174,7 @@
     }
 
     // Charts
-    function makeChart(ctx, label, color) {
+    function makeLineChart(ctx, label, color) {
       return new Chart(ctx, {
         type: 'line',
         data: { labels: [], datasets: [{ label, data: [], borderColor: color, borderWidth: 2, tension: 0.25, fill: false }] },
@@ -241,31 +186,50 @@
       });
     }
 
-    const ppgFront = makeChart(document.getElementById('ppgFront').getContext('2d'), 'PPG Front', '#00e5ff');
-    const spo2FrontChart = makeChart(document.getElementById('spo2FrontChart').getContext('2d'), 'SpO₂ Front', '#ff4081');
-    const ppgRear = makeChart(document.getElementById('ppgRear').getContext('2d'), 'PPG Rear', '#00e5ff');
-    const spo2RearChart = makeChart(document.getElementById('spo2RearChart').getContext('2d'), 'SpO₂ Rear', '#ff4081');
+    function makeBarChart(ctx, labels, color) {
+      return new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'EEG Bands', data: Array(labels.length).fill(0), backgroundColor: color }] },
+        options: {
+          animation: false,
+          plugins: { legend: { display: false } },
+          scales: { x: { ticks: { color: '#9cefff' } }, y: { ticks: { color: '#9cefff' }, grid: { color: 'rgba(255,255,255,0.08)' } } }
+        }
+      });
+    }
 
-    // Simulated data update (replace with real rPPG/SpO₂)
+    const fftChart = makeLineChart(document.getElementById('fftChart').getContext('2d'), 'Fusion FFT', '#00e5ff');
+    const eegBandsChart = makeBarChart(document.getElementById('eegBandsChart').getContext('2d'), ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma'], '#ff4081');
+    const rppgTemporalChart = makeLineChart(document.getElementById('rppgTemporalChart').getContext('2d'), 'rPPG Temporal', '#00ff7f');
+
+    // Simulated updates for fusion + EEG + rPPG
     setInterval(() => {
-      const hr = Math.floor(60 + Math.random() * 40);
-      const spo2 = Math.floor(95 + Math.random() * 5);
       const t = new Date().toLocaleTimeString();
 
-      document.getElementById('hrFront').textContent = hr;
-      document.getElementById('spo2Front').textContent = spo2;
-      document.getElementById('hrRear').textContent = hr;
-      document.getElementById('spo2Rear').textContent = spo2;
+      // Fusion metrics
+      const fdfVal = (Math.random() * 2.0).toFixed(2);     // Hz
+      const pbfVal = (18 + Math.random() * 6).toFixed(2);  // Hz
+      const cscVal = (Math.random() * 0.8).toFixed(3);
+      document.getElementById('fdf').textContent = `${fdfVal} Hz`;
+      document.getElementById('pbf').textContent = `${pbfVal} Hz`;
+      document.getElementById('csc').textContent = `${cscVal}`;
 
-      [ppgFront, spo2FrontChart, ppgRear, spo2RearChart].forEach(chart => {
-        chart.data.labels.push(t);
-        chart.data.datasets[0].data.push(chart.data.datasets[0].label.includes('PPG') ? hr : spo2);
-        if (chart.data.labels.length > 20) {
-          chart.data.labels.shift();
-          chart.data.datasets[0].data.shift();
-        }
-        chart.update();
-      });
+      // FFT chart (fusion)
+      fftChart.data.labels.push(t);
+      fftChart.data.datasets[0].data.push(Number(fdfVal));
+      if (fftChart.data.labels.length > 30) { fftChart.data.labels.shift(); fftChart.data.datasets[0].data.shift(); }
+      fftChart.update();
+
+      // EEG bands
+      eegBandsChart.data.datasets[0].data = eegBandsChart.data.datasets[0].data.map(() => Math.random() * 1.0);
+      eegBandsChart.update();
+
+      // rPPG temporal
+      const rVal = 0.5 + 0.25 * Math.sin(Date.now() / 500) + (Math.random() - 0.5) * 0.1;
+      rppgTemporalChart.data.labels.push(t);
+      rppgTemporalChart.data.datasets[0].data.push(rVal);
+      if (rppgTemporalChart.data.labels.length > 50) { rppgTemporalChart.data.labels.shift(); rppgTemporalChart.data.datasets[0].data.shift(); }
+      rppgTemporalChart.update();
     }, 1000);
 
     // Face-api: load models
@@ -274,38 +238,28 @@
       await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
     }
 
-    // Detection loop per video
+    // Detection loop per video (neon minimalist eyes + box)
     async function detectFaces(videoEl, canvasEl) {
       const ctx = canvasEl.getContext('2d');
 
       function resizeOverlay() {
         const w = videoEl.videoWidth;
         const h = videoEl.videoHeight;
-        if (w && h) {
-          canvasEl.width = w;
-          canvasEl.height = h;
-        }
+        if (w && h) { canvasEl.width = w; canvasEl.height = h; }
       }
+      const ro = new ResizeObserver(resizeOverlay);
+      ro.observe(videoEl);
 
-      // Keep overlay matched to the video
-      const resizeObserver = new ResizeObserver(resizeOverlay);
-      resizeObserver.observe(videoEl);
-
-      // Poll detections
       setInterval(async () => {
         if (!videoEl.videoWidth || !videoEl.videoHeight) return;
         resizeOverlay();
 
         const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
-        const detections = await faceapi
-          .detectAllFaces(videoEl, options)
-          .withFaceLandmarks();
-
+        const detections = await faceapi.detectAllFaces(videoEl, options).withFaceLandmarks();
         const displaySize = { width: canvasEl.width, height: canvasEl.height };
         const resized = faceapi.resizeResults(detections, displaySize);
 
         ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
-        // Custom minimalist draw: neon strokes for boxes and eye landmarks
         resized.forEach(det => {
           const { box } = det.detection;
           ctx.strokeStyle = '#00ff7f';
@@ -318,13 +272,10 @@
           const leftEye = landmarks.getLeftEye();
           const rightEye = landmarks.getRightEye();
 
-          // Draw eyes as smooth polygons
           function drawEye(points) {
             ctx.beginPath();
             ctx.moveTo(points[0].x, points[0].y);
-            for (let i = 1; i < points.length; i++) {
-              ctx.lineTo(points[i].x, points[i].y);
-            }
+            for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
             ctx.closePath();
             ctx.stroke();
           }
@@ -334,20 +285,131 @@
       }, 200);
     }
 
-    // Full-page screenshot (includes LaTeX after typeset)
+    // CPU/GPU Alluvial (Sankey) setup
+    function initAlluvial() {
+      const container = document.getElementById('alluvialContainer');
+      const width = container.clientWidth || 600;
+      const height = container.clientHeight || 240;
+
+      // Create SVG
+      const svg = d3.select(container).append('svg')
+        .attr('width', width)
+        .attr('height', height);
+
+      const sankey = d3.sankey()
+        .nodeWidth(14)
+        .nodePadding(12)
+        .extent([[10, 10], [width - 10, height - 10]]);
+
+      const color = d3.scaleOrdinal()
+        .domain(['CPU', 'GPU', 'Processes', 'Video', 'Face/Eye', 'Fusion', 'Charts'])
+        .range(['#00e5ff', '#ff4081', '#9cefff', '#00ff7f', '#b0a8ff', '#ffa07a', '#ffd54f']);
+
+      // Initial graph template
+      const graph = {
+        nodes: [
+          { name: 'CPU' }, { name: 'GPU' },
+          { name: 'Video' }, { name: 'Face/Eye' },
+          { name: 'Fusion' }, { name: 'Charts' }
+        ],
+        links: [
+          { source: 0, target: 2, value: 0.4 }, // CPU -> Video
+          { source: 0, target: 4, value: 0.3 }, // CPU -> Fusion
+          { source: 0, target: 5, value: 0.3 }, // CPU -> Charts
+          { source: 1, target: 2, value: 0.5 }, // GPU -> Video
+          { source: 1, target: 3, value: 0.3 }, // GPU -> Face/Eye
+          { source: 1, target: 5, value: 0.2 }  // GPU -> Charts
+        ]
+      };
+
+      function render(data) {
+        svg.selectAll('*').remove();
+
+        sankey(data);
+
+        // Links
+        svg.append('g')
+          .selectAll('path')
+          .data(data.links)
+          .enter()
+          .append('path')
+          .attr('d', d3.sankeyLinkHorizontal())
+          .attr('stroke', d => 'rgba(156,239,255,0.6)')
+          .attr('stroke-width', d => Math.max(1, d.width))
+          .attr('fill', 'none')
+          .attr('opacity', 0.8);
+
+        // Nodes
+        const node = svg.append('g')
+          .selectAll('g')
+          .data(data.nodes)
+          .enter().append('g');
+
+        node.append('rect')
+          .attr('x', d => d.x0)
+          .attr('y', d => d.y0)
+          .attr('width', d => d.x1 - d.x0)
+          .attr('height', d => d.y1 - d.y0)
+          .attr('fill', d => color(d.name))
+          .attr('stroke', '#03363d')
+          .attr('rx', 6);
+
+        node.append('text')
+          .attr('x', d => (d.x0 + d.x1) / 2)
+          .attr('y', d => d.y0 - 4)
+          .attr('text-anchor', 'middle')
+          .attr('fill', '#cfefff')
+          .attr('font-size', '12px')
+          .text(d => d.name);
+      }
+
+      // Render initial
+      render(graph);
+
+      // Periodic updates (simulate load shifts)
+      setInterval(() => {
+        // Randomize values but keep total ~1 per source
+        const cpuTotal = 1.0;
+        const gpuTotal = 1.0;
+
+        const cpuVideo = +(0.2 + Math.random() * 0.5).toFixed(2);
+        const cpuFusion = +(0.2 + Math.random() * 0.4).toFixed(2);
+        const cpuCharts = +(Math.max(0.05, cpuTotal - cpuVideo - cpuFusion)).toFixed(2);
+
+        const gpuVideo = +(0.2 + Math.random() * 0.5).toFixed(2);
+        const gpuFace  = +(0.1 + Math.random() * 0.4).toFixed(2);
+        const gpuCharts= +(Math.max(0.05, gpuTotal - gpuVideo - gpuFace)).toFixed(2);
+
+        graph.links = [
+          { source: 0, target: 2, value: cpuVideo },
+          { source: 0, target: 4, value: cpuFusion },
+          { source: 0, target: 5, value: cpuCharts },
+          { source: 1, target: 2, value: gpuVideo },
+          { source: 1, target: 3, value: gpuFace },
+          { source: 1, target: 5, value: gpuCharts }
+        ];
+
+        // Deep copy for sankey mutability
+        const data = {
+          nodes: graph.nodes.map(d => ({ ...d })),
+          links: graph.links.map(d => ({ ...d }))
+        };
+        render(data);
+      }, 1500);
+    }
+
+    // Full-page screenshot (includes LaTeX)
     async function saveFullPagePNG() {
-      // Ensure MathJax has finished rendering
       if (window.MathJax && MathJax.typesetPromise) {
         await MathJax.typesetPromise();
       }
-      const node = document.documentElement; // full page
-      const canvas = await html2canvas(node, {
+      const canvas = await html2canvas(document.documentElement, {
         backgroundColor: null,
         useCORS: true,
         logging: false,
         windowWidth: document.documentElement.scrollWidth,
         windowHeight: document.documentElement.scrollHeight,
-        scale: 1 // adjust if you want higher-res capture
+        scale: 1
       });
       const dataURL = canvas.toDataURL('image/png');
       const link = document.createElement('a');
@@ -356,14 +418,12 @@
       link.href = dataURL;
       link.click();
     }
-
     document.getElementById('screenshotBtn').addEventListener('click', saveFullPagePNG);
 
     // Initialize pipeline
     (async () => {
       await initCameras();
       await loadModels();
-      // Start detections when video has dimensions
       const frontVideo = document.getElementById('frontCam');
       const rearVideo = document.getElementById('rearCam');
       const frontOverlay = document.getElementById('overlayFront');
@@ -371,6 +431,8 @@
 
       frontVideo.addEventListener('loadedmetadata', () => detectFaces(frontVideo, frontOverlay));
       rearVideo.addEventListener('loadedmetadata', () => detectFaces(rearVideo, rearOverlay));
+
+      initAlluvial();
     })();
   </script>
 </body>
