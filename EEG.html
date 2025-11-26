@@ -4,200 +4,139 @@
   <title>SkyNet Biometric Dashboard</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-
   <style>
     :root{
       --bg:#000; --fg:#fff; --panel-bg:rgba(255,255,255,0.06); --accent:#39FF14;
       --panel-radius:10px;
       --thermal-blue:#1e5fff; --thermal-cyan:#00ffff; --thermal-yellow:#ffea00; --thermal-orange:#ff7a00; --thermal-red:#ff0033;
+      --hd-face:#00E5FF; --hd-eye:#FF2EF9;
     }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--fg);font-family:Arial,Helvetica,sans-serif;overflow:hidden}
-
-    #dashboardContainer{position:relative;width:100vw;height:100vh;overflow:hidden}
-
+    #dashboardContainer{position:relative;width:100vw; height:100vh; overflow:hidden}
     #camera,#overlay{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
     #overlay{z-index:1;pointer-events:none}
-
-    #statusBadge{
-      position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:6;
-      background:rgba(0,0,0,0.55);color:var(--accent);padding:8px 20px;border-radius:8px;font-weight:800;
-      border:1px solid rgba(57,255,20,0.6);text-shadow:0 0 6px rgba(57,255,20,0.7),0 0 10px rgba(57,255,20,0.4);
-    }
-
-    #flipCameraBtn{
-      position:absolute;top:12px;right:12px;z-index:6;background:rgba(0,0,0,0.25);
-      color:#00f;padding:8px 12px;border-radius:8px;font-weight:700;border:1px solid rgba(255,255,255,0.22);
-      text-shadow: 0 0 6px #00f, 0 0 12px #0ff;
-      animation: glow 1.5s infinite alternate;
-      cursor:pointer;
-    }
-    @keyframes glow{0%{text-shadow:0 0 4px #00f,0 0 8px #0ff;}100%{text-shadow:0 0 12px #00f,0 0 24px #0ff;}}
-
-    #togglePanel{
-      position:absolute;top:50%;right:-72px;transform:translateY(-50%);
-      display:flex;flex-direction:column;gap:10px;z-index:6;transition:right 0.3s ease;
-    }
+    #statusBadge{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:6;background:rgba(0,0,0,0.55);color:var(--accent);padding:8px 20px;border-radius:8px;font-weight:800;border:1px solid rgba(57,255,20,0.6);text-shadow:0 0 6px rgba(57,255,20,0.7),0 0 10px rgba(57,255,20,0.4);}
+    #flipCameraBtn{position:absolute;top:12px;right:12px;z-index:6;background:rgba(0,0,0,0.55);color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:700;border:1px solid rgba(255,255,255,0.22)}
+    #togglePanel{position:absolute;top:50%;right:-80px;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;gap:10px;transition:right 0.3s ease;}
     #togglePanel.open{ right:12px }
-
-    #panelHandle{
-      position:absolute;top:50%;right:0;transform:translateY(-50%);
-      z-index:7;background:rgba(0,0,0,0.55);color:#fff;padding:8px 10px;border-radius:8px 0 0 8px;
-      cursor:pointer;font-weight:800;user-select:none
-    }
-
-    .icon-btn{
-      background:rgba(0,0,0,0.55);color:#fff;border-radius:8px;padding:8px;cursor:pointer;font-size:20px;border:1px solid rgba(255,255,255,0.22)
-    }
-
-    #dashboardWrap{
-      position:absolute;z-index:2;width:100%;height:100%;
-      overflow-y:auto;pointer-events:auto;
-    }
-    .dashboard{display:grid;grid-template-columns:1fr;gap:10px;width:95%;max-width:1300px;margin:0 auto;padding-top:12px}
+    #panelHandle{position:absolute;top:50%;right:0;transform:translateY(-50%);z-index:7;background:rgba(0,0,0,0.55);color:#fff;padding:8px 10px;border-radius:8px 0 0 8px;cursor:pointer;font-weight:800;user-select:none}
+    .icon-btn{background:rgba(0,0,0,0.55);color:#fff;border-radius:8px;padding:8px;cursor:pointer;font-size:20px;border:1px solid rgba(255,255,255,0.22)}
     .panel{background:var(--panel-bg);border-radius:var(--panel-radius);padding:10px;backdrop-filter:blur(2px)}
     .panel h3{margin:0 0 8px 0;font-weight:700;font-size:22px}
-    canvas.chart{width:100%;height:240px;background:transparent;border-radius:var(--panel-radius)}
-
-    .colorbar{
-      width:100%;height:22px;margin-top:8px;border-radius:5px;
-      background:linear-gradient(90deg,var(--thermal-blue),var(--thermal-cyan),var(--thermal-yellow),var(--thermal-orange),var(--thermal-red));
-      box-shadow:0 0 12px rgba(255,255,255,0.15);
-    }
-
+    canvas.chart{width:100%;height:240px;background:rgba(0,0,0,0.05);border-radius:var(--panel-radius)}
+    .colorbar{width:100%;height:22px;margin-top:8px;border-radius:5px;background:linear-gradient(90deg,var(--thermal-blue),var(--thermal-cyan),var(--thermal-yellow),var(--thermal-orange),var(--thermal-red));box-shadow:0 0 12px rgba(255,255,255,0.15);}
     #fusionEq{margin-top:8px;text-align:center;font-size:20px}
+    .footer{position:absolute;bottom:0;left:0;right:0;z-index:3;background:rgba(0,0,0,0.35);padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:8px;backdrop-filter:blur(4px)}
+    .footer .sliders{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:center}
+    .slider-wrap{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center}
+    .slider-wrap .label{font-size:14px;opacity:0.9}
+    #countdown{font-size:14px;color:#9cf;opacity:0.95;align-self:center}
+    @media (max-width:600px){.footer .sliders{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-
 <div id="dashboardContainer">
   <video id="camera" autoplay muted playsinline></video>
   <canvas id="overlay"></canvas>
-
   <div id="statusBadge">Analyzing</div>
   <button id="flipCameraBtn">Flip Camera</button>
 
+  <!-- Side Panel with Toggles + Sliders -->
   <div id="togglePanel">
     <button class="icon-btn" id="btnThermal" title="Toggle thermal view">🌡️</button>
     <button class="icon-btn" id="btnEEG" title="Toggle EEG thermal">🧠</button>
     <button class="icon-btn" id="btnAnnotations" title="Toggle annotations">✳️</button>
     <button class="icon-btn" id="btnSpectra" title="Toggle spectra">📈</button>
     <button class="icon-btn" id="btnSnapshot" title="Capture snapshot">📸</button>
-    <!-- Footer toggles moved here -->
-    <button class="icon-btn" id="toggleSmoothing" title="Toggle Smoothing">🎚️</button>
-    <button class="icon-btn" id="toggleFFT" title="Toggle FFT Window">🪄</button>
-    <button class="icon-btn" id="toggleAmplitude" title="Toggle Amplitude">🔊</button>
+    <!-- Added side sliders -->
+    <div class="slider-wrap" title="Smoothing"><div class="label">🎚️</div><input type="range" id="smoothingSide" min="0" max="1" step="0.1" value="0.5"></div>
+    <div class="slider-wrap" title="FFT window size"><div class="label">🪄</div><input type="range" id="fftWindowSide" min="128" max="1024" step="128" value="512"></div>
+    <div class="slider-wrap" title="Amplitude scale"><div class="label">🔊</div><input type="range" id="ampScaleSide" min="0.2" max="5" step="0.1" value="1"></div>
   </div>
   <div id="panelHandle" title="Open/close controls">›</div>
 
   <div id="dashboardWrap">
     <div class="dashboard">
-      <div class="panel">
-        <h3>Heart Rate (rPPG)</h3>
-        <canvas id="rppgChart" class="chart"></canvas>
-        <div class="colorbar"></div>
-      </div>
-      <div class="panel">
-        <h3>EEG</h3>
-        <canvas id="eegChart" class="chart"></canvas>
-        <div class="colorbar"></div>
-      </div>
-      <div class="panel">
-        <h3>rPPG FFT</h3>
-        <canvas id="rppgFFT" class="chart"></canvas>
-        <div class="colorbar"></div>
-      </div>
-      <div class="panel">
-        <h3>Fusion</h3>
+      <div class="panel"><h3>Alluvial flow</h3><svg id="alluvial" width="100%" height="220"></svg></div>
+      <div class="panel"><h3>Heart Rate</h3><canvas id="rppgChart" class="chart"></canvas><div class="colorbar"></div></div>
+      <div class="panel"><h3>EEG</h3><canvas id="eegChart" class="chart"></canvas><div class="colorbar"></div></div>
+      <div class="panel"><h3>rPPG FFT</h3><canvas id="rppgFFT" class="chart"></canvas><div class="colorbar"></div></div>
+      <div class="panel"><h3>Fusion</h3>
         <div id="fusionOutput">
           <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
           <div id="peakFusion">2. Peak-Based Fusion: 0 Hz</div>
           <div id="coherenceFusion">3. Cross-Spectral Coherence: 0</div>
         </div>
-        <div id="fusionEq">
-          F<sub>fusion</sub>(f) = FFT<sub>EEG</sub>(f) + FFT<sub>rPPG</sub>(f) + FFT<sub>HR</sub>(f)
-        </div>
+        <div id="fusionEq">$$F_{\text{fusion}}(f) = \text{FFT}_{\text{EEG}}(f) + \text{FFT}_{\text{rPPG}}(f) + \text{FFT}_{\text{HR}}(f)$$</div>
       </div>
-      <div class="panel">
-        <h3>CPU/GPU</h3>
-        <canvas id="sysFlow" class="chart"></canvas>
-      </div>
+      <div class="panel"><h3>CPU/GPU</h3><canvas id="sysFlow" class="chart"></canvas></div>
     </div>
+  </div>
+
+  <div class="footer">
+    <div class="sliders">
+      <div class="slider-wrap" title="Smoothing"><div class="label">🎚️</div><input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.5"></div>
+      <div class="slider-wrap" title="FFT window size"><div class="label">🪄</div><input type="range" id="fftWindow" min="128" max="1024" step="128" value="512"></div>
+      <div class="slider-wrap" title="Amplitude scale"><div class="label">🔊</div><input type="range" id="ampScale" min="0.2" max="5" step="0.1" value="1"></div>
+    </div>
+    <div class="right"><div id="countdown" title="Auto-save snapshot countdown">Next auto-save: 60s</div></div>
   </div>
 </div>
 
+<!-- Libs -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
 
 <script>
-// ===== Camera =====
-let facingMode = "user";
-const video = document.getElementById('camera');
+/* ============================
+   MAIN SCRIPT: Camera + Charts + Fusion + Alluvial
+   ============================ */
+let facingMode="user", video=document.getElementById('camera'), mediaStream=null;
+let rData=[], eegData=[], currentMetrics={freqFusion:0, peakFusion:0, coherence:0};
+const overlay=document.getElementById('overlay'), octx=overlay.getContext('2d');
+const statusBadge=document.getElementById('statusBadge');
 
 async function startCamera(){
   try{
-    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode},audio:false});
-    video.srcObject = stream;
-    await video.play();
-  }catch(e){console.error(e);}
+    mediaStream=await navigator.mediaDevices.getUserMedia({video:{facingMode},audio:true});
+    video.srcObject=mediaStream; await video.play();
+    statusBadge.textContent='Camera active';
+  }catch(e){ console.error(e); statusBadge.textContent='Camera error'; }
 }
 startCamera();
 document.getElementById('flipCameraBtn').addEventListener('click', async ()=>{
-  facingMode = (facingMode==='user')?'environment':'user';
-  await startCamera();
+  facingMode=(facingMode==='user')?'environment':'user'; await startCamera();
 });
 
-// ===== Panel handle =====
-const panelHandle=document.getElementById('panelHandle');
-const togglePanel=document.getElementById('togglePanel');
-panelHandle.addEventListener('click',()=>{ togglePanel.classList.toggle('open'); panelHandle.textContent=togglePanel.classList.contains('open')?'‹':'›'; });
+const panelHandle=document.getElementById('panelHandle'), togglePanel=document.getElementById('togglePanel');
+panelHandle.addEventListener('click',()=>{togglePanel.classList.toggle('open'); panelHandle.textContent=togglePanel.classList.contains('open')?'‹':'›';});
 
-// ===== Footer toggles (now side buttons) =====
-['toggleSmoothing','toggleFFT','toggleAmplitude','btnThermal','btnEEG','btnAnnotations','btnSpectra','btnSnapshot'].forEach(id=>{
-  document.getElementById(id).addEventListener('click',()=>{ console.log(id+' toggled') });
-});
+/* Thermal color helper */
+function thermalColor(v,min,max){const t=isFinite(v)?Math.max(0,Math.min(1,(v-min)/(max-min))):0;if(t<0.25){const q=t/0.25;return `rgb(${Math.round(30*(1-q))},${Math.round(95+160*q)},255)`;}else if(t<0.5){const q=(t-0.25)/0.25;return `rgb(${Math.round(255*q)},255,${Math.round(255-255*q)})`;}else if(t<0.75){const q=(t-0.5)/0.25;return `rgb(255,${Math.round(234-90*q)},${Math.round(0+90*q)})`;}else{const q=(t-0.75)/0.25;return `rgb(255,${Math.round(144-144*q)},${Math.round(51-51*q)})`;}} 
 
-// ===== Chart.js Setup =====
-function createLiveChart(ctx,label,color){
-  return new Chart(ctx,{
-    type:'line',
-    data:{
-      labels:Array.from({length:50},(_,i)=>i),
-      datasets:[{
-        label,label,
-        data:Array.from({length:50},()=>Math.random()*10+50),
-        borderColor:color,
-        backgroundColor:'rgba(0,0,0,0)',
-        tension:0.4
-      }]
-    },
-    options:{
-      animation:false,responsive:true,
-      scales:{x:{display:true},y:{beginAtZero:true}}
-    }
-  });
-}
+/* Charts */
+const rppgChart=new Chart(document.getElementById('rppgChart').getContext('2d'),{type:'line',data:{labels:Array(300).fill(''),datasets:[{label:'Heart Rate',data:Array(300).fill(0),borderWidth:2,pointRadius:0,fill:true,segment:{borderColor:ctx=>thermalColor(ctx.p0.parsed.y,-40,40),backgroundColor:ctx=>thermalColor(ctx.p0.parsed.y,-40,40)}}]},options:{animation:false,elements:{line:{tension:0.5}},scales:{y:{min:-40,max:40}},plugins:{legend:{display:false}}}});
+const eegChart=new Chart(document.getElementById('eegChart').getContext('2d'),{type:'line',data:{labels:Array(300).fill(''),datasets:[{label:'EEG',data:Array(300).fill(0),borderWidth:2,pointRadius:0,fill:true,segment:{borderColor:ctx=>thermalColor(ctx.p0.parsed.y,-150,150),backgroundColor:'rgba(255,255,255,0.03)'}}]},options:{animation:false,elements:{line:{tension:0.5}},scales:{y:{min:-150,max:150}},plugins:{legend:{display:false}}}});
+const rppgFFTChart=new Chart(document.getElementById('rppgFFT').getContext('2d'),{type:'bar',data:{labels:Array(128).fill(''),datasets:[{label:'rPPG',data:Array(128).fill(0),backgroundColor:Array(128).fill('rgba(255,255,255,0.08)')}]},options:{animation:false,scales:{y:{min:0,max:100}},plugins:{legend:{display:false}}}});
+const sysFlowChart=new Chart(document.getElementById('sysFlow').getContext('2d'),{type:'line',data:{labels:Array(120).fill(''),datasets:[{label:'CPU',data:Array(120).fill(0),borderColor:'#00E5FF',backgroundColor:'rgba(0,229,255,0.15)',borderWidth:2,pointRadius:0,fill:true,tension:0.6},{label:'GPU',data:Array(120).fill(0),borderColor:'#FF2EF9',backgroundColor:'rgba(255,46,249,0.12)',borderWidth:2,pointRadius:0,fill:true,tension:0.6} ] },options:{animation:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:1}}}});
 
-const rppgChart = createLiveChart(document.getElementById('rppgChart').getContext('2d'),'rPPG','cyan');
-const eegChart = createLiveChart(document.getElementById('eegChart').getContext('2d'),'EEG','lime');
-const rppgFFT = createLiveChart(document.getElementById('rppgFFT').getContext('2d'),'rPPG FFT','orange');
-const sysFlow = createLiveChart(document.getElementById('sysFlow').getContext('2d'),'CPU/GPU','magenta');
-
-// ===== Simulate live updates =====
-function updateChart(chart){
-  chart.data.datasets[0].data.shift();
-  chart.data.datasets[0].data.push(Math.random()*10+50);
-  chart.update('none');
-}
-setInterval(()=>{
-  updateChart(rppgChart);
-  updateChart(eegChart);
-  updateChart(rppgFFT);
-  updateChart(sysFlow);
-
-  document.getElementById('freqFusion').textContent = '1. Frequency-Domain Fusion: '+(50+Math.floor(Math.random()*20))+' Hz';
-  document.getElementById('peakFusion').textContent = '2. Peak-Based Fusion: '+(50+Math.floor(Math.random()*20))+' Hz';
-  document.getElementById('coherenceFusion').textContent = '3. Cross-Spectral Coherence: '+(Math.random()*1).toFixed(2);
-},200);
-</script>
-</body>
-</html>
+/* Alluvial */
+const sankeySvg=d3.select('#alluvial');
+function renderAlluvial(flux){
+  const sankeyWidth=document.getElementById('alluvial').clientWidth,sankeyHeight=220;
+  const sankey=d3.sankey().nodeWidth(12).nodePadding(14).size([sankeyWidth,sankeyHeight]);
+  const ironBow=d3.scaleLinear().domain([0,0.25,0.5,0.75,1]).range(["#2a004b","#8b0000","#ff6a00","#ffff00","#ffffff"]);
+  const graph={nodes:[{name:'EEG'},{name:'rPPG'},{name:'HR'},{name:'Freq Fusion'},{name:'Peak Fusion'},{name:'Coherence'}],links:[{source:0,target:3,value:Math.max(1,flux.eeg||1)},{source:1,target:3,value:Math.max(1,flux.rppg||1)},{source:2,target:3,value:Math.max(1,flux.hr||1)},{source:0,target:4,value:Math.max(1,(flux.eeg||1)*0.7)},{source:1,target:4,value:Math.max(1,(flux.rppg||1)*0.7)},{source:2,target:4,value:Math.max(1,(flux.hr||1)*0.7)},{source:0,target:5,value:Math.max(1,(flux.coherence||1))},{source:1,target:5,value:Math.max(1,(flux.coherence||1))},{source:2,target:5,value:Math.max(1,(flux.coherence||1))}]};
+  sankeySvg.selectAll('*').remove();
+  const {nodes,links}=sankey({nodes:graph.nodes.map(d=>Object.assign({},d)),links:graph.links.map(d=>Object.assign({},d))});
+  sankeySvg.attr('height',sankeyHeight);
+  sankeySvg.append('g').selectAll('path').data(links).enter().append('path').attr('d',d3.sankeyLinkHorizontal()).attr('class','sankey-link').attr('stroke',d=>ironBow(Math.min(1,d.value/100))).attr('stroke-width',d=>Math.max(1,d.width));
+  const node=sankeySvg.append('g').selectAll('g').data(nodes).enter().append('g').attr('class','sankey-node');
+  node.append('rect').attr('x',d=>d.x0).attr('y',d=>d.y0).attr('width',d=>d.x1-d.x0).attr('height',d=>d.y1-d.y0).attr('fill',d=>d.name.includes('Fusion')?'#ff6a00':(d.name==='Coherence'?'#ffff00':'#8b0000'));
+  node.append('text').attr('x',d=>d.x0-6).attr('y',d=>(d.y1+d.y0)/2).attr('dy','
