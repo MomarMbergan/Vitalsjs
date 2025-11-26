@@ -34,24 +34,27 @@
     }
     @keyframes glow{0%{text-shadow:0 0 4px #00f,0 0 8px #0ff;}100%{text-shadow:0 0 12px #00f,0 0 24px #0ff;}}
 
-    #togglePanel, #footerToggles{
-      position:absolute;display:flex;flex-direction:column;gap:10px;z-index:6;
+    #togglePanel{
+      position:absolute;top:50%;right:-72px;transform:translateY(-50%);
+      display:flex;flex-direction:column;gap:10px;z-index:6;transition:right 0.3s ease;
     }
-    #togglePanel{top:50%;right:-64px;transform:translateY(-50%);transition:right 0.3s ease;}
     #togglePanel.open{ right:12px }
-    #panelHandle{position:absolute;top:50%;right:0;transform:translateY(-50%);z-index:7;background:rgba(0,0,0,0.55);color:#fff;padding:8px 10px;border-radius:8px 0 0 8px;cursor:pointer;font-weight:800;user-select:none}
-    
+
+    #panelHandle{
+      position:absolute;top:50%;right:0;transform:translateY(-50%);
+      z-index:7;background:rgba(0,0,0,0.55);color:#fff;padding:8px 10px;border-radius:8px 0 0 8px;
+      cursor:pointer;font-weight:800;user-select:none
+    }
+
     .icon-btn{
       background:rgba(0,0,0,0.55);color:#fff;border-radius:8px;padding:8px;cursor:pointer;font-size:20px;border:1px solid rgba(255,255,255,0.22)
     }
 
-    #footerToggles{bottom:12px;left:50%;transform:translateX(-50%);flex-direction:row;}
-    
     #dashboardWrap{
-      position:absolute;z-index:2;width:100%;height:calc(100vh - 110px);
-      margin-top:64px;overflow-y:auto;pointer-events:auto;
+      position:absolute;z-index:2;width:100%;height:100%;
+      overflow-y:auto;pointer-events:auto;
     }
-    .dashboard{display:grid;grid-template-columns:1fr;gap:10px;width:95%;max-width:1300px;margin:0 auto}
+    .dashboard{display:grid;grid-template-columns:1fr;gap:10px;width:95%;max-width:1300px;margin:0 auto;padding-top:12px}
     .panel{background:var(--panel-bg);border-radius:var(--panel-radius);padding:10px;backdrop-filter:blur(2px)}
     .panel h3{margin:0 0 8px 0;font-weight:700;font-size:22px}
     canvas.chart{width:100%;height:240px;background:transparent;border-radius:var(--panel-radius)}
@@ -63,10 +66,6 @@
     }
 
     #fusionEq{margin-top:8px;text-align:center;font-size:20px}
-
-    .sankey-link{fill:none;stroke-opacity:0.8}
-    .sankey-node rect{fill-opacity:0.95}
-    .sankey-label{fill:#fff;font-size:12px;pointer-events:none}
   </style>
 </head>
 <body>
@@ -84,23 +83,17 @@
     <button class="icon-btn" id="btnAnnotations" title="Toggle annotations">✳️</button>
     <button class="icon-btn" id="btnSpectra" title="Toggle spectra">📈</button>
     <button class="icon-btn" id="btnSnapshot" title="Capture snapshot">📸</button>
-  </div>
-  <div id="panelHandle" title="Open/close controls">›</div>
-
-  <div id="footerToggles">
+    <!-- Footer toggles moved here -->
     <button class="icon-btn" id="toggleSmoothing" title="Toggle Smoothing">🎚️</button>
     <button class="icon-btn" id="toggleFFT" title="Toggle FFT Window">🪄</button>
     <button class="icon-btn" id="toggleAmplitude" title="Toggle Amplitude">🔊</button>
   </div>
+  <div id="panelHandle" title="Open/close controls">›</div>
 
   <div id="dashboardWrap">
     <div class="dashboard">
       <div class="panel">
-        <h3>Alluvial flow</h3>
-        <svg id="alluvial" width="100%" height="220"></svg>
-      </div>
-      <div class="panel">
-        <h3>Heart Rate</h3>
+        <h3>Heart Rate (rPPG)</h3>
         <canvas id="rppgChart" class="chart"></canvas>
         <div class="colorbar"></div>
       </div>
@@ -122,7 +115,7 @@
           <div id="coherenceFusion">3. Cross-Spectral Coherence: 0</div>
         </div>
         <div id="fusionEq">
-          $$F_{\text{fusion}}(f) = \text{FFT}_{\text{EEG}}(f) + \text{FFT}_{\text{rPPG}}(f) + \text{FFT}_{\text{HR}}(f)$$
+          F<sub>fusion</sub>(f) = FFT<sub>EEG</sub>(f) + FFT<sub>rPPG</sub>(f) + FFT<sub>HR</sub>(f)
         </div>
       </div>
       <div class="panel">
@@ -134,12 +127,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-<script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
 
 <script>
 // ===== Camera =====
@@ -164,11 +151,53 @@ const panelHandle=document.getElementById('panelHandle');
 const togglePanel=document.getElementById('togglePanel');
 panelHandle.addEventListener('click',()=>{ togglePanel.classList.toggle('open'); panelHandle.textContent=togglePanel.classList.contains('open')?'‹':'›'; });
 
-// ===== Footer Toggles (now buttons like side panel) =====
-document.getElementById('toggleSmoothing').addEventListener('click',()=>{ alert('Smoothing toggled!') });
-document.getElementById('toggleFFT').addEventListener('click',()=>{ alert('FFT window toggled!') });
-document.getElementById('toggleAmplitude').addEventListener('click',()=>{ alert('Amplitude toggled!') });
+// ===== Footer toggles (now side buttons) =====
+['toggleSmoothing','toggleFFT','toggleAmplitude','btnThermal','btnEEG','btnAnnotations','btnSpectra','btnSnapshot'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',()=>{ console.log(id+' toggled') });
+});
 
+// ===== Chart.js Setup =====
+function createLiveChart(ctx,label,color){
+  return new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:Array.from({length:50},(_,i)=>i),
+      datasets:[{
+        label,label,
+        data:Array.from({length:50},()=>Math.random()*10+50),
+        borderColor:color,
+        backgroundColor:'rgba(0,0,0,0)',
+        tension:0.4
+      }]
+    },
+    options:{
+      animation:false,responsive:true,
+      scales:{x:{display:true},y:{beginAtZero:true}}
+    }
+  });
+}
+
+const rppgChart = createLiveChart(document.getElementById('rppgChart').getContext('2d'),'rPPG','cyan');
+const eegChart = createLiveChart(document.getElementById('eegChart').getContext('2d'),'EEG','lime');
+const rppgFFT = createLiveChart(document.getElementById('rppgFFT').getContext('2d'),'rPPG FFT','orange');
+const sysFlow = createLiveChart(document.getElementById('sysFlow').getContext('2d'),'CPU/GPU','magenta');
+
+// ===== Simulate live updates =====
+function updateChart(chart){
+  chart.data.datasets[0].data.shift();
+  chart.data.datasets[0].data.push(Math.random()*10+50);
+  chart.update('none');
+}
+setInterval(()=>{
+  updateChart(rppgChart);
+  updateChart(eegChart);
+  updateChart(rppgFFT);
+  updateChart(sysFlow);
+
+  document.getElementById('freqFusion').textContent = '1. Frequency-Domain Fusion: '+(50+Math.floor(Math.random()*20))+' Hz';
+  document.getElementById('peakFusion').textContent = '2. Peak-Based Fusion: '+(50+Math.floor(Math.random()*20))+' Hz';
+  document.getElementById('coherenceFusion').textContent = '3. Cross-Spectral Coherence: '+(Math.random()*1).toFixed(2);
+},200);
 </script>
 </body>
 </html>
