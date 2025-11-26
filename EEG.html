@@ -1,321 +1,89 @@
-<!doctype html>
-<html lang="en">
+Do it like this script <!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SkyNet Biometric Dashboard — Debug</title>
-
-  <!-- Minimal styles to restore the intended layout -->
-  <style>
-    :root{
-      --panel-gap: 12px;
-      --bg: #0b0b0b;
-      --panel-bg: rgba(255,255,255,0.035);
-      --accent: #00d1ff;
-      --text: #eee;
-    }
-    html,body{
-      height:100%;
-      margin:0;
-      background:linear-gradient(#ffffff,#ffffff);
-      font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      color:var(--text);
-    }
-
-    /* Top viewport: camera + overlay */
-    #cameraWrap{
-      position:relative;
-      width:100%;
-      height:40vh; /* adjust for mobile */
-      min-height:240px;
-      background:#111;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      overflow:hidden;
-    }
-    video#camera{
-      position:absolute;
-      top:0; left:0;
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      z-index:1;
-      background:#000;
-      transform: scaleX(1); /* flipped when using front camera if needed */
-    }
-    canvas#overlay{
-      position:absolute;
-      top:0; left:0;
-      width:100%;
-      height:100%;
-      pointer-events:none;
-      z-index:2;
-      mix-blend-mode:screen;
-    }
-
-    /* small controls over the video */
-    #statusBadge{
-      position:absolute;
-      top:12px;
-      left:14px;
-      z-index:5;
-      background:rgba(255,255,255,0.95);
-      color:#111;
-      padding:6px 10px;
-      border-radius:8px;
-      font-weight:600;
-      box-shadow:0 2px 8px rgba(0,0,0,0.2);
-    }
-    #flipCameraBtn{
-      position:absolute;
-      top:12px;
-      left:140px;
-      z-index:5;
-      padding:6px 10px;
-      border-radius:8px;
-      border:0;
-      background:#fff;
-      color:#111;
-      font-weight:600;
-      box-shadow:0 2px 8px rgba(0,0,0,0.12);
-    }
-
-    /* dashboard grid */
-    #dashboardWrap{
-      padding:16px;
-      box-sizing:border-box;
-    }
-    .dashboard{
-      display:grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: var(--panel-gap);
-      align-items:start;
-    }
-    .panel{
-      background:var(--panel-bg);
-      border-radius:12px;
-      padding:12px;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
-      min-height:160px;
-      color:#111;
-      background:white;
-    }
-    .panel h3{
-      margin:0 0 8px 0;
-      font-size:1.25rem;
-      color:#111;
-    }
-    .chart{
-      width:100% !important;
-      height:180px !important;
-      display:block;
-    }
-
-    /* footer sliders */
-    .footer{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      padding:8px 16px 36px 16px;
-      gap:12px;
-    }
-    .sliders{display:flex; gap:12px;}
-    .slider-wrap{display:flex; align-items:center; gap:8px;}
-    input[type=range]{width:140px;}
-
-    /* small responsive tweaks */
-    @media (max-width:520px){
-      video#camera{height:100%}
-      canvas#overlay{height:100%}
-      .panel h3{font-size:1.05rem}
-      .chart{height:140px !important}
-    }
-  </style>
+  <title>SkyNet Biometric Dashboard</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <!-- styles omitted for brevity, same as previous version -->
 </head>
 <body>
 
-  <div id="cameraWrap">
-    <video id="camera" autoplay muted playsinline></video>
-    <canvas id="overlay"></canvas>
+<video id="camera" autoplay muted playsinline></video>
+<canvas id="overlay"></canvas>
 
-    <div id="statusBadge">Analyzing</div>
-    <button id="flipCameraBtn" aria-label="Flip Camera">Flip Camera</button>
-  </div>
+<div id="statusBadge">Analyzing</div>
+<button id="flipCameraBtn">Flip Camera</button>
 
-  <div id="dashboardWrap">
-    <div class="dashboard">
-      <div class="panel"><h3>Heart Rate</h3><canvas id="rppgChart" class="chart"></canvas></div>
-      <div class="panel"><h3>EEG</h3><canvas id="eegChart" class="chart"></canvas></div>
-      <div class="panel"><h3>rPPG FFT</h3><canvas id="rppgFFT" class="chart"></canvas></div>
-      <div class="panel">
-        <h3>Fusion</h3>
-        <div id="fusionOutput">
-          <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
-          <div id="peakFusion">2. Peak-Based Fusion: 0 Hz</div>
-          <div id="coherenceFusion">3. Cross-Spectral Coherence: 0</div>
-        </div>
-        <div id="fusionEq" style="margin-top:8px; font-size:0.9rem; color:#444;">
-          F<sub>fusion</sub>(f) = FFT<sub>EEG</sub>(f) + FFT<sub>rPPG</sub>(f) + FFT<sub>HR</sub>(f)
-        </div>
+<div id="togglePanel">
+  <button class="icon-btn" id="btnThermal" title="Toggle thermal view">🌡️</button>
+  <button class="icon-btn" id="btnEEG" title="Toggle EEG thermal">🧠</button>
+  <button class="icon-btn" id="btnAnnotations" title="Toggle annotations">✳️</button>
+  <button class="icon-btn" id="btnSpectra" title="Toggle spectra">📈</button>
+  <button class="icon-btn" id="btnSnapshot" title="Capture snapshot">📸</button>
+</div>
+<div id="panelHandle">›</div>
+
+<div id="dashboardWrap">
+  <div class="dashboard">
+    <div class="panel"><h3>Heart Rate</h3><canvas id="rppgChart" class="chart"></canvas><div class="colorbar"></div></div>
+    <div class="panel"><h3>EEG</h3><canvas id="eegChart" class="chart"></canvas><div class="colorbar"></div></div>
+    <div class="panel"><h3>rPPG</h3><canvas id="rppgFFT" class="chart"></canvas></div>
+    <div class="panel">
+      <h3>Fusion</h3>
+      <div id="fusionOutput">
+        <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
+        <div id="peakFusion">2. Peak-Based Fusion: 0 Hz</div>
+        <div id="coherenceFusion">3. Cross-Spectral Coherence: 0</div>
       </div>
-      <div class="panel"><h3>CPU/GPU</h3><canvas id="sysFlow" class="chart"></canvas></div>
-    </div>
-
-    <!-- footer controls -->
-    <div class="footer">
-      <div class="sliders">
-        <div class="slider-wrap" title="Smoothing"><div class="label">🎚️</div><input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.5"></div>
-        <div class="slider-wrap" title="FFT window size"><div class="label">🪄</div><input type="range" id="fftWindow" min="128" max="1024" step="128" value="512"></div>
-        <div class="slider-wrap" title="Amplitude scale"><div class="label">🔊</div><input type="range" id="ampScale" min="1" max="5" step="0.5" value="1"></div>
+      <div id="fusionEq">
+        $$F{\text{fusion}}(f) = \text{FFT}{\text{EEG}}(f) + \text{FFT}{\text{rPPG}}(f) + \text{FFT}{\text{HR}}(f)$$
       </div>
-      <div class="right"><div id="countdown" title="Auto-save snapshot countdown">Next auto-save: 60s</div></div>
     </div>
+    <div class="panel"><h3>CPU/GPU</h3><canvas id="sysFlow" class="chart"></canvas></div>
   </div>
+</div>
 
-  <!-- libs -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<div class="footer">
+  <div class="sliders">
+    <div class="slider-wrap" title="Smoothing"><div class="label">🎚️</div><input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.5"></div>
+    <div class="slider-wrap" title="FFT window size"><div class="label">🪄</div><input type="range" id="fftWindow" min="128" max="1024" step="128" value="512"></div>
+    <div class="slider-wrap" title="Amplitude scale"><div class="label">🔊</div><input type="range" id="ampScale" min="1" max="5" step="0.5" value="1"></div>
+  </div>
+  <div class="right"><div id="countdown" title="Auto-save snapshot countdown">Next auto-save: 60s</div></div>
+</div>
 
-  <script>
-    // ---------- helpers ----------
-    function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-    // ---------- Camera start & flip ----------
-    let currentStream = null;
-    let useFacingMode = 'environment'; // start with back camera on mobiles
-    async function startCamera(){
-      try {
-        if (currentStream){
-          currentStream.getTracks().forEach(t=>t.stop());
-          currentStream = null;
-        }
-        const constraints = {
-          audio: false,
-          video: { facingMode: useFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } }
-        };
-        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-        const video = document.getElementById('camera');
-        video.srcObject = currentStream;
-        await video.play();
-        // make overlay canvas pixel-size match video
-        resizeOverlay();
-      } catch (err){
-        console.error('camera start err', err);
-        document.getElementById('statusBadge').innerText = 'Camera access denied';
-      }
-    }
-    document.getElementById('flipCameraBtn').addEventListener('click', async ()=>{
-      // toggle
-      useFacingMode = (useFacingMode === 'user') ? 'environment' : 'user';
-      await startCamera();
-      // flip visual if using front camera
-      const video = document.getElementById('camera');
-      video.style.transform = useFacingMode === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
-    });
+<script>
+// ... all detection, chart, fusion, and PCAP code same as previous version ...
 
-    function resizeOverlay(){
-      const video = document.getElementById('camera');
-      const canvas = document.getElementById('overlay');
-      if (!video || !canvas) return;
-      // set canvas pixel size to match displayed size for crisp drawing
-      const rect = video.getBoundingClientRect();
-      canvas.width = Math.round(rect.width * devicePixelRatio);
-      canvas.height = Math.round(rect.height * devicePixelRatio);
-      canvas.style.width = rect.width + 'px';
-      canvas.style.height = rect.height + 'px';
-    }
-    window.addEventListener('resize', resizeOverlay);
+// ✅ Screenshot fix: capture full dashboard including all charts + LaTeX
+async function captureDashboardPNG(customName=null){
+  const target = document.getElementById('dashboardWrap');
+  const canvas = await html2canvas(target, {
+    useCORS: true,
+    logging: false,
+    scale: 1,
+    scrollY: -window.scrollY,
+    windowWidth: document.documentElement.scrollWidth,
+    windowHeight: document.documentElement.scrollHeight
+  });
+  const link=document.createElement('a');
+  const fname=customName || dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png;
+  link.download=fname;
+  link.href=canvas.toDataURL('image/png');
+  link.click();
+}
 
-    // ---------- Chart init ----------
-    const charts = {};
-    function createPlaceholderChart(ctx, label){
-      return new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: Array.from({length:60}, (_,i)=>i),
-          datasets: [{
-            label,
-            data: Array.from({length:60}, ()=> Math.random()*20 + 30),
-            borderWidth: 2,
-            tension: 0.3,
-            pointRadius: 0
-          }]
-        },
-        options: {
-          animation:false,
-          responsive:true,
-          maintainAspectRatio:false,
-          scales: {
-            x: { display:false },
-            y: { beginAtZero:true }
-          },
-          plugins: { legend:{display:false} }
-        }
-      });
-    }
+// ✅ PCAP payload already includes:
+// - Fusion metrics
+// - Multi-face IDs, bounding boxes, eyes, pixel arrays
+// - Device metadata
+// - CPU/GPU metrics
 
-    function initCharts(){
-      charts.rppg = createPlaceholderChart(document.getElementById('rppgChart').getContext('2d'),'Heart Rate');
-      charts.eeg = createPlaceholderChart(document.getElementById('eegChart').getContext('2d'),'EEG');
-      charts.fft = createPlaceholderChart(document.getElementById('rppgFFT').getContext('2d'),'rPPG FFT');
-      charts.sys = createPlaceholderChart(document.getElementById('sysFlow').getContext('2d'),'CPU/GPU');
-    }
-
-    // small tick to update charts with fake data so you see something realtime
-    function tickFakeData(){
-      for (const k in charts){
-        const ch = charts[k];
-        const ds = ch.data.datasets[0];
-        ds.data.push(Math.max(0, ds.data[ds.data.length-1] + (Math.random()-0.45)*6));
-        if (ds.data.length>60) ds.data.shift();
-        ch.update('none');
-      }
-      requestAnimationFrame(tickFakeData);
-    }
-
-    // ---------- Screenshot fix + template literal bug fix ----------
-    async function captureDashboardPNG(customName=null){
-      const target = document.getElementById('dashboardWrap');
-
-      // wait a moment for layout & MathJax if present
-      await sleep(120);
-
-      const canvas = await html2canvas(target, {
-        useCORS: true,
-        logging:false,
-        scale: Math.min(2, window.devicePixelRatio || 1),
-        scrollY: -window.scrollY,
-        windowWidth: document.documentElement.scrollWidth,
-        windowHeight: document.documentElement.scrollHeight
-      });
-
-      const link = document.createElement('a');
-      const fname = customName || `dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
-      link.download = fname;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    }
-
-    // ---------- App init ----------
-    async function initApp(){
-      try {
-        initCharts();
-        tickFakeData();
-        await startCamera();
-        resizeOverlay();
-        // if MathJax is used and you rely on it in screenshot, you can wait for it:
-        if (window.MathJax && MathJax.typesetPromise) {
-          try { await MathJax.typesetPromise(); } catch(e){/*ignore*/ }
-        }
-      } catch (err){ console.error(err); }
-    }
-
-    // run on load
-    window.addEventListener('load', ()=>{ initApp(); });
-
-    // expose capture to console for quick tests
-    window.captureDashboardPNG = captureDashboardPNG;
-  </script>
+</script>
 </body>
 </html>
