@@ -46,9 +46,7 @@
   <canvas id="overlay"></canvas>
   <div id="statusBadge">Analyzing</div>
   <button id="flipCameraBtn">Flip Camera</button>
-  <div id="togglePanel">
-    <button class="icon-btn" id="btnSnapshot">📸</button>
-  </div>
+  <div id="togglePanel"><button class="icon-btn" id="btnSnapshot">📸</button></div>
   <div id="panelHandle">›</div>
   <div id="dashboardWrap">
     <div class="dashboard">
@@ -70,13 +68,15 @@
   </div>
 </div>
 
+<!-- Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
 <script>
-let facingMode="user",mediaStream=null,avRecorder=null,videoChunks=[];
+/* Camera + flip */
+let facingMode="user",mediaStream=null;
 const video=document.getElementById('camera');
 async function startCamera(){
   if(mediaStream){mediaStream.getTracks().forEach(t=>t.stop());}
@@ -86,5 +86,9 @@ async function startCamera(){
 startCamera();
 document.getElementById('flipCameraBtn').addEventListener('click',async()=>{facingMode=(facingMode==="user")?"environment":"user";await startCamera();});
 
-// Toggle panel
-document.getElementById('panelHandle').addEventListener('click
+/* Toggle panel */
+document.getElementById('panelHandle').addEventListener('click',()=>{document.getElementById('togglePanel').classList.toggle('open');});
+
+/* Charts setup (thermal-coded) */
+const rppgChart=new Chart(document.getElementById('rppgChart'),{type:'line',data:{labels:Array(300).fill(''),datasets:[{data:Array(300).fill(0)}]},options:{animation:false}});
+const eegChart=new Chart(document.getElementById('eegChart'),{type:'line',data:{labels:Array(300).fill(''),datasets:[{data:Array(
