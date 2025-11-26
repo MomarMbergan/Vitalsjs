@@ -1,213 +1,250 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>EEG + rPPG Fusion Dashboard</title>
-  <style>
-    body {
-      margin: 0;
-      background: #000;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      overflow: hidden;
-      text-align: center;
-    }
+  <title>SkyNet Biometric Dashboard</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
 
-    video {
+  <style>
+    /* === FULLSCREEN CAMERA BACKGROUND === */
+    #camera {
       position: fixed;
-      top: 0;
-      left: 0;
+      top: 0; left: 0;
       width: 100vw;
       height: 100vh;
       object-fit: cover;
       z-index: 0;
+      background: black;
     }
 
-    canvas {
-      width: 90%;
-      height: 200px;
-      background: rgba(0, 0, 0, 0.05); /* 95% transparent */
-      margin-top: 10px;
-      border-radius: 10px;
-      z-index: 1;
-      position: relative;
-    }
-
-    #foreheadBox {
-      position: absolute;
-      border: 2px solid red;
-      pointer-events: none;
-      z-index: 2;
-    }
-
-    #fusionOutput {
+    /* === FULLSCREEN CANVAS OVERLAY === */
+    #overlay {
       position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 15px;
-      color: white;
-      background: rgba(0, 0, 0, 0.3);
-      padding: 10px;
-      border-radius: 5px;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* === FLOATING HUD PANEL WRAPPER (TRANSPARENT) === */
+    #dashboardWrap {
+      position: relative;
+      margin-top: 20px;
       z-index: 3;
-      text-align: left;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .dashboard {
+      width: 95%;
+      max-width: 900px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    /* === PANELS (SEMI-TRANSPARENT FLOATING CARDS) === */
+    .panel {
+      background: rgba(0,0,0,0.35);
+      backdrop-filter: blur(10px);
+      padding: 15px;
+      border-radius: 15px;
+      color: white;
+      box-shadow: 0px 0px 12px rgba(0,0,0,0.6);
+    }
+
+    h3 {
+      margin-top: 0;
+      color: #fff;
+    }
+
+    .chart {
+      width: 100%;
+      height: 200px;
+    }
+
+    /* === STATUS BADGE === */
+    #statusBadge {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      padding: 8px 14px;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(10px);
+      color: white;
+      border-radius: 10px;
+      z-index: 4;
+      font-size: 18px;
+    }
+
+    /* === BUTTON PANEL === */
+    #togglePanel {
+      position: fixed;
+      top: 70px;
+      left: 20px;
+      display: flex;
+      gap: 8px;
+      z-index: 4;
+    }
+
+    .icon-btn {
+      font-size: 24px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(10px);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    #panelHandle {
+      position: fixed;
+      top: 120px;
+      left: 16px;
+      font-size: 28px;
+      color: white;
+      z-index: 4;
+    }
+
+    /* === FOOTER SLIDERS === */
+    .footer {
+      position: fixed;
+      bottom: 10px;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 4;
+      color: white;
+    }
+
+    .sliders {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0,0,0,0.45);
+      padding: 6px 12px;
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+    }
+
+    input[type=range] {
+      width: 150px;
+    }
+
+    #countdown {
+      background: rgba(0,0,0,0.45);
+      padding: 8px 12px;
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+    }
+
+    /* === FLIP CAMERA BUTTON === */
+    #flipCameraBtn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 4;
+      padding: 10px 18px;
+      font-size: 18px;
+      border-radius: 12px;
+      color: white;
+      background: rgba(0,0,0,0.45);
+      border: 1px solid rgba(255,255,255,0.3);
+      backdrop-filter: blur(10px);
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
 
+<!-- CAMERA + OVERLAY -->
 <video id="camera" autoplay muted playsinline></video>
-<div id="foreheadBox"></div>
+<canvas id="overlay"></canvas>
 
-<canvas id="rppgChart"></canvas>
-<canvas id="eegChart"></canvas>
+<!-- STATUS + BUTTONS -->
+<div id="statusBadge">Analyzing</div>
+<button id="flipCameraBtn">Flip Camera</button>
 
-<div id="fusionOutput">
-  <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
-  <div id="peakFusion">2. Peak-Based Fusion: 0 Hz</div>
-  <div id="coherenceFusion">3. Cross-Spectral Coherence: 0</div>
+<div id="togglePanel">
+  <button class="icon-btn" id="btnThermal">🌡️</button>
+  <button class="icon-btn" id="btnEEG">🧠</button>
+  <button class="icon-btn" id="btnAnnotations">✳️</button>
+  <button class="icon-btn" id="btnSpectra">📈</button>
+  <button class="icon-btn" id="btnSnapshot">📸</button>
+</div>
+<div id="panelHandle">›</div>
+
+<!-- DASHBOARD -->
+<div id="dashboardWrap">
+  <div class="dashboard">
+    <div class="panel"><h3>Heart Rate</h3><canvas id="rppgChart" class="chart"></canvas></div>
+    <div class="panel"><h3>EEG</h3><canvas id="eegChart" class="chart"></canvas></div>
+    <div class="panel"><h3>rPPG</h3><canvas id="rppgFFT" class="chart"></canvas></div>
+
+    <div class="panel">
+      <h3>Fusion</h3>
+      <div id="fusionOutput">
+        <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
+        <div id="peakFusion">2. Peak-Based Fusion: 0 Hz</div>
+        <div id="coherenceFusion">3. Cross-Spectral Coherence: 0</div>
+      </div>
+      <div id="fusionEq">
+        $$F_{\text{fusion}}(f) = FFT_{EEG}(f) + FFT_{rPPG}(f) + FFT_{HR}(f)$$
+      </div>
+    </div>
+
+    <div class="panel"><h3>CPU/GPU</h3><canvas id="sysFlow" class="chart"></canvas></div>
+  </div>
 </div>
 
+<!-- FOOTER -->
+<div class="footer">
+  <div class="sliders">
+    <div class="slider-wrap"><div class="label">🎚️</div><input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.5"></div>
+    <div class="slider-wrap"><div class="label">🪄</div><input type="range" id="fftWindow" min="128" max="1024" step="128" value="512"></div>
+    <div class="slider-wrap"><div class="label">🔊</div><input type="range" id="ampScale" min="1" max="5" step="0.5" value="1"></div>
+  </div>
+  <div class="right"><div id="countdown">Next auto-save: 60s</div></div>
+</div>
+
+<!-- LIBRARIES -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
 <script>
-const video = document.getElementById('camera');
-navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }})
-  .then(stream => video.srcObject = stream);
+/* ====== CAMERA AUTO-START + FLIP ====== */
+let useFront = true;
 
-let rData = [], eegData = [];
-
-const rppgCtx = document.getElementById('rppgChart').getContext('2d');
-const rppgChart = new Chart(rppgCtx, {
-  type: 'line',
-  data: {
-    labels: Array(300).fill(""),
-    datasets: [{
-      label: "rPPG Heart Signal",
-      data: Array(300).fill(0),
-      borderColor: "red",
-      borderWidth: 2,
-      pointRadius: 0
-    }]
-  },
-  options: {
-    animation: false,
-    scales: { y: { min: -20, max: 20 } }
+async function startCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: useFront ? "user" : "environment" }
+    });
+    document.getElementById("camera").srcObject = stream;
+  } catch (err) {
+    console.error("Camera error:", err);
   }
-});
-
-const eegCtx = document.getElementById('eegChart').getContext('2d');
-const eegChart = new Chart(eegCtx, {
-  type: 'line',
-  data: {
-    labels: Array(300).fill(""),
-    datasets: [{
-      label: "EEG Signal",
-      data: Array(300).fill(0),
-      borderColor: "cyan",
-      borderWidth: 2,
-      pointRadius: 0
-    }]
-  },
-  options: {
-    animation: false,
-    scales: { y: { min: -100, max: 100 } }
-  }
-});
-
-// rPPG frame reader
-setInterval(() => {
-  if (!video.videoWidth) return;
-
-  const w = video.videoWidth, h = video.videoHeight;
-  const foreheadW = w * 0.30, foreheadH = h * 0.10;
-  const foreheadX = w * 0.35, foreheadY = h * 0.15;
-
-  const box = document.getElementById("foreheadBox");
-  const rect = video.getBoundingClientRect();
-  const scaleX = rect.width / w, scaleY = rect.height / h;
-  box.style.left = (rect.left + foreheadX * scaleX) + "px";
-  box.style.top  = (rect.top + foreheadY * scaleY) + "px";
-  box.style.width  = foreheadW * scaleX + "px";
-  box.style.height = foreheadH * scaleY + "px";
-
-  const temp = document.createElement("canvas");
-  temp.width = foreheadW;
-  temp.height = foreheadH;
-  const tctx = temp.getContext("2d");
-  tctx.drawImage(video, foreheadX, foreheadY, foreheadW, foreheadH, 0, 0, foreheadW, foreheadH);
-
-  const frame = tctx.getImageData(0, 0, foreheadW, foreheadH);
-  let sum = 0, count = 0;
-  for (let i = 0; i < frame.data.length; i += 4) {
-    sum += frame.data[i]; // red channel
-    count++;
-  }
-
-  const val = (sum / count) - 128;
-  rData.push(val);
-  if (rData.length > 300) rData.shift();
-  rppgChart.data.datasets[0].data = rData;
-  rppgChart.update();
-}, 50);
-
-// EEG mock signal
-setInterval(() => {
-  const newVal = Math.sin(Date.now() / 120) * 50;
-  eegData.push(newVal);
-  if (eegData.length > 300) eegData.shift();
-  eegChart.data.datasets[0].data = eegData;
-  eegChart.update();
-}, 50);
-
-// FFT helper
-function fftMagnitude(signal) {
-  const N = signal.length;
-  let mags = [];
-  for (let k = 0; k < N / 2; k++) {
-    let re = 0, im = 0;
-    for (let n = 0; n < N; n++) {
-      const angle = (2 * Math.PI * k * n) / N;
-      re += signal[n] * Math.cos(angle);
-      im -= signal[n] * Math.sin(angle);
-    }
-    mags.push(Math.sqrt(re * re + im * im));
-  }
-  return mags;
 }
 
-// Fusion metrics
-setInterval(() => {
-  if (rData.length < 128 || eegData.length < 128) return;
+document.getElementById("flipCameraBtn").onclick = () => {
+  useFront = !useFront;
+  startCamera();
+};
 
-  const rFFT = fftMagnitude(rData.slice(-128));
-  const eFFT = fftMagnitude(eegData.slice(-128));
+startCamera();
 
-  // 1. Frequency-Domain Fusion
-  const fusedFFT = rFFT.map((val, i) => val + (eFFT[i] || 0));
-  const freqFusionIndex = fusedFFT.indexOf(Math.max(...fusedFFT));
-  document.getElementById("freqFusion").textContent =
-    "1. Frequency-Domain Fusion: " + freqFusionIndex + " Hz";
-
-  // 2. Peak-Based Fusion
-  const rPeak = rFFT.indexOf(Math.max(...rFFT));
-  const ePeak = eFFT.indexOf(Math.max(...eFFT));
-  const peakFusion = 0.5 * rPeak + 0.5 * ePeak;
-  document.getElementById("peakFusion").textContent =
-    "2. Peak-Based Fusion: " + peakFusion.toFixed(2) + " Hz";
-
-  // 3. Cross-Spectral Coherence
-  let cross = 0, rPow = 0, ePow = 0;
-  for (let i = 0; i < rFFT.length; i++) {
-    const r = rFFT[i], e = eFFT[i] || 0;
-    cross += r * e;
-    rPow += r * r;
-    ePow += e * e;
-  }
-  const coherence = (cross * cross) / (rPow * ePow + 1e-9);
-  document.getElementById("coherenceFusion").textContent =
-    "3. Cross-Spectral Coherence: " + coherence.toFixed(3);
-}, 1000);
+/* Your detection / rPPG / EEG / fusion / charts go here */
 </script>
 
 </body>
