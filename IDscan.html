@@ -1,74 +1,49 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dual Camera Hotspot Monitor with Eye Tracking</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dual Camera Eye Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Face API for eye recognition -->
-  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+  <script src="/js/pico.js"></script>
+  <script src="/js/iploc.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: black; font-family: Arial, sans-serif; }
-
-    .container {
-      display: flex;
-      flex-direction: row;
-      width: 100vw; height: 100vh;
-    }
-    .screen {
-      position: relative;
-      flex: 1;
-      overflow: hidden;
-    }
+    body { margin: 0; background: black; font-family: Arial, sans-serif; }
+    .container { display: flex; flex-direction: row; width: 100vw; height: 100vh; }
+    .screen { position: relative; flex: 1; overflow: hidden; }
     video, canvas.overlay {
-      width: 100%; height: 100%;
-      object-fit: cover;
-      position: absolute;
-      top: 0; left: 0;
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%; object-fit: cover;
     }
     .cameraControls {
-      position: absolute;
-      top: 10px; left: 10px;
-      z-index: 20;
-      background: rgba(0,0,0,0.6);
-      padding: 8px;
-      border-radius: 6px;
-      color: #00e5ff;
-      font-size: 0.9rem;
+      position: absolute; top: 10px; left: 10px;
+      background: rgba(0,0,0,0.6); padding: 8px;
+      border-radius: 6px; color: #00e5ff; font-size: 0.9rem; z-index: 20;
     }
-    .cameraControls input { display: block; margin: 4px 0; width: 160px; }
+    .cameraControls input { display: block; margin: 6px 0; width: 160px; }
     .cameraControls button {
-      margin-top: 4px; padding: 4px 8px;
+      margin-top: 6px; padding: 6px 10px;
       background: #00e5ff; border: none; border-radius: 4px;
       cursor: pointer; color: black;
+    }
+    .hud {
+      position: absolute; top: 120px; left: 10px;
+      color: #00e5ff; font-size: 1rem; line-height: 1.6;
+      background: rgba(0,0,0,0.5); padding: 8px 12px;
+      border-radius: 6px; z-index: 10;
+    }
+    .charts {
+      position: absolute; bottom: 0; left: 0;
+      width: 100%; height: 30%;
+      display: flex; justify-content: space-evenly; align-items: center;
+      background: rgba(0,0,0,0.4); z-index: 10;
+    }
+    canvas.chartCanvas {
+      flex: 1; max-width: 48%; height: 100%; background: transparent;
     }
     @media (max-width: 768px) {
       .container { flex-direction: column; }
       .screen { height: 50%; }
-    }
-    .hud {
-      position: absolute;
-      top: 100px; left: 10px;
-      color: #00e5ff;
-      font-size: 1rem;
-      background: rgba(0,0,0,0.5);
-      padding: 6px 10px;
-      border-radius: 6px;
-      z-index: 10;
-    }
-    .charts {
-      position: absolute;
-      bottom: 0; left: 0;
-      width: 100%; height: 30%;
-      display: flex;
-      justify-content: space-evenly;
-      align-items: center;
-      background: rgba(0,0,0,0.4);
-      z-index: 10;
-    }
-    canvas.chartCanvas {
-      flex: 1; max-width: 48%; height: 100%; background: transparent;
     }
   </style>
 </head>
@@ -77,13 +52,13 @@
     <!-- Front camera -->
     <div class="screen">
       <div class="cameraControls">
-        <label>Front Camera:</label>
+        <label>Front Camera</label>
         <button onclick="connectFrontLocal()">Use Local</button>
-        <input id="frontIp" type="text" placeholder="Hotspot IP">
-        <input id="frontMac" type="text" placeholder="MAC Address">
+        <input id="frontIp" type="text" placeholder="Hotspot IP"/>
+        <input id="frontMac" type="text" placeholder="MAC Address"/>
         <button onclick="connectFrontHotspot()">Connect Hotspot</button>
       </div>
-      <video id="frontCam" autoplay playsinline></video>
+      <video id="frontCam" autoplay playsinline muted></video>
       <canvas id="frontOverlay" class="overlay"></canvas>
       <div class="hud">
         Front Camera<br>
@@ -99,13 +74,13 @@
     <!-- Rear camera -->
     <div class="screen">
       <div class="cameraControls">
-        <label>Rear Camera:</label>
+        <label>Rear Camera</label>
         <button onclick="connectRearLocal()">Use Local</button>
-        <input id="rearIp" type="text" placeholder="Hotspot IP">
-        <input id="rearMac" type="text" placeholder="MAC Address">
+        <input id="rearIp" type="text" placeholder="Hotspot IP"/>
+        <input id="rearMac" type="text" placeholder="MAC Address"/>
         <button onclick="connectRearHotspot()">Connect Hotspot</button>
       </div>
-      <video id="rearCam" autoplay playsinline></video>
+      <video id="rearCam" autoplay playsinline muted></video>
       <canvas id="rearOverlay" class="overlay"></canvas>
       <div class="hud">
         Rear Camera<br>
@@ -120,7 +95,61 @@
   </div>
 
   <script>
-    // Local camera connections
+    let facefinderClassifyRegion;
+    fetch('/js/facefinder.dat')
+      .then(res => res.arrayBuffer())
+      .then(buf => {
+        const cascade = new Int8Array(buf);
+        facefinderClassifyRegion = pico.unpack_cascade(cascade);
+      });
+
+    function detectEyes(videoId, canvasId) {
+      const video = document.getElementById(videoId);
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const memory = pico.instantiate_detection_memory(5);
+      const update = () => {
+        if (video.videoWidth === 0) return;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const gray = new Uint8Array(canvas.width * canvas.height);
+        for (let i = 0; i < gray.length; i++) {
+          const r = imgData.data[i * 4];
+          const g = imgData.data[i * 4 + 1];
+          const b = imgData.data[i * 4 + 2];
+          gray[i] = (r + g + b) / 3;
+        }
+        const params = {
+          pixels: gray,
+          nrows: canvas.height,
+          ncols: canvas.width,
+          ldim: canvas.width,
+          scalefactor: 1.1,
+          stride: 2,
+          minsize: 100,
+          maxsize: 1000,
+          cascade: facefinderClassifyRegion,
+          angle: 0.0
+        };
+        const faces = pico.run_cascade(params, memory);
+        const clusters = pico.cluster_detections(faces, 0.2);
+        clusters.forEach(face => {
+          const [x, y, size] = face;
+          const eyes = iploc.locate(gray, canvas.width, canvas.height, x, y, size);
+          ctx.fillStyle = "red";
+          eyes.forEach(([ex, ey]) => {
+            ctx.beginPath();
+            ctx.arc(ex, ey, 3, 0, 2 * Math.PI);
+            ctx.fill();
+          });
+        });
+      };
+      setInterval(update, 100);
+    }
+
     async function connectFrontLocal() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
       document.getElementById("frontCam").srcObject = stream;
@@ -129,73 +158,24 @@
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
       document.getElementById("rearCam").srcObject = stream;
     }
-
-    // Hotspot camera connections
     function connectFrontHotspot() {
       const ip = document.getElementById("frontIp").value.trim();
       const mac = document.getElementById("frontMac").value.trim();
-      if (!ip) { alert("Enter Hotspot IP"); return; }
       const video = document.getElementById("frontCam");
       video.srcObject = null;
-      video.src = http://${ip}/live.mp4?mac=${encodeURIComponent(mac)};
-      video.type = "video/mp4";
+      video.src = `http://${ip}/live.mp4?mac=${encodeURIComponent(mac)}`;
       video.play();
     }
     function connectRearHotspot() {
       const ip = document.getElementById("rearIp").value.trim();
       const mac = document.getElementById("rearMac").value.trim();
-      if (!ip) { alert("Enter Hotspot IP"); return; }
       const video = document.getElementById("rearCam");
       video.srcObject = null;
-      video.src = http://${ip}/live.mp4?mac=${encodeURIComponent(mac)};
-      video.type = "video/mp4";
+      video.src = `http://${ip}/live.mp4?mac=${encodeURIComponent(mac)}`;
       video.play();
     }
 
-    // Eye recognition with face-api.js
-    async function initFaceAPI() {
-      await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-      await faceapi.nets.faceLandmark68TinyNet.loadFromUri('/models');
-      startEyeTracking('frontCam', 'frontOverlay');
-      startEyeTracking('rearCam', 'rearOverlay');
-    }
-
-    function startEyeTracking(videoId, canvasId) {
-      const video = document.getElementById(videoId);
-      const canvas = document.getElementById(canvasId);
-      const displaySize = { width: video.width, height: video.height };
-      faceapi.matchDimensions(canvas, displaySize);
-
-      setInterval(async () => {
-        if (video.readyState < 2) return;
-        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
-          .withFaceLandmarks(true);
-
-        const resized = faceapi.resizeResults(detections, displaySize);
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        resized.forEach(det => {
-          const landmarks = det.landmarks;
-          const leftEye = landmarks.getLeftEye();
-          const rightEye = landmarks.getRightEye();
-
-          ctx.fillStyle = "red";
-          leftEye.forEach(pt => ctx.fillRect(pt.x-2, pt.y-2, 4, 4));
-          rightEye.forEach(pt => ctx.fillRect(pt.x-2, pt.y-2, 4, 4));
-        });
-      }, 100);
-    }
-
-    initFaceAPI();
-
-    // Chart.js setup
     function makeChart(ctx, label, color) {
       return new Chart(ctx, {
         type: 'line',
-        data: { labels: [], datasets: [{ label, data: [], borderColor: color, fill: false }] },
-        options: { animation: false, scales: { x: { display: false }, y: { display: true } } }
-      });
-    }
-    const ppgFront = makeChart(document.getElementById('ppgFront').getContext('2d'), 'PPG Front', '#00e5ff');
-    const spo2
+        data: { labels: [], datasets
