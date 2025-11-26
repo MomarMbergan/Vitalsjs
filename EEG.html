@@ -4,91 +4,831 @@
   <title>SkyNet Biometric Dashboard</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
+
   <style>
     :root{
       --bg:#000; --fg:#fff; --panel-bg:rgba(255,255,255,0.06); --accent:#39FF14;
       --panel-radius:10px;
+      /* Thermal palette anchors */
       --thermal-blue:#1e5fff; --thermal-cyan:#00ffff; --thermal-yellow:#ffea00; --thermal-orange:#ff7a00; --thermal-red:#ff0033;
+      /* Overlay colors */
       --hd-face:#00E5FF; --hd-eye:#FF2EF9;
     }
+    *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--fg);font-family:Arial,Helvetica,sans-serif;overflow:hidden}
-    #dashboardContainer{position:relative;width:100vw;height:100vh;overflow:hidden}
+
+    /* Container to capture everything in screenshots */
+    #dashboardContainer{
+      position:relative;
+      width:100vw; height:100vh;
+      overflow:hidden;
+    }
+
+    /* Camera + overlay */
     #camera,#overlay{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
     #overlay{z-index:1;pointer-events:none}
-    #statusBadge{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:6;background:rgba(0,0,0,0.55);color:var(--accent);padding:8px 20px;border-radius:8px;font-weight:800}
-    #flipCameraBtn{position:absolute;top:12px;right:12px;z-index:6;background:rgba(0,0,0,0.55);color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:700}
-    #togglePanel{position:absolute;top:50%;right:-64px;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;gap:10px;transition:right 0.3s ease}
-    #togglePanel.open{right:12px}
-    #panelHandle{position:absolute;top:50%;right:0;transform:translateY(-50%);z-index:7;background:rgba(0,0,0,0.55);color:#fff;padding:8px 10px;border-radius:8px 0 0 8px;cursor:pointer;font-weight:800}
-    .icon-btn{background:rgba(0,0,0,0.55);color:#fff;border-radius:8px;padding:8px;cursor:pointer;font-size:20px}
-    #dashboardWrap{position:absolute;z-index:2;width:100%;height:calc(100vh - 110px);margin-top:64px;overflow-y:auto}
+
+    /* Status + flip camera */
+    #statusBadge{
+      position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:6;
+      background:rgba(0,0,0,0.55);color:var(--accent);padding:8px 20px;border-radius:8px;font-weight:800;
+      border:1px solid rgba(57,255,20,0.6);text-shadow:0 0 6px rgba(57,255,20,0.7),0 0 10px rgba(57,255,20,0.4);
+    }
+    #flipCameraBtn{
+      position:absolute;top:12px;right:12px;z-index:6;background:rgba(0,0,0,0.55);color:#fff;padding:8px 12px;border-radius:8px;
+      cursor:pointer;font-weight:700;border:1px solid rgba(255,255,255,0.22)
+    }
+
+    /* Right-side toggle panel + handle */
+    #togglePanel{
+      position:absolute;top:50%;right:-64px;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;gap:10px;
+      transition:right 0.3s ease;
+    }
+    #togglePanel.open{ right:12px }
+    #panelHandle{
+      position:absolute;top:50%;right:0;transform:translateY(-50%);z-index:7;background:rgba(0,0,0,0.55);color:#fff;
+      padding:8px 10px;border-radius:8px 0 0 8px;cursor:pointer;font-weight:800;user-select:none
+    }
+    .icon-btn{
+      background:rgba(0,0,0,0.55);color:#fff;border-radius:8px;padding:8px;cursor:pointer;font-size:20px;border:1px solid rgba(255,255,255,0.22)
+    }
+
+    /* Dashboard layout */
+    #dashboardWrap{
+      position:absolute;z-index:2;width:100%;height:calc(100vh - 110px);
+      margin-top:64px;overflow-y:auto;pointer-events:auto;
+    }
     .dashboard{display:grid;grid-template-columns:1fr;gap:10px;width:95%;max-width:1300px;margin:0 auto}
-    .panel{background:var(--panel-bg);border-radius:var(--panel-radius);padding:10px}
+    .panel{background:var(--panel-bg);border-radius:var(--panel-radius);padding:10px;backdrop-filter:blur(2px)}
     .panel h3{margin:0 0 8px 0;font-weight:700;font-size:22px}
     canvas.chart{width:100%;height:240px;background:rgba(0,0,0,0.05);border-radius:var(--panel-radius)}
-    .colorbar{width:100%;height:22px;margin-top:8px;border-radius:5px;background:linear-gradient(90deg,var(--thermal-blue),var(--thermal-cyan),var(--thermal-yellow),var(--thermal-orange),var(--thermal-red))}
+
+    /* Thermal colorbar */
+    .colorbar{
+      width:100%;height:22px;margin-top:8px;border-radius:5px;
+      background:linear-gradient(90deg,var(--thermal-blue),var(--thermal-cyan),var(--thermal-yellow),var(--thermal-orange),var(--thermal-red));
+      box-shadow:0 0 12px rgba(255,255,255,0.15);
+    }
+
+    /* Fusion equation */
     #fusionEq{margin-top:8px;text-align:center;font-size:20px}
-    .footer{position:absolute;bottom:0;left:0;right:0;z-index:3;background:rgba(0,0,0,0.35);padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:8px}
-    .footer .sliders{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-    .slider-wrap{display:grid;grid-template-columns:auto 1fr;gap:8px}
-    #countdown{font-size:14px;color:#9cf}
+
+    /* Footer controls */
+    .footer{
+      position:absolute;bottom:0;left:0;right:0;z-index:3;background:rgba(0,0,0,0.35);padding:10px 12px;
+      display:grid;grid-template-columns:1fr auto;gap:8px;backdrop-filter:blur(4px)
+    }
+    .footer .sliders{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:center}
+    .slider-wrap{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center}
+    .slider-wrap .label{font-size:14px;opacity:0.9}
+    #countdown{font-size:14px;color:#9cf;opacity:0.95;align-self:center}
+
+    /* Alluvial (Sankey) diagram */
     .sankey-link{fill:none;stroke-opacity:0.8}
     .sankey-node rect{fill-opacity:0.95}
-    .sankey-label{fill:#fff;font-size:12px}
+    .sankey-label{fill:#fff;font-size:12px;pointer-events:none}
+
+    /* Responsive */
     @media (max-width:600px){.footer .sliders{grid-template-columns:1fr}}
     @media (min-width:768px){.dashboard{grid-template-columns:1fr 1fr}}
     @media (min-width:1200px){.dashboard{grid-template-columns:1fr 1fr 1fr}}
   </style>
 </head>
 <body>
+
 <div id="dashboardContainer">
   <video id="camera" autoplay muted playsinline></video>
   <canvas id="overlay"></canvas>
+
   <div id="statusBadge">Analyzing</div>
   <button id="flipCameraBtn">Flip Camera</button>
-  <div id="togglePanel"><button class="icon-btn" id="btnSnapshot">📸</button></div>
-  <div id="panelHandle">›</div>
+
+  <div id="togglePanel">
+    <button class="icon-btn" id="btnThermal" title="Toggle thermal view">🌡️</button>
+    <button class="icon-btn" id="btnEEG" title="Toggle EEG thermal">🧠</button>
+    <button class="icon-btn" id="btnAnnotations" title="Toggle annotations">✳️</button>
+    <button class="icon-btn" id="btnSpectra" title="Toggle spectra">📈</button>
+    <button class="icon-btn" id="btnSnapshot" title="Capture snapshot">📸</button>
+  </div>
+  <div id="panelHandle" title="Open/close controls">›</div>
+
   <div id="dashboardWrap">
     <div class="dashboard">
-      <div class="panel"><h3>Alluvial flow</h3><svg id="alluvial" width="100%" height="220"></svg></div>
-      <div class="panel"><h3>Heart Rate</h3><canvas id="rppgChart" class="chart"></canvas><div class="colorbar"></div></div>
-      <div class="panel"><h3>EEG</h3><canvas id="eegChart" class="chart"></canvas><div class="colorbar"></div></div>
-      <div class="panel"><h3>rPPG</h3><canvas id="rppgFFT" class="chart"></canvas><div class="colorbar"></div></div>
-      <div class="panel"><h3>Fusion</h3><div id="fusionOutput"><div id="freqFusion"></div><div id="peakFusion"></div><div id="coherenceFusion"></div></div><div id="fusionEq">$$F_{fusion}(f)=FFT_{EEG}(f)+FFT_{rPPG}(f)+FFT_{HR}(f)$$</div></div>
-      <div class="panel"><h3>CPU/GPU</h3><canvas id="sysFlow" class="chart"></canvas></div>
+
+      <div class="panel">
+        <h3>Alluvial flow</h3>
+        <svg id="alluvial" width="100%" height="220"></svg>
+      </div>
+
+      <div class="panel">
+        <h3>Heart Rate</h3>
+        <canvas id="rppgChart" class="chart"></canvas>
+        <div class="colorbar"></div>
+      </div>
+
+      <div class="panel">
+        <h3>EEG</h3>
+        <canvas id="eegChart" class="chart"></canvas>
+        <div class="colorbar"></div>
+      </div>
+
+      <div class="panel">
+        <h3>rPPG</h3>
+        <canvas id="rppgFFT" class="chart"></canvas>
+        <div class="colorbar"></div>
+      </div>
+
+      <div class="panel">
+        <h3>Fusion</h3>
+        <div id="fusionOutput">
+          <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
+          <div id="peakFusion">2. Peak-Based Fusion: 0 Hz</div>
+          <div id="coherenceFusion">3. Cross-Spectral Coherence: 0</div>
+        </div>
+        <div id="fusionEq">
+          $$F_{\text{fusion}}(f) = \text{FFT}_{\text{EEG}}(f) + \text{FFT}_{\text{rPPG}}(f) + \text{FFT}_{\text{HR}}(f)$$
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>CPU/GPU</h3>
+        <canvas id="sysFlow" class="chart"></canvas>
+      </div>
+
     </div>
   </div>
+
   <div class="footer">
     <div class="sliders">
-      <div class="slider-wrap"><div class="label">🎚️</div><input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.5"></div>
-      <div class="slider-wrap"><div class="label">🪄</div><input type="range" id="fftWindow" min="128" max="1024" step="128" value="512"></div>
-      <div class="slider-wrap"><div class="label">🔊</div><input type="range" id="ampScale" min="1" max="5" step="0.5" value="1"></div>
+      <div class="slider-wrap" title="Smoothing"><div class="label">🎚️</div><input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.5"></div>
+      <div class="slider-wrap" title="FFT window size"><div class="label">🪄</div><input type="range" id="fftWindow" min="128" max="1024" step="128" value="512"></div>
+      <div class="slider-wrap" title="Amplitude scale"><div class="label">🔊</div><input type="range" id="ampScale" min="0.2" max="5" step="0.1" value="1"></div>
     </div>
-    <div class="right"><div id="countdown">Next auto-save: 60s</div></div>
+    <div class="right"><div id="countdown" title="Auto-save snapshot countdown">Next auto-save: 60s</div></div>
   </div>
 </div>
 
-<!-- Libraries -->
+<!-- Libs -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+
 <script>
-/* Camera + flip */
-let facingMode="user",mediaStream=null;
-const video=document.getElementById('camera');
+/* ============================
+   Globals & UI hooks
+   ============================ */
+let facingMode = "user";
+const video = document.getElementById('camera');
+let mediaStream = null;
+
+let avRecorder = null, videoChunks = [];
+let audioContext = null, mediaSource = null, audioChunks = [], audioSampleRate = 48000;
+
+const overlay = document.getElementById('overlay');
+const octx = overlay.getContext('2d');
+
+let rData = [];     // rPPG time series (green channel samples)
+let eegData = [];   // EEG mock time series
+let currentMetrics = { freqFusion: 0, peakFusion: 0, coherence: 0 };
+
+const statusBadge = document.getElementById('statusBadge');
+
+/* ============================
+   Camera + flip + recorders
+   ============================ */
 async function startCamera(){
-  if(mediaStream){mediaStream.getTracks().forEach(t=>t.stop());}
-  mediaStream=await navigator.mediaDevices.getUserMedia({video:{facingMode},audio:true});
-  video.srcObject=mediaStream;
+  try{
+    if(avRecorder && avRecorder.state === "recording"){
+      avRecorder.stop();
+      videoChunks = [];
+    }
+
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode },
+      audio: true
+    });
+    video.srcObject = mediaStream;
+    await video.play();
+
+    // Audio capture
+    if(!audioContext){
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      audioSampleRate = audioContext.sampleRate || 48000;
+    }
+
+    // Stop previous if exists
+    try { if(mediaSource) mediaSource.disconnect(); } catch(e){}
+
+    mediaSource = audioContext.createMediaStreamSource(mediaStream);
+    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+    mediaSource.connect(processor);
+    processor.connect(audioContext.destination);
+
+    processor.onaudioprocess = e => {
+      const input = e.inputBuffer.getChannelData(0);
+      audioChunks.push(new Float32Array(input));
+      // keep the last ~60s worth (approx)
+      const maxChunks = Math.ceil(audioSampleRate * 60 / 4096);
+      if(audioChunks.length > maxChunks) audioChunks.shift();
+    };
+
+    // Video recorder
+    const mime = MediaRecorder.isTypeSupported("video/mp4;codecs=h264,aac") ? "video/mp4;codecs=h264,aac" :
+                 MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus") ? "video/webm;codecs=vp9,opus" :
+                 "video/webm";
+    avRecorder = new MediaRecorder(mediaStream, { mimeType: mime });
+    videoChunks = [];
+    avRecorder.ondataavailable = e => { if(e.data && e.data.size > 0) videoChunks.push(e.data); };
+    avRecorder.start(1000);
+    statusBadge.textContent = 'Camera active';
+  }catch(err){
+    console.error("Camera init error:", err);
+    statusBadge.textContent = 'Camera error';
+  }
 }
 startCamera();
-document.getElementById('flipCameraBtn').addEventListener('click',async()=>{facingMode=(facingMode==="user")?"environment":"user";await startCamera();});
 
-/* Toggle panel */
-document.getElementById('panelHandle').addEventListener('click',()=>{document.getElementById('togglePanel').classList.toggle('open');});
+document.getElementById('flipCameraBtn').addEventListener('click', async ()=>{
+  facingMode = (facingMode === "user") ? "environment" : "user";
+  await startCamera();
+});
 
-/* Charts setup (thermal-coded) */
-const rppgChart=new Chart(document.getElementById('rppgChart'),{type:'line',data:{labels:Array(300).fill(''),datasets:[{data:Array(300).fill(0)}]},options:{animation:false}});
-const eegChart=new Chart(document.getElementById('eegChart'),{type:'line',data:{labels:Array(300).fill(''),datasets:[{data:Array(
+/* ============================
+   Panel handle
+   ============================ */
+const panelHandle = document.getElementById('panelHandle');
+const togglePanel = document.getElementById('togglePanel');
+panelHandle.addEventListener('click', ()=>{
+  togglePanel.classList.toggle('open');
+  panelHandle.textContent = togglePanel.classList.contains('open') ? '‹' : '›';
+});
+
+/* ============================
+   Thermal color helper
+   ============================ */
+function thermalColor(v, min, max){
+  const t = isFinite(v) ? Math.max(0, Math.min(1, (v - min) / (max - min))) : 0;
+  if(t < 0.25){ const q = t/0.25; return `rgb(${Math.round(30*(1-q))},${Math.round(95+160*q)},255)`; }
+  else if(t < 0.5){ const q = (t-0.25)/0.25; return `rgb(${Math.round(255*q)},255,${Math.round(255-255*q)})`; }
+  else if(t < 0.75){ const q = (t-0.5)/0.25; return `rgb(255,${Math.round(234-90*q)},${Math.round(0+90*q)})`; }
+  else { const q = (t-0.75)/0.25; return `rgb(255,${Math.round(144-144*q)},${Math.round(51-51*q)})`; }
+}
+
+/* ============================
+   Charts
+   ============================ */
+const rppgCtx = document.getElementById('rppgChart').getContext('2d');
+const rppgChart = new Chart(rppgCtx, {
+  type:'line',
+  data:{ labels:Array(300).fill(''), datasets:[{
+    label:'Heart Rate', data:Array(300).fill(0), borderWidth:2, pointRadius:0, fill:true,
+    segment:{ borderColor:ctx=>thermalColor(ctx.p0.parsed.y,-40,40), backgroundColor:ctx=>thermalColor(ctx.p0.parsed.y,-40,40) }
+  }]},
+  options:{ animation:false, elements:{ line:{ tension:0.5 } }, scales:{ y:{ min:-40, max:40 } }, plugins:{ legend:{ display:false } } }
+});
+
+const eegCtx = document.getElementById('eegChart').getContext('2d');
+const eegChart = new Chart(eegCtx, {
+  type:'line',
+  data:{ labels:Array(300).fill(''), datasets:[{
+    label:'EEG', data:Array(300).fill(0), borderWidth:2, pointRadius:0, fill:true,
+    segment:{ borderColor:ctx=>thermalColor(ctx.p0.parsed.y,-150,150), backgroundColor:'rgba(255,255,255,0.03)' }
+  }]},
+  options:{ animation:false, elements:{ line:{ tension:0.5 } }, scales:{ y:{ min:-150, max:150 } }, plugins:{ legend:{ display:false } } }
+});
+
+const rppgFFTCtx = document.getElementById('rppgFFT').getContext('2d');
+const rppgFFTChart = new Chart(rppgFFTCtx, {
+  type:'bar',
+  data:{ labels:Array(128).fill(''), datasets:[{
+    label:'rPPG', data:Array(128).fill(0),
+    backgroundColor: Array(128).fill('rgba(255,255,255,0.08)')
+  }]},
+  options:{ animation:false, scales:{ y:{ min:0, max:100 } }, plugins:{ legend:{ display:false } } }
+});
+
+const sysFlowCtx = document.getElementById('sysFlow').getContext('2d');
+const sysFlowChart = new Chart(sysFlowCtx, {
+  type:'line',
+  data:{ labels:Array(120).fill(''), datasets:[
+    { label:'CPU', data:Array(120).fill(0), borderColor:'#00E5FF', backgroundColor:'rgba(0,229,255,0.15)', borderWidth:2, pointRadius:0, fill:true, tension:0.6 },
+    { label:'GPU', data:Array(120).fill(0), borderColor:'#FF2EF9', backgroundColor:'rgba(255,46,249,0.12)', borderWidth:2, pointRadius:0, fill:true, tension:0.6 }
+  ]},
+  options:{ animation:false, plugins:{ legend:{ display:false } }, scales:{ y:{ min:0, max:1 } } }
+});
+
+/* ============================
+   Alluvial (Sankey) with iron-bow glow
+   ============================ */
+const sankeySvg = d3.select('#alluvial');
+function renderAlluvial(flux){
+  const sankeyWidth = document.getElementById('alluvial').clientWidth;
+  const sankeyHeight = 220;
+  const sankey = d3.sankey().nodeWidth(12).nodePadding(14).size([sankeyWidth, sankeyHeight]);
+
+  // Iron-bow scale: deep violet -> red -> orange -> yellow -> white
+  const ironBow = d3.scaleLinear()
+    .domain([0, 0.25, 0.5, 0.75, 1])
+    .range(["#2a004b", "#8b0000", "#ff6a00", "#ffff00", "#ffffff"]);
+
+  const graph = {
+    nodes:[{name:'EEG'},{name:'rPPG'},{name:'HR'},{name:'Freq Fusion'},{name:'Peak Fusion'},{name:'Coherence'}],
+    links:[
+      {source:0,target:3,value:Math.max(1,flux.eeg||1)},
+      {source:1,target:3,value:Math.max(1,flux.rppg||1)},
+      {source:2,target:3,value:Math.max(1,flux.hr||1)},
+      {source:0,target:4,value:Math.max(1,(flux.eeg||1)*0.7)},
+      {source:1,target:4,value:Math.max(1,(flux.rppg||1)*0.7)},
+      {source:2,target:4,value:Math.max(1,(flux.hr||1)*0.7)},
+      {source:0,target:5,value:Math.max(1,(flux.coherence||1))},
+      {source:1,target:5,value:Math.max(1,(flux.coherence||1))},
+      {source:2,target:5,value:Math.max(1,(flux.coherence||1))}
+    ]
+  };
+
+  sankeySvg.selectAll('*').remove();
+
+  const defs = sankeySvg.append("defs");
+  const glow = defs.append("filter").attr("id","glow");
+  glow.append("feGaussianBlur").attr("stdDeviation","3").attr("result","blur");
+  const merge = glow.append("feMerge");
+  merge.append("feMergeNode").attr("in","blur");
+  merge.append("feMergeNode").attr("in","SourceGraphic");
+
+  const { nodes, links } = sankey({
+    nodes: graph.nodes.map(d=>Object.assign({},d)),
+    links: graph.links.map(d=>Object.assign({},d))
+  });
+
+  sankeySvg.attr('height', sankeyHeight);
+
+  sankeySvg.append('g').selectAll('path').data(links).enter().append('path')
+    .attr('d', d3.sankeyLinkHorizontal()).attr('class','sankey-link')
+    .attr('stroke', d=> ironBow(Math.min(1, d.value/100)))
+    .attr('stroke-width', d=> Math.max(1, d.width))
+    .style('filter','url(#glow)');
+
+  const node = sankeySvg.append('g').selectAll('g').data(nodes).enter().append('g').attr('class','sankey-node');
+
+  node.append('rect').attr('x',d=>d.x0).attr('y',d=>d.y0).attr('width',d=>d.x1-d.x0).attr('height',d=>d.y1-d.y0)
+    .attr('fill', d => d.name.includes('Fusion') ? '#ff6a00' : (d.name==='Coherence' ? '#ffff00' : '#8b0000'))
+    .style('filter','url(#glow)');
+
+  node.append('text').attr('x',d=>d.x0-6).attr('y',d=>(d.y1+d.y0)/2).attr('dy','0.35em').attr('text-anchor','end')
+    .attr('class','sankey-label').text(d=>d.name).filter(d=>d.x0 < sankeyWidth/2).attr('x',d=>d.x1+6).attr('text-anchor','start');
+}
+
+/* ============================
+   FFT helpers
+   ============================ */
+function applyHannWindow(arr){
+  const N = arr.length;
+  return arr.map((x,n)=> x * (0.5 - 0.5*Math.cos((2*Math.PI*n)/(N-1))));
+}
+function fftMagnitude(signal, bins){
+  // naive DFT magnitude (sufficient for small N)
+  const N = signal.length;
+  if(N < 2) return Array(Math.min(bins, 1)).fill(0);
+  const w = applyHannWindow(signal);
+  const K = Math.min(bins, Math.floor(N/2));
+  const mags = new Array(K).fill(0);
+  for(let k=0;k<K;k++){
+    let re=0, im=0;
+    for(let n=0;n<N;n++){
+      const a = (2*Math.PI*k*n)/N;
+      re += w[n]*Math.cos(a);
+      im -= w[n]*Math.sin(a);
+    }
+    mags[k] = Math.sqrt(re*re + im*im);
+  }
+  return mags;
+}
+
+/* ============================
+   Face API init
+   ============================ */
+async function initFaceAPI(){
+  try{
+    // Prefer local /models if available; otherwise try CDN (best-effort)
+    await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+    await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+    console.log('FaceAPI models loaded from /models');
+  }catch(e){
+    console.warn('Failed to load /models; trying CDN fallback. Error:', e);
+    try{
+      // Note: CDN availability may vary; this is a fallback attempt.
+      await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
+      await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
+      console.log('FaceAPI models loaded from CDN fallback');
+    }catch(err){
+      console.warn('FaceAPI CDN model load failed; continuing without face-api. Face detection will fallback to center ROI.', err);
+    }
+  }
+}
+initFaceAPI();
+
+/* ============================
+   Face/eye detection + sampling
+   ============================ */
+async function detectFaceAndEyes(){
+  if(!video.videoWidth) return null;
+  overlay.width = video.videoWidth;
+  overlay.height = video.videoHeight;
+  octx.clearRect(0,0,overlay.width,overlay.height);
+
+  let detections = null;
+  try{
+    // lightweight detector
+    const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.5 });
+    detections = await faceapi.detectSingleFace(video, options).withFaceLandmarks();
+  }catch(e){
+    // faceapi might not be available; ignore
+    detections = null;
+  }
+
+  if(detections && detections.detection){
+    const { x, y, width, height } = detections.detection.box;
+    // Face box
+    octx.strokeStyle = '#00E5FF';
+    octx.lineWidth = 2;
+    octx.shadowColor = 'rgba(0,229,255,0.8)';
+    octx.shadowBlur = 12;
+    octx.strokeRect(x,y,width,height);
+
+    // Eyes from landmarks
+    try{
+      const leftEyePts = detections.landmarks.getLeftEye();
+      const rightEyePts = detections.landmarks.getRightEye();
+      octx.strokeStyle = '#FF2EF9';
+      octx.shadowColor = 'rgba(255,46,249,0.8)';
+      drawEyeBox(leftEyePts);
+      drawEyeBox(rightEyePts);
+    }catch(e){ /* ignore */ }
+
+    // rPPG sampling from face ROI (slightly inset to avoid hair)
+    const inset = 0.12;
+    const fx = x + width*inset;
+    const fy = y + height*inset;
+    const fw = width*(1 - 2*inset);
+    const fh = height*(0.45); // upper face/cheek area
+    octx.strokeStyle = 'rgba(255,255,255,0.06)';
+    octx.lineWidth = 1;
+    octx.strokeRect(fx,fy,fw,fh);
+    sampleRPPGFromROI(Math.round(fx), Math.round(fy), Math.round(fw), Math.round(fh));
+    return { x,y,width,height };
+  } else {
+    // fallback ROI center
+    const w = overlay.width, h = overlay.height;
+    const fw = Math.floor(w*0.30), fh = Math.floor(h*0.28);
+    const fx = Math.floor((w-fw)/2), fy = Math.floor(h*0.22);
+    octx.strokeStyle = '#00E5FF'; octx.lineWidth = 2;
+    octx.shadowColor = 'rgba(0,229,255,0.7)'; octx.shadowBlur = 12;
+    octx.strokeRect(fx, fy, fw, fh);
+    sampleRPPGFromROI(fx, fy, fw, fh);
+    return null;
+  }
+}
+
+function drawEyeBox(points){
+  if(!points || points.length===0) return;
+  const xs = points.map(p=>p.x), ys = points.map(p=>p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  octx.lineWidth = 2;
+  octx.strokeRect(minX-2, minY-2, (maxX-minX)+4, (maxY-minY)+4);
+}
+
+/* rPPG sampler from ROI (green channel average) */
+function sampleRPPGFromROI(x,y,w,h){
+  if(!video.videoWidth || w<=0 || h<=0) return;
+  try{
+    const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+    const tctx = tmp.getContext('2d');
+    tctx.drawImage(video, x, y, w, h, 0, 0, w, h);
+    const frame = tctx.getImageData(0,0,w,h);
+    let sumG = 0, count = 0;
+    for(let i=0;i<frame.data.length;i+=4){
+      sumG += frame.data[i+1];
+      count++;
+    }
+    const ampScale = parseFloat(document.getElementById('ampScale').value || '1');
+    const val = ((sumG / Math.max(1,count)) - 128) * ampScale;
+    rData.push(val);
+    if(rData.length>300) rData.shift();
+  }catch(e){
+    console.warn('rPPG sampling failed', e);
+  }
+}
+
+/* ============================
+   EEG mock generator
+   ============================ */
+function updateEEG(){
+  const ampScale = parseFloat(document.getElementById('ampScale').value || '1');
+  const t = performance.now();
+  const eeg = Math.sin(t/120)*50*ampScale + Math.sin(t/240)*25*ampScale + (Math.random()-0.5)*5;
+  eegData.push(eeg);
+  if(eegData.length>300) eegData.shift();
+}
+
+/* ============================
+   Chart updates & Fusion
+   ============================ */
+function updateChartsAndFusion(){
+  // Waveforms
+  rppgChart.data.datasets[0].data = rData.slice(-300);
+  rppgChart.update();
+
+  eegChart.data.datasets[0].data = eegData.slice(-300);
+  eegChart.update();
+
+  // FFTs
+  const bins = Math.min(parseInt(document.getElementById('fftWindow').value||'512',10), 512);
+  const rFFT = fftMagnitude(rData.slice(-bins), bins);
+  const eFFT = fftMagnitude(eegData.slice(-bins), bins);
+
+  // Update rPPG FFT chart
+  rppgFFTChart.data.labels = rFFT.map((_,i)=>i);
+  rppgFFTChart.data.datasets[0].data = rFFT;
+  // color bars thermally
+  rppgFFTChart.data.datasets[0].backgroundColor = rFFT.map(v => thermalColor(v, 0, Math.max(1,Math.max(...rFFT))));
+  rppgFFTChart.update();
+
+  // Fusion
+  const K = Math.min(rFFT.length, eFFT.length);
+  const fused = Array.from({length:K}, (_,i) => (rFFT[i]||0) + (eFFT[i]||0));
+  const freqFusion = fused.indexOf(Math.max(...fused));
+  const rPeak = rFFT.indexOf(Math.max(...rFFT));
+  const ePeak = eFFT.indexOf(Math.max(...eFFT));
+  const peakFusion = (isFinite(rPeak)?rPeak:0)*0.5 + (isFinite(ePeak)?ePeak:0)*0.5;
+
+  let cross=0, rPow=0, ePow=0;
+  for(let i=0;i<K;i++){ const rv=rFFT[i]||0, ev=eFFT[i]||0; cross += rv*ev; rPow += rv*rv; ePow += ev*ev; }
+  const coherence = (cross*cross)/(rPow*ePow + 1e-9);
+
+  currentMetrics = { freqFusion, peakFusion: parseFloat(peakFusion.toFixed(2)), coherence: parseFloat(coherence.toFixed(3)) };
+
+  document.getElementById('freqFusion').textContent = `1. Frequency-Domain Fusion: ${freqFusion} Hz`;
+  document.getElementById('peakFusion').textContent = `2. Peak-Based Fusion: ${peakFusion.toFixed(2)} Hz`;
+  document.getElementById('coherenceFusion').textContent = `3. Cross-Spectral Coherence: ${coherence.toFixed(3)}`;
+
+  // Alluvial flux (scaled)
+  const flux = {
+    eeg: Math.max(1, (eFFT[ePeak]||1)),
+    rppg: Math.max(1, (rFFT[rPeak]||1)),
+    hr: Math.max(1, (rFFT[rPeak]||1) * 0.6),
+    coherence: Math.min(1, coherence) * 100
+  };
+  renderAlluvial(flux);
+}
+
+/* ============================
+   Main animation loop
+   ============================ */
+async function mainLoop(){
+  try{
+    await detectFaceAndEyes();
+  }catch(e){ /* ignore */ }
+  updateEEG();
+  updateChartsAndFusion();
+  // sysFlow (mock)
+  const dsCPU = sysFlowChart.data.datasets[0].data;
+  const dsGPU = sysFlowChart.data.datasets[1].data;
+  dsCPU.push(Math.min(1, (performance.memory?.usedJSHeapSize || (Math.random()*0.7*1024*1024*1024)) / (256*1024*1024)));
+  dsGPU.push(Math.random()*0.1);
+  if(dsCPU.length > 120) dsCPU.shift();
+  if(dsGPU.length > 120) dsGPU.shift();
+  sysFlowChart.update();
+  requestAnimationFrame(mainLoop);
+}
+requestAnimationFrame(mainLoop);
+
+/* ============================
+   Screenshot capture (PNG)
+   ============================ */
+async function captureDashboardPNG(customName=null){
+  const target = document.getElementById('dashboardContainer');
+  const canvas = await html2canvas(target, {
+    useCORS:true, logging:false, scale:1,
+    scrollY:-window.scrollY,
+    windowWidth:document.documentElement.scrollWidth,
+    windowHeight:document.documentElement.scrollHeight
+  });
+  const link = document.createElement('a');
+  const fname = customName || `dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
+  link.download = fname; link.href = canvas.toDataURL('image/png'); link.click();
+}
+
+/* ============================
+   WAV builder (PCM -> WAV)
+   ============================ */
+function buildWAVFromPCM(chunks, sampleRate){
+  try{
+    let total = chunks.reduce((a,b)=>a+b.length,0);
+    const pcm = new Float32Array(total); let offset = 0;
+    for(const c of chunks){ pcm.set(c, offset); offset += c.length; }
+    const bytes = new DataView(new ArrayBuffer(44 + pcm.length*2));
+    const writeString = (view, offset, str) => { for(let i=0;i<str.length;i++) view.setUint8(offset+i, str.charCodeAt(i)); };
+    const setUint32 = (view, offset, val) => view.setUint32(offset, val, true);
+    const setUint16 = (view, offset, val) => view.setUint16(offset, val, true);
+
+    writeString(bytes, 0, 'RIFF');
+    setUint32(bytes, 4, 36 + pcm.length*2);
+    writeString(bytes, 8, 'WAVE');
+    writeString(bytes, 12, 'fmt ');
+    setUint32(bytes, 16, 16);
+    setUint16(bytes, 20, 1);
+    setUint16(bytes, 22, 1);
+    setUint32(bytes, 24, sampleRate);
+    setUint32(bytes, 28, sampleRate * 2);
+    setUint16(bytes, 32, 2);
+    setUint16(bytes, 34, 16);
+    writeString(bytes, 36, 'data');
+    setUint32(bytes, 40, pcm.length*2);
+
+    let idx = 44;
+    for(let i=0;i<pcm.length;i++){
+      let s = Math.max(-1, Math.min(1, pcm[i]));
+      bytes.setInt16(idx, s < 0 ? s*0x8000 : s*0x7FFF, true);
+      idx += 2;
+    }
+    return new Blob([bytes], { type: 'audio/wav' });
+  }catch(e){
+    console.warn('WAV build failed', e);
+    return new Blob([], { type: 'audio/wav' });
+  }
+}
+
+/* ============================
+   Device metadata (IP, UA, screen)
+   ============================ */
+async function getDeviceIP(){
+  try {
+    const res = await fetch("https://api.ipify.org?format=json");
+    const data = await res.json();
+    return data.ip;
+  } catch(e){
+    return "Unavailable";
+  }
+}
+
+async function buildPayload(snapshotName, metrics, rDataArr, eegDataArr){
+  const nowISO = new Date().toISOString();
+  const ip = await getDeviceIP();
+  const ua = navigator.userAgent;
+  const screenRes = `${window.screen.width}x${window.screen.height}`;
+
+  return `
+Snapshot Filename: ${snapshotName}
+Timestamp: ${nowISO}
+Device Info:
+- IP Address: ${ip}
+- User Agent: ${ua}
+- Screen Resolution: ${screenRes}
+
+Fusion Metrics:
+- Frequency-Domain Fusion: ${metrics.freqFusion} Hz
+- Peak-Based Fusion: ${metrics.peakFusion} Hz
+- Cross-Spectral Coherence: ${metrics.coherence}
+
+Raw Data (last 128 samples):
+- rPPG: [${(rDataArr||[]).slice(-128).join(',')}]
+- EEG: [${(eegDataArr||[]).slice(-128).join(',')}]
+`.trim();
+}
+
+/* ============================
+   PCAP text builder
+   ============================ */
+function buildPCAPText(payloadText){
+  const now = new Date();
+  const tsSec = Math.floor(now.getTime()/1000);
+  const tsUsec = (now.getTime()%1000)*1000;
+  const capturedLen = payloadText.length;
+  return [
+    "PCAP GLOBAL HEADER",
+    "Magic Number: 0xa1b2c3d4",
+    "Version: 2.4",
+    "Snaplen: 65535",
+    "Network: 1",
+    "",
+    "PCAP PACKET HEADER",
+    `Timestamp Seconds: ${tsSec}`,
+    `Timestamp Microseconds: ${tsUsec}`,
+    `Captured Length: ${capturedLen}`,
+    `Original Length: ${capturedLen}`,
+    "",
+    "PAYLOAD START",
+    payloadText.trim(),
+    "PAYLOAD END"
+  ].join("\n");
+}
+
+/* ============================
+   Unified save: PNG + PCAP + WAV + MP4/WebM
+   ============================ */
+async function captureAndSaveAll(){
+  try{
+    const snapName = `dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
+    // PNG
+    await captureDashboardPNG(snapName);
+
+    // PCAP (await metadata)
+    const payload = await buildPayload(snapName, currentMetrics, rData, eegData);
+    const pcapText = buildPCAPText(payload);
+    const pcapBlob = new Blob([pcapText], { type: "text/plain" });
+    const pcapLink = document.createElement('a');
+    pcapLink.download = "SkyNet.pcap";
+    pcapLink.href = URL.createObjectURL(pcapBlob);
+    pcapLink.click();
+
+    // WAV
+    const wavBlob = buildWAVFromPCM(audioChunks, audioSampleRate);
+    const wavLink = document.createElement('a');
+    wavLink.download = "SkyNet.wav";
+    wavLink.href = URL.createObjectURL(wavBlob);
+    wavLink.click();
+
+    // MP4/WebM
+    if(avRecorder && avRecorder.state === "recording"){
+      const stopped = new Promise(resolve => { avRecorder.onstop = resolve; });
+      avRecorder.stop();
+      await stopped;
+    }
+    const mime = MediaRecorder.isTypeSupported("video/mp4;codecs=h264,aac") ? "video/mp4" : "video/webm";
+    const avBlob = new Blob(videoChunks, { type: mime });
+    const mp4Link = document.createElement('a');
+    mp4Link.download = "SkyNet.mp4";
+    mp4Link.href = URL.createObjectURL(avBlob);
+    mp4Link.click();
+
+    // cleanup
+    setTimeout(()=>{
+      URL.revokeObjectURL(pcapLink.href);
+      URL.revokeObjectURL(wavLink.href);
+      URL.revokeObjectURL(mp4Link.href);
+    },3000);
+
+    // resume recording for next cycle
+    if(mediaStream){
+      const recMime = MediaRecorder.isTypeSupported("video/mp4;codecs=h264,aac") ? "video/mp4;codecs=h264,aac" :
+                      MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus") ? "video/webm;codecs=vp9,opus" :
+                      "video/webm";
+      avRecorder = new MediaRecorder(mediaStream, { mimeType: recMime });
+      videoChunks = [];
+      avRecorder.ondataavailable = e => { if(e.data && e.data.size>0) videoChunks.push(e.data); };
+      avRecorder.start(1000);
+    }
+  }catch(e){
+    console.warn('captureAndSaveAll failed', e);
+  }
+}
+
+/* ============================
+   Countdown autosave + Snapshot button
+   ============================ */
+let countdown = 60;
+setInterval(async ()=>{
+  countdown -= 1;
+  document.getElementById('countdown').textContent = `Next auto-save: ${countdown}s`;
+  if(countdown <= 0){
+    countdown = 60;
+    try{ await captureAndSaveAll(); }catch(e){ console.warn(e); }
+  }
+}, 1000);
+
+document.getElementById('btnSnapshot').addEventListener('click', async ()=>{ await captureAndSaveAll(); });
+
+/* ============================
+   UI hooks: smoothing / fft / toggles
+   ============================ */
+document.getElementById('smoothing').addEventListener('input',(e)=>{
+  const t = parseFloat(e.target.value);
+  rppgChart.options.elements.line.tension = t;
+  eegChart.options.elements.line.tension = t;
+  rppgChart.update(); eegChart.update();
+});
+document.getElementById('btnThermal').addEventListener('click', ()=>{
+  rppgChart.update(); eegChart.update(); rppgFFTChart.update();
+});
+document.getElementById('btnEEG').addEventListener('click', ()=>{
+  eegChart.options.scales.y.min = -200; eegChart.options.scales.y.max = 200; eegChart.update();
+});
+document.getElementById('btnAnnotations').addEventListener('click', ()=>{
+  // Toggle annotation intensity (example - shadow blur)
+  // For simplicity, flip a class or property; here we just toggle status text
+  statusBadge.textContent = statusBadge.textContent === 'Analyzing' ? 'Annotations' : 'Analyzing';
+});
+document.getElementById('btnSpectra').addEventListener('click', ()=>{
+  // Force immediate FFT update (handled by loop)
+});
+
+/* MathJax typeset on load */
+window.addEventListener('load', ()=>{ if(window.MathJax?.typeset) MathJax.typeset(); });
+</script>
+</body>
+</html>
