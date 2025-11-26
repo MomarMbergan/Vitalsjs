@@ -12,693 +12,568 @@
       --font-size: 18px;
       --fusion-font-size: 20px;
       --footer-bg: rgba(0,0,0,0.35);
-      --accent: #39FF14; /* neon green */
-      --icon-bg: rgba(255,255,255,0.08);
-      --icon-border: rgba(255,255,255,0.22);
+      --accent: #39FF14;
+      --icon-bg: rgba(255,255,255,0.10);
+      --icon-border: rgba(255,255,255,0.25);
+
+      /* HD overlay colors */
+      --hd-face: #00E5FF;      /* cyan */
+      --hd-eye: #FF2EF9;       /* magenta */
+      --hd-shadow: rgba(0,229,255,0.6);
+      --hd-shadow2: rgba(255,46,249,0.6);
     }
 
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--fg);
-      font-family: Arial, Helvetica, sans-serif;
-      font-size: var(--font-size);
-      overflow: hidden;
-    }
+    body { margin: 0; background: var(--bg); color: var(--fg); font-family: Arial, Helvetica, sans-serif; font-size: var(--font-size); overflow: hidden; }
 
-    /* Fullscreen camera */
-    #camera {
-      position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      z-index: 0;
-      background: #111;
-    }
+    /* Camera and overlay */
+    #camera { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover; z-index: 0; background: #111; filter: contrast(1.05) saturate(1.1); }
+    #overlay { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; }
 
-    /* Status badge (Analyzing, neon green) */
+    /* Centered status */
     #statusBadge {
-      position: fixed;
-      top: 12px;
-      left: 12px;
-      z-index: 5;
-      background: rgba(0,0,0,0.55);
-      color: var(--accent);
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-weight: 800;
+      position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+      z-index: 5; background: rgba(0,0,0,0.55); color: var(--accent);
+      padding: 8px 20px; border-radius: 8px; font-weight: 800; font-size: 22px;
       border: 1px solid rgba(57,255,20,0.6);
-      letter-spacing: 0.4px;
       text-shadow: 0 0 6px rgba(57,255,20,0.7), 0 0 10px rgba(57,255,20,0.4);
     }
 
-    /* Forehead ROI box */
-    #foreheadBox {
-      position: absolute;
-      border: 2px solid red;
-      pointer-events: none;
-      z-index: 2;
-    }
+    /* Panels */
+    .dashboard { position: relative; z-index: 2; display: grid; grid-template-columns: 1fr; gap: 10px; width: 95vw; max-width: 1300px; margin: 64px auto 110px auto; pointer-events: none; }
+    .panel { background: var(--panel-bg); border-radius: 10px; padding: 10px; pointer-events: auto; backdrop-filter: blur(2px); }
+    .panel h3 { margin: 0 0 8px 0; font-weight: 700; font-size: 22px; text-align: left; }
+    canvas.chart { width: 100%; height: 220px; background: rgba(0,0,0,0.05); border-radius: 10px; }
+    .colorbar { width: 100%; height: 22px; margin-top: 8px; border-radius: 5px; background: linear-gradient(90deg, #00f, #0ff, #ff0, #f00); box-shadow: 0 0 12px rgba(255,255,255,0.15); }
 
-    /* Panels grid */
-    .dashboard {
-      position: relative;
-      z-index: 1;
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-      width: 95vw;
-      max-width: 1300px;
-      margin: 10px auto 110px auto; /* leave room for footer */
-      pointer-events: none;
-    }
+    #fusionOutput { margin-top: 8px; font-size: var(--fusion-font-size); line-height: 1.35; }
 
-    .panel {
-      background: var(--panel-bg);
-      border-radius: 10px;
-      padding: 10px;
-      pointer-events: auto;
-      backdrop-filter: blur(2px);
-    }
-
-    .panel h3 {
-      margin: 0 0 8px 0;
-      font-weight: 600;
-      font-size: calc(var(--font-size) + 2px);
-      text-align: left;
-    }
-
-    canvas {
-      width: 100%;
-      height: 220px;
-      background: rgba(0,0,0,0.05);
-      border-radius: 10px;
-    }
-
-    .colorbar {
-      width: 100%;
-      height: 22px;
-      margin-top: 8px;
-      border-radius: 5px;
-      background: linear-gradient(to right, blue, cyan, yellow, red);
-    }
-
-    /* Fusion box with MathJax */
-    #fusionOutput {
-      margin-top: 8px;
-      font-size: var(--fusion-font-size);
-      line-height: 1.35;
-    }
-
-    /* Footer sliders + countdown */
-    .footer {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 3;
-      background: var(--footer-bg);
-      padding: 10px 12px;
-      display: grid;
-      grid-template-columns: 1fr auto;
-      align-items: center;
-      gap: 8px;
-      backdrop-filter: blur(4px);
-      border-top: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .footer .sliders {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .slider-wrap {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 8px;
-      align-items: center;
-    }
-    .slider-wrap .label {
-      font-size: 14px;
-      opacity: 0.9;
-    }
+    /* Footer */
+    .footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 3; background: var(--footer-bg); padding: 10px 12px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; backdrop-filter: blur(4px); border-top: 1px solid rgba(255,255,255,0.08); }
+    .footer .sliders { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; align-items: center; }
+    .slider-wrap { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; }
+    .slider-wrap .label { font-size: 14px; opacity: 0.9; }
     input[type=range] { width: 100%; }
-
-    .footer .right {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
+    .footer .right { display: flex; gap: 12px; align-items: center; }
     #countdown { font-size: 14px; color: #9cf; opacity: 0.95; }
 
-    /* Slide-out vertical toggle panel (right) */
-    #togglePanel {
-      position: fixed;
-      top: 0;
-      right: -72px; /* hidden off-screen default */
-      width: 72px;
-      height: 100vh;
-      z-index: 4;
-      background: rgba(0,0,0,0.45);
-      backdrop-filter: blur(5px);
-      border-left: 1px solid rgba(255,255,255,0.12);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 10px 8px;
-      gap: 10px;
-      transition: right 0.25s ease;
-    }
+    /* Right toggle panel */
+    #togglePanel { position: fixed; top: 0; right: -72px; width: 72px; height: 100vh; z-index: 4; background: rgba(0,0,0,0.45); backdrop-filter: blur(5px); border-left: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; align-items: center; padding: 10px 8px; gap: 10px; transition: right 0.25s ease; }
     #togglePanel.open { right: 0; }
-
-    .icon-btn {
-      width: 52px;
-      height: 52px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--icon-bg);
-      color: #fff;
-      border: 1px solid var(--icon-border);
-      border-radius: 12px;
-      font-size: 22px;
-      cursor: pointer;
-    }
-    .icon-btn:hover { background: rgba(255,255,255,0.14); }
-    .icon-btn:active { background: rgba(255,255,255,0.18); }
-
-    /* Handle to slide panel */
-    #panelHandle {
-      position: fixed;
-      top: 50%;
-      right: 0;
-      transform: translateY(-50%);
-      z-index: 5;
-      background: rgba(0,0,0,0.55);
-      color: #fff;
-      border: 1px solid rgba(255,255,255,0.22);
-      border-right: none;
-      padding: 8px 10px;
-      border-top-left-radius: 8px;
-      border-bottom-left-radius: 8px;
-      cursor: pointer;
-      font-size: 18px;
-      backdrop-filter: blur(4px);
-    }
+    .icon-btn { width: 52px; height: 52px; display: inline-flex; align-items: center; justify-content: center; background: var(--icon-bg); color: #fff; border: 1px solid var(--icon-border); border-radius: 12px; font-size: 22px; cursor: pointer; box-shadow: inset 0 0 12px rgba(255,255,255,0.08), 0 0 10px rgba(0,0,0,0.4); }
+    .icon-btn:hover { background: rgba(255,255,255,0.16); }
+    #panelHandle { position: fixed; top: 50%; right: 0; transform: translateY(-50%); z-index: 5; background: rgba(0,0,0,0.55); color: #fff; border: 1px solid rgba(255,255,255,0.22); border-right: none; padding: 8px 10px; border-top-left-radius: 8px; border-bottom-left-radius: 8px; cursor: pointer; font-size: 18px; backdrop-filter: blur(4px); }
     #panelHandle:hover { background: rgba(255,255,255,0.12); }
   </style>
 
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- html2canvas for snapshots -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <!-- Polyfill + MathJax -->
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
 
 <video id="camera" autoplay muted playsinline></video>
+<canvas id="overlay"></canvas>
 <div id="statusBadge">Analyzing</div>
-<div id="foreheadBox"></div>
 
-<!-- Slide-out right toggle panel -->
-<div id="togglePanel" aria-label="Control panel">
-  <button class="icon-btn" id="btnThermal" title="Toggle thermal view (rPPG & EEG)">🌡️</button>
-  <button class="icon-btn" id="btnEEG" title="Toggle EEG thermal only">🧠</button>
+<div id="togglePanel">
+  <button class="icon-btn" id="btnThermal" title="Toggle thermal view">🌡️</button>
+  <button class="icon-btn" id="btnEEG" title="Toggle EEG thermal">🧠</button>
   <button class="icon-btn" id="btnAnnotations" title="Toggle annotations">✳️</button>
-  <button class="icon-btn" id="btnSpectra" title="Toggle spectra overlays">📈</button>
-  <button class="icon-btn" id="btnSnapshot" title="Capture snapshot now">📸</button>
+  <button class="icon-btn" id="btnSpectra" title="Toggle spectra">📈</button>
+  <button class="icon-btn" id="btnSnapshot" title="Capture snapshot">📸</button>
 </div>
-<div id="panelHandle" title="Show/Hide controls">›</div>
+<div id="panelHandle">›</div>
 
-<div class="dashboard" id="dashboard">
-  <div class="panel" id="panel-rppg">
-    <h3>rPPG heart signal alluvial</h3>
-    <canvas id="rppgChart"></canvas>
-    <div class="colorbar"></div>
-  </div>
-
-  <div class="panel" id="panel-eeg">
-    <h3>EEG signal thermal line</h3>
-    <canvas id="eegChart"></canvas>
-    <div class="colorbar"></div>
-  </div>
-
-  <div class="panel" id="panel-rppg-fft">
-    <h3>rPPG spectrum (FFT)</h3>
-    <canvas id="rppgFFT"></canvas>
-  </div>
-
-  <div class="panel" id="panel-eeg-fft">
-    <h3>EEG spectrum (FFT)</h3>
-    <canvas id="eegFFT"></canvas>
-  </div>
-
-  <div class="panel" id="panel-fusion">
-    <h3>Fusion metrics</h3>
+<div class="dashboard">
+  <div class="panel"><h3>Heart Rate</h3><canvas id="rppgChart" class="chart"></canvas><div class="colorbar"></div></div>
+  <div class="panel"><h3>EEG</h3><canvas id="eegChart" class="chart"></canvas><div class="colorbar"></div></div>
+  <div class="panel"><h3>rPPG</h3><canvas id="rppgFFT" class="chart"></canvas></div>
+  <div class="panel"><h3>Fusion</h3>
     <div id="fusionOutput">
       <div id="freqFusion">1. Frequency-Domain Fusion: 0 Hz</div>
       <div id="peakFusion">2. Peak-Based Fusion: 0 Hz</div>
       <div id="coherenceFusion">3. Cross-Spectral Coherence: 0</div>
-      <div>
-        $$F_{\text{fusion}}(f) = FFT_{\text{rPPG}}(f) + FFT_{\text{EEG}}(f)$$
-      </div>
+      <div>$$F_{\text{fusion}}(f) = FFT_{\text{rPPG}}(f) + FFT_{\text{EEG}}(f)$$</div>
     </div>
   </div>
+  <div class="panel"><h3>CPU/GPU</h3><canvas id="sysFlow" class="chart"></canvas></div>
 </div>
 
-<!-- Footer sliders + countdown -->
 <div class="footer">
   <div class="sliders">
-    <div class="slider-wrap" title="Smoothing">
-      <div class="label">🎚️</div>
-      <input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.4">
-    </div>
-    <div class="slider-wrap" title="FFT window size">
-      <div class="label">🪄</div>
-      <input type="range" id="fftWindow" min="128" max="1024" step="128" value="512">
-    </div>
-    <div class="slider-wrap" title="Amplitude scale">
-      <div class="label">🔊</div>
-      <input type="range" id="ampScale" min="1" max="5" step="0.5" value="1">
-    </div>
+    <div class="slider-wrap" title="Smoothing"><div class="label">🎚️</div><input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.5"></div>
+    <div class="slider-wrap" title="FFT window size"><div class="label">🪄</div><input type="range" id="fftWindow" min="128" max="1024" step="128" value="512"></div>
+    <div class="slider-wrap" title="Amplitude scale"><div class="label">🔊</div><input type="range" id="ampScale" min="1" max="5" step="0.5" value="1"></div>
   </div>
-  <div class="right">
-    <div id="countdown" title="Auto-save snapshot countdown">Next auto-save: 60s</div>
-  </div>
+  <div class="right"><div id="countdown" title="Auto-save snapshot countdown">Next auto-save: 60s</div></div>
 </div>
 
 <script>
-/* -------------------------------
-   Camera + microphone initialization and one-time 60s recording
--------------------------------- */
+/* ============================
+   Pico.js + lploc runtime
+   ============================ */
+const pico = {};
+pico.unpack_cascade = function(bytes){
+  const dview=new DataView(new ArrayBuffer(4)); let p=8;
+  dview.setUint8(0,bytes[p+0]); dview.setUint8(1,bytes[p+1]); dview.setUint8(2,bytes[p+2]); dview.setUint8(3,bytes[p+3]);
+  const tdepth=dview.getInt32(0,true); p+=4;
+  dview.setUint8(0,bytes[p+0]); dview.setUint8(1,bytes[p+1]); dview.setUint8(2,bytes[p+2]); dview.setUint8(3,bytes[p+3]);
+  const ntrees=dview.getInt32(0,true); p+=4;
+  const tcodes_ls=[], tpreds_ls=[], thresh_ls=[];
+  for(let t=0;t<ntrees;++t){
+    Array.prototype.push.apply(tcodes_ls,[0,0,0,0]);
+    Array.prototype.push.apply(tcodes_ls, bytes.slice(p, p+4*Math.pow(2,tdepth)-4));
+    p += 4*Math.pow(2,tdepth)-4;
+    for(let i=0;i<Math.pow(2,tdepth);++i){
+      dview.setUint8(0,bytes[p+0]); dview.setUint8(1,bytes[p+1]); dview.setUint8(2,bytes[p+2]); dview.setUint8(3,bytes[p+3]);
+      tpreds_ls.push(dview.getFloat32(0,true)); p+=4;
+    }
+    dview.setUint8(0,bytes[p+0]); dview.setUint8(1,bytes[p+1]); dview.setUint8(2,bytes[p+2]); dview.setUint8(3,bytes[p+3]);
+    thresh_ls.push(dview.getFloat32(0,true)); p+=4;
+  }
+  const tcodes=new Int8Array(tcodes_ls), tpreds=new Float32Array(tpreds_ls), thresh=new Float32Array(thresh_ls);
+  function classify_region(r,c,s,pixels,ldim){
+    r=256*r; c=256*c; let root=0; let o=0.0; const pow2=Math.pow(2,tdepth)>>0;
+    for(let i=0;i<ntrees;++i){
+      let idx=1;
+      for(let j=0;j<tdepth;++j){
+        idx = 2*idx + (pixels[((r+tcodes[root+4*idx+0]*s)>>8)*ldim+((c+tcodes[root+4*idx+1]*s)>>8)] <=
+                       pixels[((r+tcodes[root+4*idx+2]*s)>>8)*ldim+((c+tcodes[root+4*idx+3]*s)>>8)]);
+      }
+      o += tpreds[pow2*i + idx - pow2];
+      if(o<=thresh[i]) return -1;
+      root += 4*pow2;
+    }
+    return o - thresh[ntrees-1];
+  }
+  return classify_region;
+};
+pico.run_cascade = function(image, classify_region, params){
+  const {pixels,nrows,ncols,ldim}=image; const {shiftfactor,minsize,maxsize,scalefactor}=params;
+  let scale=minsize; const detections=[];
+  while(scale<=maxsize){
+    const step=Math.max(shiftfactor*scale,1)>>0; const offset=(scale/2+1)>>0;
+    for(let r=offset;r<=nrows-offset;r+=step)
+      for(let c=offset;c<=ncols-offset;c+=step){
+        const q = classify_region(r,c,scale,pixels,ldim);
+        if(q>0.0) detections.push([r,c,scale,q]);
+      }
+    scale = scale*scalefactor;
+  }
+  return detections;
+};
+pico.cluster_detections = function(dets, iouthreshold){
+  dets=dets.sort((a,b)=>b[3]-a[3]);
+  function iou(d1,d2){const[r1,c1,s1]=d1,[r2,c2,s2]=d2;
+    const overr=Math.max(0,Math.min(r1+s1/2,r2+s2/2)-Math.max(r1-s1/2,r2-s2/2));
+    const overc=Math.max(0,Math.min(c1+s1/2,c2+s2/2)-Math.max(c1-s1/2,c2-s2/2));
+    return overr*overc/(s1*s1+s2*s2-overr*overc);
+  }
+  const assignments=new Array(dets.length).fill(0), clusters=[];
+  for(let i=0;i<dets.length;++i) if(assignments[i]==0){
+    let r=0,c=0,s=0,q=0,n=0;
+    for(let j=i;j<dets.length;++j) if(iou(dets[i],dets[j])>iouthreshold){
+      assignments[j]=1; r+=dets[j][0]; c+=dets[j][1]; s+=dets[j][2]; q+=dets[j][3]; n+=1;
+    }
+    clusters.push([r/n, c/n, s/n, q]);
+  }
+  return clusters;
+};
+pico.instantiate_detection_memory = function(size){
+  let n=0; const memory=[]; for(let i=0;i<size;++i) memory.push([]);
+  return function update_memory(dets){ memory[n]=dets; n=(n+1)%memory.length; dets=[]; for(let i=0;i<memory.length;++i) dets=dets.concat(memory[i]); return dets; }
+};
+
+const lploc = {};
+lploc.unpack_localizer = function(bytes){
+  const dview=new DataView(new ArrayBuffer(4)); let p=0;
+  dview.setUint8(0,bytes[p+0]); dview.setUint8(1,bytes[p+1]); dview.setUint8(2,bytes[p+2]); dview.setUint8(3,bytes[p+3]);
+  const nstages=dview.getInt32(0,true); p+=4;
+  dview.setUint8(0,bytes[p+0]); dview.setUint8(1,bytes[p+1]); dview.setUint8(2,bytes[p+2]); dview.setUint8(3,bytes[p+3]);
+  const scalemul=dview.getFloat32(0,true); p+=4;
+  dview.setUint8(0,bytes[p+0]); dview.setUint8(1,bytes[p+1]); dview.setUint8(2,bytes[p+2]); dview.setUint8(3,bytes[p+3]);
+  const ntreesperstage=dview.getInt32(0,true); p+=4;
+  dview.setUint8(0,bytes[p+0]); dview.setUint8(1,bytes[p+1]); dview.setUint8(2,bytes[p+2]); dview.setUint8(3,bytes[p+3]);
+  const tdepth=dview.getInt32(0,true); p+=4;
+
+  const tcodes_ls=[], tpreds_ls=[];
+  for(let i=0;i<nstages;++i){
+    for(let j=0;j<ntreesperstage;++j){
+      Array.prototype.push.apply(tcodes_ls, bytes.slice(p, p+4*Math.pow(2,tdepth)-4)); p += 4*Math.pow(2,tdepth)-4;
+      for(let k=0;k<Math.pow(2,tdepth);++k) for(let l=0;l<2;++l){
+        dview.setUint8(0,bytes[p+0]); dview.setUint8(1,bytes[p+1]); dview.setUint8(2,bytes[p+2]); dview.setUint8(3,bytes[p+3]);
+        tpreds_ls.push(dview.getFloat32(0,true)); p+=4;
+      }
+    }
+  }
+  const tcodes=new Int8Array(tcodes_ls), tpreds=new Float32Array(tpreds_ls);
+  function loc_fun(r,c,s,pixels,nrows,ncols,ldim){
+    let root=0; const pow2tdepth=Math.pow(2,tdepth)>>0;
+    for(let i=0;i<nstages;++i){
+      let dr=0.0, dc=0.0;
+      for(let j=0;j<ntreesperstage;++j){
+        let idx=0;
+        for(let k=0;k<tdepth;++k){
+          const r1=Math.min(nrows-1,Math.max(0,(256*r+tcodes[root+4*idx+0]*s)>>8));
+          const c1=Math.min(ncols-1,Math.max(0,(256*c+tcodes[root+4*idx+1]*s)>>8));
+          const r2=Math.min(nrows-1,Math.max(0,(256*r+tcodes[root+4*idx+2]*s)>>8));
+          const c2=Math.min(ncols-1,Math.max(0,(256*c+tcodes[root+4*idx+3]*s)>>8));
+          idx = 2*idx + 1 + (pixels[r1*ldim+c1] > pixels[r2*ldim+c2]);
+        }
+        const lutidx = 2*(ntreesperstage*pow2tdepth*i + pow2tdepth*j + idx - (pow2tdepth - 1));
+        dr += tpreds[lutidx+0]; dc += tpreds[lutidx+1];
+        root += 4*pow2tdepth - 4;
+      }
+      r = r + dr*s; c = c + dc*s; s = s*scalemul;
+    }
+    return [r,c];
+  }
+  function loc_fun_with_perturbs(r,c,s,nperturbs,image){
+    const rows=[], cols=[];
+    for(let i=0;i<nperturbs;++i){
+      const _s=s*(0.925+0.15*Math.random());
+      let _r=r + s*0.15*(0.5-Math.random());
+      let _c=c + s*0.15*(0.5-Math.random());
+      [_r,_c] = loc_fun(_r,_c,_s,image.pixels,image.nrows,image.ncols,image.ldim);
+      rows.push(_r); cols.push(_c);
+    }
+    rows.sort(); cols.sort();
+    return [rows[Math.round(nperturbs/2)], cols[Math.round(nperturbs/2)]];
+  }
+  return loc_fun_with_perturbs;
+};
+
+/* ============================
+   Media init + one-time 60s recording
+   ============================ */
 const video = document.getElementById('camera');
+const overlay = document.getElementById('overlay');
+const octx = overlay.getContext('2d');
 const statusBadge = document.getElementById('statusBadge');
 
-let mediaStream = null;
-let oneTimeRecorded = false;
+let mediaStream = null, oneTimeRecorded = false;
 
-async function initMedia() {
+async function initMedia(){
   try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user" },
-      audio: true
-    });
+    mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true });
     video.srcObject = mediaStream;
     statusBadge.textContent = "Analyzing";
+    resizeOverlay();
     startOneTimeRecording(mediaStream);
   } catch (err) {
     statusBadge.textContent = "Analyzing (Media error)";
-    console.error("Media initialization failed:", err);
-    alert("Camera/Microphone access failed. Please allow permissions (HTTPS required) and reload.");
+    console.error(err);
   }
 }
+function resizeOverlay(){ overlay.width = window.innerWidth; overlay.height = window.innerHeight; }
+window.addEventListener('resize', resizeOverlay);
 initMedia();
 
-/* One-time 60s recorder: produces SkyNet.mp4 and SkyNet.wav, plus Screenshot.png and SkyNet.pcap */
-async function startOneTimeRecording(stream) {
-  if (oneTimeRecorded) return; // safety
-  oneTimeRecorded = true;
+/* ============================
+   Load external models (face + pupil)
+   ============================ */
+let update_memory = pico.instantiate_detection_memory(5);
+let facefinder_classify_region = (r,c,s,pixels,ldim)=>-1.0;
+let do_puploc = (r,c,s,nperturbs,image)=>[-1.0,-1.0];
 
-  // Combined A/V recording via MediaRecorder
-  let avChunks = [];
-  let avMime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus") ? "video/webm;codecs=vp9,opus" :
-               MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus") ? "video/webm;codecs=vp8,opus" :
-               "video/webm";
-  const avRecorder = new MediaRecorder(stream, { mimeType: avMime });
+const faceCascadeURL = 'https://raw.githubusercontent.com/nenadmarkus/pico/c2e81f9d23cc11d1a612fd21e4f9de0921a5d0d9/rnt/cascades/facefinder';
+const puplocURL = 'https://drone.nenadmarkus.com/data/blog-stuff/puploc.bin';
 
-  avRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) avChunks.push(e.data); };
-  avRecorder.onstop = async () => {
-    try {
-      const avBlob = new Blob(avChunks, { type: avMime });
-      downloadBlob(avBlob, "SkyNet.mp4"); // name as mp4 for your workflow
-
-      // Extract audio to WAV using Web Audio PCM capture in parallel buffer
-      const wavBlob = buildWAVFromPCM(audioPCMBuffer, audioSampleRate);
-      if (wavBlob) downloadBlob(wavBlob, "SkyNet.wav");
-
-      // One-time Screenshot + PCAP at the end of recording
-      const snapName = `Screenshot_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
-      await captureDashboardPNG(snapName);
-      const metrics = currentMetrics;
-      const payload = buildPayload(snapName, metrics);
-      const pcapText = buildPCAPText(payload);
-      downloadTextAsFile(pcapText, "SkyNet.pcap");
-    } catch (e) {
-      console.error("Finalization failed:", e);
-    }
-  };
-
-  // Parallel audio PCM capture via Web Audio for WAV
-  const audioPCMBuffer = [];
-  let audioSampleRate = 48000;
-  try {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    audioSampleRate = audioCtx.sampleRate;
-    const source = audioCtx.createMediaStreamSource(stream);
-    const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-    source.connect(processor);
-    processor.connect(audioCtx.destination);
-    processor.onaudioprocess = (e) => {
-      const ch = e.inputBuffer.getChannelData(0);
-      // Copy the Float32 samples
-      audioPCMBuffer.push(new Float32Array(ch));
-    };
-    // Stop audio processor after 60s
-    setTimeout(() => {
-      processor.disconnect();
-      source.disconnect();
-      audioCtx.close().catch(()=>{});
-    }, 60000);
-  } catch (e) {
-    console.warn("WAV capture failed; audio WAV may be unavailable:", e);
-  }
-
-  // Start combined A/V recording for 60s
-  avRecorder.start(1000);
-  setTimeout(() => {
-    if (avRecorder.state !== "inactive") avRecorder.stop();
-  }, 60000);
-}
-
-/* Utility: build WAV Blob from PCM Float32 arrays */
-function buildWAVFromPCM(chunks, sampleRate) {
-  try {
-    // Merge Float32 chunks
-    let totalLength = chunks.reduce((acc, arr) => acc + arr.length, 0);
-    const pcm = new Float32Array(totalLength);
-    let offset = 0;
-    for (const arr of chunks) { pcm.set(arr, offset); offset += arr.length; }
-
-    // Convert Float32 [-1,1] to 16-bit PCM
-    const buffer = new ArrayBuffer(44 + pcm.length * 2);
-    const view = new DataView(buffer);
-
-    // WAV header
-    writeString(view, 0, 'RIFF');
-    view.setUint32(4, 36 + pcm.length * 2, true);
-    writeString(view, 8, 'WAVE');
-    writeString(view, 12, 'fmt ');
-    view.setUint32(16, 16, true); // PCM chunk size
-    view.setUint16(20, 1, true);  // audio format = PCM
-    view.setUint16(22, 1, true);  // mono
-    view.setUint32(24, sampleRate, true);
-    const byteRate = sampleRate * 2; // mono 16-bit
-    view.setUint32(28, byteRate, true);
-    view.setUint16(32, 2, true); // block align
-    view.setUint16(34, 16, true); // bits per sample
-    writeString(view, 36, 'data');
-    view.setUint32(40, pcm.length * 2, true);
-
-    // PCM data
-    let idx = 44;
-    for (let i = 0; i < pcm.length; i++) {
-      let s = Math.max(-1, Math.min(1, pcm[i]));
-      view.setInt16(idx, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-      idx += 2;
-    }
-
-    return new Blob([view], { type: "audio/wav" });
-  } catch (e) {
-    console.error("WAV build failed:", e);
-    return null;
-  }
-}
-function writeString(view, offset, str) { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); }
-
-/* -------------------------------
-   Slide-out panel controls
--------------------------------- */
-const togglePanel = document.getElementById('togglePanel');
-const panelHandle = document.getElementById('panelHandle');
-panelHandle.addEventListener('click', () => {
-  togglePanel.classList.toggle('open');
-  panelHandle.textContent = togglePanel.classList.contains('open') ? '‹' : '›';
+fetch(faceCascadeURL).then(r=>r.arrayBuffer()).then(buf=>{
+  facefinder_classify_region = pico.unpack_cascade(new Int8Array(buf));
+  console.log('* facefinder loaded');
+});
+fetch(puplocURL).then(r=>r.arrayBuffer()).then(buf=>{
+  do_puploc = lploc.unpack_localizer(new Int8Array(buf));
+  console.log('* puploc loaded');
 });
 
-/* -------------------------------
-   State
--------------------------------- */
-let rData = [];
-let eegData = [];
-let showAnnotations = true;
-let showSpectra = true;
-let thermalBoth = true; // global thermal toggle
-let deviceIP = "unknown";
-let currentMetrics = { freqFusion: 0, peakFusion: 0, coherence: 0 };
-
-/* -------------------------------
-   Device metadata + IP + GPU info
--------------------------------- */
-function gatherDeviceMetadata() {
-  const ua = navigator.userAgent || "unknown";
-  const platform = navigator.platform || "unknown";
-  const lang = navigator.language || "unknown";
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown";
-  const srW = window.screen.width || 0;
-  const srH = window.screen.height || 0;
-  const colorDepth = window.screen.colorDepth || 0;
-  return {
-    userAgent: ua,
-    platform,
-    language: lang,
-    timeZone: tz,
-    screenResolution: `${srW}x${srH}`,
-    colorDepth: `${colorDepth}-bit`
-  };
-}
-const deviceMeta = gatherDeviceMetadata();
-
-async function getLocalIP() {
+/* ============================
+   Device/IP + GPU/CPU info
+   ============================ */
+let deviceIP="unknown";
+function getLocalIP(){
   try {
-    const pc = new RTCPeerConnection({ iceServers: [] });
-    pc.createDataChannel("x");
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    pc.onicecandidate = (e) => {
-      if (!e || !e.candidate) return;
-      const c = e.candidate.candidate;
-      const ipMatch = c.match(/candidate:\S+ \d+ \S+ \d+ ([0-9\.A-Fa-f:]+) \d+ typ/);
-      if (ipMatch && ipMatch[1]) deviceIP = ipMatch[1];
+    const pc=new RTCPeerConnection({iceServers:[]}); pc.createDataChannel("x");
+    pc.createOffer().then(o=>pc.setLocalDescription(o));
+    pc.onicecandidate=(e)=>{
+      if(!e || !e.candidate) return;
+      const m=e.candidate.candidate.match(/candidate:\S+ \d+ \S+ \d+ ([0-9\.A-Fa-f:]+) \d+ typ/);
+      if(m && m[1]) deviceIP = m[1];
     };
-    setTimeout(() => pc.close(), 2000);
-  } catch(e) {
-    console.warn("Local IP discovery failed:", e);
-  }
+    setTimeout(()=>pc.close(),2000);
+  } catch(e) { console.warn("IP discovery failed:", e); }
 }
 getLocalIP();
 
-/* GPU vendor/renderer and approximate memory bytes if available */
-function getGPUInfo() {
-  let gpuVendor = "unknown", gpuRenderer = "unknown";
-  let gpuMemoryBytes = "unknown";
+function gatherDeviceMetadata(){
+  const ua=navigator.userAgent||"unknown";
+  const platform=navigator.platform||"unknown";
+  const language=navigator.language||"unknown";
+  const timeZone=Intl.DateTimeFormat().resolvedOptions().timeZone||"unknown";
+  const res=`${screen.width||0}x${screen.height||0}`;
+  const colorDepth=`${screen.colorDepth||0}-bit`;
+  return { userAgent: ua, platform, language, timeZone, screenResolution: res, colorDepth };
+}
+const deviceMeta=gatherDeviceMetadata();
+
+function getGPUInfo(){
+  let gpuVendor="unknown", gpuRenderer="unknown", gpuMemoryBytes="unknown";
   try {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    if (gl) {
-      const dbg = gl.getExtension('WEBGL_debug_renderer_info');
-      if (dbg) {
-        gpuVendor = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL);
-        gpuRenderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
-      }
-      // Most browsers do not expose GPU memory; leave as unknown
+    const c=document.createElement('canvas'); const gl=c.getContext('webgl')||c.getContext('experimental-webgl');
+    if(gl){
+      const dbg=gl.getExtension('WEBGL_debug_renderer_info');
+      if(dbg){ gpuVendor=gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL); gpuRenderer=gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL); }
     }
-  } catch (e) {
-    console.warn("GPU info unavailable:", e);
-  }
+  } catch(e){}
   return { gpuVendor, gpuRenderer, gpuMemoryBytes };
 }
-const gpuInfo = getGPUInfo();
+const gpuInfo=getGPUInfo();
+function getCPUMemoryBytes(){ try{ return performance.memory?.usedJSHeapSize ?? "unknown"; }catch(e){ return "unknown"; } }
 
-/* CPU memory bytes via performance.memory if available */
-function getCPUMemoryBytes() {
-  try {
-    if (performance && performance.memory && performance.memory.usedJSHeapSize) {
-      return performance.memory.usedJSHeapSize;
-    }
-  } catch (e) {}
-  return "unknown";
-}
-
-/* -------------------------------
-   Ironbow colormap
--------------------------------- */
-function ironbowColor(value, min, max) {
-  const ratio = Math.max(0, Math.min(1, (value - min) / (max - min)));
-  let r=0,g=0,b=0;
-  if (ratio < 0.25) { const t = ratio / 0.25; r = 0; g = Math.round(128 + 127*t); b = 255; }
-  else if (ratio < 0.5) { const t = (ratio-0.25)/0.25; r = Math.round(0 + 128*t); g = 255; b = Math.round(255 - 255*t); }
-  else if (ratio < 0.75) { const t = (ratio-0.5)/0.25; r = Math.round(128 + 127*t); g = Math.round(255 - 64*t); b = 0; }
-  else { const t = (ratio-0.75)/0.25; r = 255; g = Math.round(191 - 191*t); b = 0; }
+/* ============================
+   Charts
+   ============================ */
+function ironbowColor(v,min,max){
+  const t=Math.max(0,Math.min(1,(v-min)/(max-min))); let r=0,g=0,b=0;
+  if(t<0.25){ const q=t/0.25; r=0; g=Math.round(128+127*q); b=255; }
+  else if(t<0.5){ const q=(t-0.25)/0.25; r=Math.round(0+128*q); g=255; b=Math.round(255-255*q); }
+  else if(t<0.75){ const q=(t-0.5)/0.25; r=Math.round(128+127*q); g=Math.round(255-64*q); b=0; }
+  else { const q=(t-0.75)/0.25; r=255; g=Math.round(191-191*q); b=0; }
   return `rgb(${r},${g},${b})`;
 }
+const rppgCtx=document.getElementById('rppgChart').getContext('2d');
+const rppgChart=new Chart(rppgCtx,{ type:'line',
+  data:{ labels:Array(300).fill(""), datasets:[{ label:"Heart Rate", data:Array(300).fill(0), borderWidth:2, pointRadius:0, fill:true,
+    segment:{ borderColor:ctx=>ironbowColor(ctx.p0.parsed.y,-20,20), backgroundColor:ctx=>ironbowColor(ctx.p0.parsed.y,-20,20) } }]},
+  options:{ animation:false, elements:{ line:{ tension:0.5 } }, scales:{ y:{ min:-20, max:20 } }, plugins:{ legend:{ display:false } } }
+});
+const eegCtx=document.getElementById('eegChart').getContext('2d');
+const eegChart=new Chart(eegCtx,{ type:'line',
+  data:{ labels:Array(300).fill(""), datasets:[{ label:"EEG", data:Array(300).fill(0), borderWidth:2, pointRadius:0,
+    segment:{ borderColor:ctx=>ironbowColor(ctx.p0.parsed.y,-100,100) } }]},
+  options:{ animation:false, elements:{ line:{ tension:0.5 } }, scales:{ y:{ min:-100, max:100 } }, plugins:{ legend:{ display:false } } }
+});
+const rppgFFTCtx=document.getElementById('rppgFFT').getContext('2d');
+const rppgFFTChart=new Chart(rppgFFTCtx,{ type:'bar',
+  data:{ labels:Array(128).fill(""), datasets:[{ label:"rPPG", data:Array(128).fill(0), backgroundColor:(ctx)=>ironbowColor(ctx.raw||0,0,100) }]},
+  options:{ animation:false, scales:{ y:{ min:0, max:100 } }, plugins:{ legend:{ display:false } } }
+});
+const sysFlowCtx=document.getElementById('sysFlow').getContext('2d');
+const sysFlowChart=new Chart(sysFlowCtx,{ type:'line',
+  data:{ labels:Array(120).fill(""), datasets:[
+    { label:"CPU", data:Array(120).fill(0), borderColor:"#00E5FF", backgroundColor:"rgba(0,229,255,0.15)", borderWidth:2, pointRadius:0, fill:true, tension:0.6 },
+    { label:"GPU", data:Array(120).fill(0), borderColor:"#FF2EF9", backgroundColor:"rgba(255,46,249,0.12)", borderWidth:2, pointRadius:0, fill:true, tension:0.6 }
+  ]},
+  options:{ animation:false, plugins:{ legend:{ display:false } }, scales:{ y:{ min:0, max:1 } } }
+});
 
-/* -------------------------------
-   Charts
--------------------------------- */
-const rppgCtx = document.getElementById('rppgChart').getContext('2d');
-const rppgChart = new Chart(rppgCtx, {
-  type: 'line',
-  data: { labels: Array(300).fill(""), datasets: [{
-    label: "rPPG Heart Signal",
-    data: Array(300).fill(0),
-    borderWidth: 2,
-    pointRadius: 0,
-    fill: true,
-    segment: {
-      borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20),
-      backgroundColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20)
+/* ============================
+   Toggles
+   ============================ */
+let showAnnotations=true, showSpectra=true, thermalBoth=true;
+document.getElementById('btnSpectra').addEventListener('click',()=>{ showSpectra=!showSpectra; document.querySelector('.panel:nth-child(3)').style.display = showSpectra? '' : 'none'; });
+document.getElementById('btnAnnotations').addEventListener('click',()=>{ showAnnotations=!showAnnotations; });
+const togglePanel=document.getElementById('togglePanel'); const panelHandle=document.getElementById('panelHandle');
+panelHandle.addEventListener('click',()=>{ togglePanel.classList.toggle('open'); panelHandle.textContent = togglePanel.classList.contains('open') ? '‹' : '›'; });
+
+/* ============================
+   rPPG/EEG + FFT + Fusion
+   ============================ */
+let rData=[], eegData=[];
+function applyHannWindow(arr){ const N=arr.length; return arr.map((x,n)=> x*(0.5-0.5*Math.cos((2*Math.PI*n)/(N-1)))); }
+function fftMagnitude(signal,bins){
+  const N=signal.length; const w=applyHannWindow(signal); const K=Math.min(bins,Math.floor(N/2));
+  const mags=new Array(K).fill(0);
+  for(let k=0;k<K;k++){ let re=0,im=0; for(let n=0;n<N;n++){ const a=(2*Math.PI*k*n)/N; re+=w[n]*Math.cos(a); im-=w[n]*Math.sin(a); } mags[k]=Math.sqrt(re*re+im*im); }
+  return mags;
+}
+let currentMetrics={ freqFusion:0, peakFusion:0, coherence:0 };
+setInterval(()=>{
+  if(rData.length<128 || eegData.length<128) return;
+  const bins=parseInt(document.getElementById('fftWindow').value,10);
+  const rFFT=fftMagnitude(rData.slice(-bins),bins);
+  const eFFT=fftMagnitude(eegData.slice(-bins),bins);
+  if(showSpectra){ rppgFFTChart.data.labels=rFFT.map((_,i)=>i); rppgFFTChart.data.datasets[0].data=rFFT; rppgFFTChart.update(); }
+  const fused=rFFT.map((v,i)=> v + (eFFT[i]||0));
+  const freqFusion=fused.indexOf(Math.max(...fused));
+  const rPeak=rFFT.indexOf(Math.max(...rFFT));
+  const ePeak=eFFT.indexOf(Math.max(...eFFT));
+  const peakFusion=0.5*rPeak+0.5*ePeak;
+  let cross=0,rPow=0,ePow=0; for(let i=0;i<rFFT.length;i++){ cross+=rFFT[i]*(eFFT[i]||0); rPow+=rFFT[i]*rFFT[i]; ePow+=(eFFT[i]||0)*(eFFT[i]||0); }
+  const coherence=(cross*cross)/(rPow*ePow+1e-9);
+  document.getElementById("freqFusion").textContent = "1. Frequency-Domain Fusion: " + freqFusion + " Hz";
+  document.getElementById("peakFusion").textContent = "2. Peak-Based Fusion: " + peakFusion.toFixed(2) + " Hz";
+  document.getElementById("coherenceFusion").textContent = "3. Cross-Spectral Coherence: " + coherence.toFixed(3);
+  currentMetrics = { freqFusion, peakFusion: parseFloat(peakFusion.toFixed(2)), coherence: parseFloat(coherence.toFixed(3)) };
+}, 400);
+
+/* rPPG sample + EEG mock */
+setInterval(()=>{
+  if(!video.videoWidth) return;
+  const w=video.videoWidth, h=video.videoHeight;
+  const fw=Math.floor(w*0.30), fh=Math.floor(h*0.10), fx=Math.floor(w*0.35), fy=Math.floor(h*0.15);
+  const tmp=document.createElement('canvas'); tmp.width=fw; tmp.height=fh; const tctx=tmp.getContext('2d');
+  tctx.drawImage(video, fx, fy, fw, fh, 0,0,fw,fh);
+  const frame=tctx.getImageData(0,0,fw,fh);
+  let sum=0, count=0; for(let i=0;i<frame.data.length;i+=4){ sum+=frame.data[i]; count++; }
+  const ampScale=parseFloat(document.getElementById('ampScale').value);
+  const val=((sum/count)-128)*ampScale; rData.push(val); if(rData.length>300) rData.shift();
+  rppgChart.data.datasets[0].data=rData;
+  const newEEG=Math.sin(Date.now()/120)*50*ampScale;
+  eegData.push(newEEG); if(eegData.length>300) eegData.shift();
+  eegChart.data.datasets[0].data=eegData;
+  if(showAnnotations){
+    const peaks=[]; for(let i=1;i<rData.length-1;i++){ if(rData[i]>rData[i-1] && rData[i]>rData[i+1] && rData[i]>2) peaks.push({x:i,y:rData[i]}); }
+    rppgChart.data.datasets[1]={ type:'scatter', label:'Peaks', data:peaks.map(p=>({x:p.x,y:p.y})), pointRadius:3, pointBackgroundColor:'#ffea00', showLine:false };
+  } else { rppgChart.data.datasets[1]=undefined; }
+  rppgChart.update(); eegChart.update();
+}, 50);
+
+/* System flow chart (CPU/GPU normalized 0..1) */
+setInterval(()=>{
+  const cpuBytes=getCPUMemoryBytes(); const cpuNorm = cpuBytes==="unknown" ? 0 : Math.min(1, cpuBytes / (256*1024*1024));
+  const gpuNorm = 0; // GPU memory not exposed
+  const dsCPU=sysFlowChart.data.datasets[0].data; const dsGPU=sysFlowChart.data.datasets[1].data;
+  dsCPU.push(cpuNorm); dsGPU.push(gpuNorm);
+  if(dsCPU.length>120) dsCPU.shift(); if(dsGPU.length>120) dsGPU.shift();
+  sysFlowChart.update();
+}, 1000);
+
+/* ============================
+   Vision pass (HD overlays)
+   ============================ */
+let detectionMemory = pico.instantiate_detection_memory(5);
+let latestVisionMetrics = { faces: 0, eyes: [], avgConfidence: 0 };
+
+function rgba_to_grayscale(rgba, nrows, ncols){
+  const gray=new Uint8Array(nrows*ncols);
+  for(let r=0;r<nrows;++r) for(let c=0;c<ncols;++c)
+    gray[r*ncols + c] = (2*rgba[r*4*ncols+4*c+0] + 7*rgba[r*4*ncols+4*c+1] + 1*rgba[r*4*ncols+4*c+2]) / 10;
+  return gray;
+}
+function drawHDBox(x,y,w,h,color,glow){
+  octx.strokeStyle=color; octx.lineWidth=2.5; octx.shadowColor=glow; octx.shadowBlur=12;
+  octx.beginPath();
+  // rounded rect path
+  const r=8;
+  octx.moveTo(x+r,y);
+  octx.arcTo(x+w,y,x+w,y+h,r);
+  octx.arcTo(x+w,y+h,x,y+h,r);
+  octx.arcTo(x,y+h,x,y,r);
+  octx.arcTo(x,y,x+w,y,r);
+  octx.closePath();
+  octx.stroke();
+  octx.shadowBlur=0;
+}
+function drawHDEye(x,y){
+  octx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--hd-eye').trim();
+  octx.shadowColor=getComputedStyle(document.documentElement).getPropertyValue('--hd-shadow2').trim();
+  octx.shadowBlur=10; octx.beginPath(); octx.arc(x,y,4.5,0,2*Math.PI); octx.fill(); octx.shadowBlur=0;
+}
+
+function visionPass(){
+  if(!video.videoWidth) return;
+  const rect=video.getBoundingClientRect();
+  overlay.width=rect.width; overlay.height=rect.height;
+  octx.clearRect(0,0,overlay.width,overlay.height);
+
+  // draw video into temp canvas at overlay size
+  const temp=document.createElement('canvas'); temp.width=rect.width; temp.height=rect.height; const tctx=temp.getContext('2d');
+  tctx.drawImage(video,0,0,rect.width,rect.height);
+  const imageData=tctx.getImageData(0,0,rect.width,rect.height);
+  const gray={ pixels: rgba_to_grayscale(imageData.data, rect.height, rect.width), nrows: rect.height, ncols: rect.width, ldim: rect.width };
+
+  // run face cascade
+  let dets = pico.run_cascade(gray, facefinder_classify_region, { shiftfactor:0.1, minsize:80, maxsize:600, scalefactor:1.1 });
+  dets = update_memory(dets);
+  dets = pico.cluster_detections(dets, 0.2);
+
+  // draw and localize eyes
+  let faces=0, avgQ=0; const eyePts=[];
+  for(let i=0;i<dets.length;++i){
+    if(dets[i][3] > 50.0){
+      faces++; avgQ += dets[i][3];
+      const r=dets[i][0], c=dets[i][1], s=dets[i][2];
+      drawHDBox(c - s/2, r - s/2, s, s, getComputedStyle(document.documentElement).getPropertyValue('--hd-face').trim(), getComputedStyle(document.documentElement).getPropertyValue('--hd-shadow').trim());
+      // left eye estimate
+      let er = r - 0.075*s, ec = c - 0.175*s, es = 0.35*s;
+      const e1 = do_puploc(er, ec, es, 25, gray);
+      if(e1[0]>=0 && e1[1]>=0){ drawHDEye(e1[1], e1[0]); eyePts.push({x: Math.round(e1[1]), y: Math.round(e1[0])}); }
+      // right eye estimate
+      er = r - 0.075*s; ec = c + 0.175*s; es = 0.35*s;
+      const e2 = do_puploc(er, ec, es, 25, gray);
+      if(e2[0]>=0 && e2[1]>=0){ drawHDEye(e2[1], e2[0]); eyePts.push({x: Math.round(e2[1]), y: Math.round(e2[0])}); }
     }
-  }]},
-  options: { animation: false, elements: { line: { tension: 0.4 } },
-    scales: { y: { min: -20, max: 20 } }, plugins: { legend: { display: false } } }
-});
-
-const eegCtx = document.getElementById('eegChart').getContext('2d');
-const eegChart = new Chart(eegCtx, {
-  type: 'line',
-  data: { labels: Array(300).fill(""), datasets: [{
-    label: "EEG Signal",
-    data: Array(300).fill(0),
-    borderWidth: 2,
-    pointRadius: 0,
-    segment: { borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -100, 100) }
-  }]},
-  options: { animation: false, scales: { y: { min: -100, max: 100 } },
-    plugins: { legend: { display: false } } }
-});
-
-/* FFT overlays */
-const rppgFFTCtx = document.getElementById('rppgFFT').getContext('2d');
-const rppgFFTChart = new Chart(rppgFFTCtx, {
-  type: 'bar',
-  data: { labels: Array(128).fill(""), datasets: [{
-    label: "rPPG FFT",
-    data: Array(128).fill(0),
-    backgroundColor: (ctx) => ironbowColor(ctx.raw || 0, 0, 100)
-  }]},
-  options: { animation: false, scales: { y: { min: 0, max: 100 } },
-    plugins: { legend: { display: false } } }
-});
-
-const eegFFTCtx = document.getElementById('eegFFT').getContext('2d');
-const eegFFTChart = new Chart(eegFFTCtx, {
-  type: 'bar',
-  data: { labels: Array(128).fill(""), datasets: [{
-    label: "EEG FFT",
-    data: Array(128).fill(0),
-    backgroundColor: (ctx) => ironbowColor(ctx.raw || 0, 0, 200)
-  }]},
-  options: { animation: false, scales: { y: { min: 0, max: 200 } },
-    plugins: { legend: { display: false } } }
-});
-
-/* -------------------------------
-   Global thermal toggle + EEG-only toggle
--------------------------------- */
-function applyThermalModes() {
-  // rPPG
-  const rds = rppgChart.data.datasets[0];
-  if (thermalBoth) {
-    rds.segment = {
-      borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20),
-      backgroundColor: ctx => ironbowColor(ctx.p0.parsed.y, -20, 20)
-    };
-  } else {
-    rds.segment = { borderColor: "red", backgroundColor: "rgba(255,0,0,0.25)" };
   }
-  rppgChart.update();
-
-  // EEG (respect its own toggle state stored on ds._thermal)
-  const eds = eegChart.data.datasets[0];
-  const eegThermal = eds._thermal !== false; // default true unless flipped
-  eds.segment = (eegThermal)
-    ? { borderColor: ctx => ironbowColor(ctx.p0.parsed.y, -100, 100) }
-    : { borderColor: "cyan" };
-  eegChart.update();
+  latestVisionMetrics = { faces, eyes: eyePts, avgConfidence: faces ? Number((avgQ/faces).toFixed(3)) : 0 };
 }
+setInterval(visionPass, 120);
 
-document.getElementById('btnThermal').addEventListener('click', () => {
-  thermalBoth = !thermalBoth;
-  applyThermalModes();
-});
-
-document.getElementById('btnEEG').addEventListener('click', () => {
-  const eds = eegChart.data.datasets[0];
-  eds._thermal = !(eds._thermal === false);
-  applyThermalModes();
-});
-
-/* -------------------------------
-   Annotations + spectra toggles
--------------------------------- */
-document.getElementById('btnAnnotations').addEventListener('click', () => {
-  showAnnotations = !showAnnotations;
-  if (!showAnnotations) {
-    rppgChart.data.datasets[1] = undefined;
-    eegChart.data.datasets[1] = undefined;
-    rppgChart.update(); eegChart.update();
-  }
-});
-
-document.getElementById('btnSpectra').addEventListener('click', () => {
-  showSpectra = !showSpectra;
-  document.getElementById('panel-rppg-fft').style.display = showSpectra ? '' : 'none';
-  document.getElementById('panel-eeg-fft').style.display = showSpectra ? '' : 'none';
-});
-
-/* -------------------------------
-   Snapshot: manual and auto-save PNG + PCAP
--------------------------------- */
-async function captureDashboardPNG(customName=null) {
-  const canvas = await html2canvas(document.body, { useCORS: true, logging: false, scale: 1 });
-  const link = document.createElement('a');
-  const fname = customName || `dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
-  link.download = fname;
-  link.href = canvas.toDataURL('image/png');
-  link.click();
+/* ============================
+   One-time 60s recording bundle
+   ============================ */
+async function startOneTimeRecording(stream){
+  if(oneTimeRecorded) return; oneTimeRecorded = true;
+  let avChunks=[]; let avMime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus") ? "video/webm;codecs=vp9,opus" :
+               MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus") ? "video/webm;codecs=vp8,opus" : "video/webm";
+  const avRecorder=new MediaRecorder(stream,{ mimeType: avMime });
+  avRecorder.ondataavailable=(e)=>{ if(e.data && e.data.size>0) avChunks.push(e.data); };
+  avRecorder.onstop=async()=>{
+    const avBlob=new Blob(avChunks,{type: avMime}); downloadBlob(avBlob,"SkyNet.mp4");
+    const wavBlob=buildWAVFromPCM(audioPCMBuffer,audioSampleRate); if(wavBlob) downloadBlob(wavBlob,"SkyNet.wav");
+    const snapName=`Screenshot_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
+    await captureDashboardPNG(snapName);
+    const payload=buildPayload(snapName, currentMetrics, latestVisionMetrics);
+    const pcapText=buildPCAPText(payload);
+    downloadTextAsFile(pcapText,"SkyNet.pcap");
+  };
+  const audioPCMBuffer=[]; let audioSampleRate=48000;
+  try {
+    const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    audioSampleRate=audioCtx.sampleRate;
+    const source=audioCtx.createMediaStreamSource(stream);
+    const processor=audioCtx.createScriptProcessor(4096,1,1);
+    source.connect(processor); processor.connect(audioCtx.destination);
+    processor.onaudioprocess=(e)=>{ audioPCMBuffer.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+    setTimeout(()=>{ processor.disconnect(); source.disconnect(); audioCtx.close().catch(()=>{}); }, 60000);
+  } catch(e){ console.warn("WAV capture unavailable:", e); }
+  avRecorder.start(1000);
+  setTimeout(()=>{ if(avRecorder.state!=="inactive") avRecorder.stop(); }, 60000);
 }
-
-function buildPCAPText(payloadText) {
-  const now = new Date();
-  const tsSec = Math.floor(now.getTime() / 1000);
-  const tsUsec = (now.getTime() % 1000) * 1000; // microseconds from ms
-  const capturedLen = payloadText.length;
-  const originalLen = capturedLen;
-
-  const lines = [];
-  // Global header
-  lines.push("PCAP GLOBAL HEADER");
-  lines.push("Magic Number: 0xa1b2c3d4");
-  lines.push("Version: 2.4");
-  lines.push("Snaplen: 65535");
-  lines.push("Network: 1");
-  lines.push("");
-  // Packet header
-  lines.push("PCAP PACKET HEADER");
-  lines.push(`Timestamp Seconds: ${tsSec}`);
-  lines.push(`Timestamp Microseconds: ${tsUsec}`);
-  lines.push(`Captured Length: ${capturedLen}`);
-  lines.push(`Original Length: ${originalLen}`);
-  lines.push("");
-  // Payload
-  lines.push("PAYLOAD START");
-  lines.push(payloadText.trim());
-  lines.push("PAYLOAD END");
-
-  return lines.join("\n");
+function buildWAVFromPCM(chunks, sampleRate){
+  try {
+    let total=chunks.reduce((a,b)=>a+b.length,0);
+    const pcm=new Float32Array(total); let off=0; for(const c of chunks){ pcm.set(c,off); off+=c.length; }
+    const buf=new ArrayBuffer(44+pcm.length*2); const view=new DataView(buf);
+    writeString(view,0,'RIFF'); view.setUint32(4,36+pcm.length*2,true); writeString(view,8,'WAVE');
+    writeString(view,12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true);
+    view.setUint16(22,1,true); view.setUint32(24,sampleRate,true); view.setUint32(28,sampleRate*2,true);
+    view.setUint16(32,2,true); view.setUint16(34,16,true); writeString(view,36,'data'); view.setUint32(40,pcm.length*2,true);
+    let idx=44; for(let i=0;i<pcm.length;i++){ let s=Math.max(-1,Math.min(1,pcm[i])); view.setInt16(idx, s<0 ? s*0x8000 : s*0x7FFF, true); idx+=2; }
+    return new Blob([view],{type:"audio/wav"});
+  } catch(e){ console.error(e); return null; }
 }
+function writeString(view, offset, str){ for(let i=0;i<str.length;i++) view.setUint8(offset+i,str.charCodeAt(i)); }
 
-function buildPayload(snapshotName, metrics) {
-  const nowISO = new Date().toISOString();
-  const meta = deviceMeta;
-  const cpuBytes = getCPUMemoryBytes();
-  const gpu = gpuInfo;
-
+/* ============================
+   Snapshots + PCAP continuous
+   ============================ */
+async function captureDashboardPNG(customName=null){
+  const canvas=await html2canvas(document.body,{ useCORS:true, logging:false, scale:1 });
+  const link=document.createElement('a'); const fname=customName||`dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
+  link.download=fname; link.href=canvas.toDataURL('image/png'); link.click();
+}
+function buildPCAPText(payloadText){
+  const now=new Date(); const tsSec=Math.floor(now.getTime()/1000); const tsUsec=(now.getTime()%1000)*1000;
+  const capturedLen=payloadText.length; const originalLen=capturedLen;
+  const lines=[]; lines.push("PCAP GLOBAL HEADER"); lines.push("Magic Number: 0xa1b2c3d4"); lines.push("Version: 2.4"); lines.push("Snaplen: 65535"); lines.push("Network: 1"); lines.push("");
+  lines.push("PCAP PACKET HEADER"); lines.push(`Timestamp Seconds: ${tsSec}`); lines.push(`Timestamp Microseconds: ${tsUsec}`); lines.push(`Captured Length: ${capturedLen}`); lines.push(`Original Length: ${originalLen}`); lines.push("");
+  lines.push("PAYLOAD START"); lines.push(payloadText.trim()); lines.push("PAYLOAD END"); return lines.join("\n");
+}
+function buildPayload(snapshotName, metrics, vision){
+  const nowISO=new Date().toISOString(); const meta=deviceMeta; const cpuBytes=getCPUMemoryBytes(); const gpu=gpuInfo;
   return `
 Snapshot Filename: ${snapshotName}
 Timestamp: ${nowISO}
@@ -714,6 +589,10 @@ Fusion Metrics:
 - Frequency-Domain Fusion: ${metrics.freqFusion} Hz
 - Peak-Based Fusion: ${metrics.peakFusion} Hz
 - Cross-Spectral Coherence: ${metrics.coherence}
+Vision Metrics:
+- Face Count: ${vision.faces}
+- Avg Confidence: ${vision.avgConfidence}
+- Eye Points: ${vision.eyes.map(p=>`(${p.x},${p.y})`).join(' ')}
 Browser Resource Metrics:
 - CPU Memory Bytes: ${cpuBytes}
 - GPU Memory Bytes: ${gpu.gpuMemoryBytes}
@@ -721,220 +600,38 @@ Browser Resource Metrics:
 - GPU Renderer: ${gpu.gpuRenderer}
 `.trim();
 }
-
-function downloadTextAsFile(text, filename) {
-  const blob = new Blob([text], { type: "text/plain" });
-  const link = document.createElement('a');
-  link.download = filename;
-  link.href = URL.createObjectURL(blob);
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(link.href), 3000);
-}
-
-async function captureAndSavePNGAndPCAP() {
-  const snapName = `dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
+function downloadTextAsFile(text, filename){ const blob=new Blob([text],{type:"text/plain"}); const link=document.createElement('a'); link.download=filename; link.href=URL.createObjectURL(blob); link.click(); setTimeout(()=>URL.revokeObjectURL(link.href),3000); }
+async function captureAndSavePNGAndPCAP(){
+  const snapName=`dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
   await captureDashboardPNG(snapName);
-  const metrics = currentMetrics;
-  const payload = buildPayload(snapName, metrics);
-  const pcapText = buildPCAPText(payload);
-  downloadTextAsFile(pcapText, "SkyNet.pcap");
+  const payload=buildPayload(snapName, currentMetrics, latestVisionMetrics);
+  const pcapText=buildPCAPText(payload);
+  downloadTextAsFile(pcapText,"SkyNet.pcap");
 }
-
-/* Manual snapshot button */
-document.getElementById('btnSnapshot').addEventListener('click', async () => {
-  try {
-    await captureAndSavePNGAndPCAP();
-  } catch (e) { console.error("Snapshot/PCAP failed:", e); }
-});
-
-/* Auto-save every 60s with countdown (after initial 60s bundle also continues) */
-let countdown = 60;
-const countdownEl = document.getElementById('countdown');
-
-setInterval(async () => {
-  countdown -= 1;
-  if (countdown <= 0) {
-    try { await captureAndSavePNGAndPCAP(); } catch (e) { console.error("Auto snapshot/PCAP failed:", e); }
-    countdown = 60;
-  }
+/* Manual snapshot */
+document.getElementById('btnSnapshot').addEventListener('click', async()=>{ try{ await captureAndSavePNGAndPCAP(); }catch(e){ console.error(e); } });
+/* Auto-save every 60s */
+let countdown=60; const countdownEl=document.getElementById('countdown');
+setInterval(async()=>{
+  countdown-=1;
+  if(countdown<=0){ try{ await captureAndSavePNGAndPCAP(); }catch(e){ console.error(e); } countdown=60; }
   countdownEl.textContent = `Next auto-save: ${countdown}s`;
 }, 1000);
 
-/* -------------------------------
-   rPPG frame reader and peaks
--------------------------------- */
-setInterval(() => {
-  if (!video.videoWidth) return;
-
-  const w = video.videoWidth, h = video.videoHeight;
-  const foreheadW = Math.floor(w * 0.30);
-  const foreheadH = Math.floor(h * 0.10);
-  const foreheadX = Math.floor(w * 0.35);
-  const foreheadY = Math.floor(h * 0.15);
-
-  const box = document.getElementById("foreheadBox");
-  const rect = video.getBoundingClientRect();
-  const scaleX = rect.width / w, scaleY = rect.height / h;
-  box.style.left   = (rect.left + foreheadX * scaleX) + "px";
-  box.style.top    = (rect.top  + foreheadY * scaleY) + "px";
-  box.style.width  = (foreheadW * scaleX) + "px";
-  box.style.height = (foreheadH * scaleY) + "px";
-
-  const temp = document.createElement("canvas");
-  temp.width = foreheadW; temp.height = foreheadH;
-  const tctx = temp.getContext("2d");
-  tctx.drawImage(video, foreheadX, foreheadY, foreheadW, foreheadH, 0, 0, foreheadW, foreheadH);
-
-  const frame = tctx.getImageData(0, 0, foreheadW, foreheadH);
-  let sum = 0, count = 0;
-  for (let i = 0; i < frame.data.length; i += 4) { sum += frame.data[i]; count++; }
-
-  const ampScale = parseFloat(document.getElementById('ampScale').value);
-  const val = ((sum / count) - 128) * ampScale;
-  rData.push(val); if (rData.length > 300) rData.shift();
-
-  rppgChart.data.datasets[0].data = rData;
-
-  if (showAnnotations) {
-    const peaks = [];
-    for (let i = 1; i < rData.length - 1; i++) {
-      if (rData[i] > rData[i-1] && rData[i] > rData[i+1] && rData[i] > 2) {
-        peaks.push({ x: i, y: rData[i] });
-      }
-    }
-    rppgChart.data.datasets[1] = {
-      type: 'scatter',
-      label: 'Peaks',
-      data: peaks.map(p => ({ x: p.x, y: p.y })),
-      pointRadius: 3,
-      pointBackgroundColor: '#ffea00',
-      showLine: false
-    };
-  } else {
-    rppgChart.data.datasets[1] = undefined;
-  }
-
-  rppgChart.update();
-}, 50);
-
-/* -------------------------------
-   EEG mock + amplitude band annotation
--------------------------------- */
-setInterval(() => {
-  const ampScale = parseFloat(document.getElementById('ampScale').value);
-  const newVal = Math.sin(Date.now() / 120) * 50 * ampScale;
-  eegData.push(newVal); if (eegData.length > 300) eegData.shift();
-
-  eegChart.data.datasets[0].data = eegData;
-
-  if (showAnnotations) {
-    const band = eegData.map(v => (Math.abs(v) > 35 ? v : null));
-    eegChart.data.datasets[1] = {
-      type: 'line',
-      data: band,
-      borderColor: 'rgba(255,255,0,0.5)',
-      borderWidth: 2,
-      pointRadius: 0
-    };
-  } else {
-    eegChart.data.datasets[1] = undefined;
-  }
-
-  eegChart.update();
-}, 50);
-
-/* -------------------------------
-   Windowed DFT (demo) + Fusion
--------------------------------- */
-function applyHannWindow(arr) {
-  const N = arr.length;
-  return arr.map((x, n) => x * (0.5 - 0.5 * Math.cos((2*Math.PI*n)/(N-1))));
-}
-function fftMagnitude(signal, bins) {
-  const N = signal.length;
-  const windowed = applyHannWindow(signal);
-  const outBins = Math.min(bins, Math.floor(N/2));
-  const mags = new Array(outBins).fill(0);
-  for (let k = 0; k < outBins; k++) {
-    let re = 0, im = 0;
-    for (let n = 0; n < N; n++) {
-      const angle = (2 * Math.PI * k * n) / N;
-      re += windowed[n] * Math.cos(angle);
-      im -= windowed[n] * Math.sin(angle);
-    }
-    mags[k] = Math.sqrt(re*re + im*im);
-  }
-  return mags;
-}
-
-setInterval(() => {
-  if (rData.length < 128 || eegData.length < 128) return;
-
-  const bins = parseInt(document.getElementById('fftWindow').value, 10);
-  const rFFT = fftMagnitude(rData.slice(-bins), bins);
-  const eFFT = fftMagnitude(eegData.slice(-bins), bins);
-
-  if (showSpectra) {
-    rppgFFTChart.data.labels = rFFT.map((_, i) => i);
-    rppgFFTChart.data.datasets[0].data = rFFT.map(x => x);
-    rppgFFTChart.update();
-
-    eegFFTChart.data.labels = eFFT.map((_, i) => i);
-    eegFFTChart.data.datasets[0].data = eFFT.map(x => x);
-    eegFFTChart.update();
-  }
-
-  // Fusion metrics (demo frequency index units)
-  const fusedFFT = rFFT.map((val, i) => val + (eFFT[i] || 0));
-  const freqFusion = fusedFFT.indexOf(Math.max(...fusedFFT));
-  document.getElementById("freqFusion").textContent = "1. Frequency-Domain Fusion: " + freqFusion + " Hz";
-
-  const rPeak = rFFT.indexOf(Math.max(...rFFT));
-  const ePeak = eFFT.indexOf(Math.max(...eFFT));
-  const peakFusion = 0.5 * rPeak + 0.5 * ePeak;
-  document.getElementById("peakFusion").textContent = "2. Peak-Based Fusion: " + peakFusion.toFixed(2) + " Hz";
-
-  let cross = 0, rPow = 0, ePow = 0;
-  for (let i = 0; i < rFFT.length; i++) {
-    cross += rFFT[i] * (eFFT[i] || 0);
-    rPow += rFFT[i] * rFFT[i];
-    ePow += (eFFT[i] || 0) * (eFFT[i] || 0);
-  }
-  const coherence = (cross*cross) / (rPow * ePow + 1e-9);
-  document.getElementById("coherenceFusion").textContent = "3. Cross-Spectral Coherence: " + coherence.toFixed(3);
-
-  currentMetrics = {
-    freqFusion,
-    peakFusion: parseFloat(peakFusion.toFixed(2)),
-    coherence: parseFloat(coherence.toFixed(3))
-  };
-}, 400);
-
-/* -------------------------------
-   Smoothing control
--------------------------------- */
-document.getElementById('smoothing').addEventListener('input', (e) => {
-  const t = parseFloat(e.target.value);
-  rppgChart.options.elements.line.tension = t;
+/* ============================
+   UI smoothing
+   ============================ */
+document.getElementById('smoothing').addEventListener('input',(e)=>{
+  const t=parseFloat(e.target.value);
+  rppgChart.options.elements.line.tension=t;
   eegChart.options.elements = eegChart.options.elements || {};
   eegChart.options.elements.line = eegChart.options.elements.line || {};
-  eegChart.options.elements.line.tension = t;
+  eegChart.options.elements.line.tension=t;
   rppgChart.update(); eegChart.update();
 });
 
-/* -------------------------------
-   Helpers
--------------------------------- */
-function downloadBlob(blob, filename) {
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(link.href), 3000);
-}
-
-/* Initialize thermal modes at start */
-applyThermalModes();
+/* Helpers */
+function downloadBlob(blob, filename){ const link=document.createElement('a'); link.href=URL.createObjectURL(blob); link.download=filename; link.click(); setTimeout(()=>URL.revokeObjectURL(link.href),3000); }
 </script>
 </body>
 </html>
