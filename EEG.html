@@ -4,7 +4,110 @@
   <title>SkyNet Biometric Dashboard</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <!-- styles omitted for brevity, same as previous version -->
+  <style>
+    :root {
+      --bg: #000;
+      --fg: #fff;
+      --panel-bg: rgba(255,255,255,0.06);
+      --accent: #39FF14;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+    #camera, #overlay {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: 0;
+    }
+    #overlay { z-index: 1; pointer-events: none; }
+    #statusBadge {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 6;
+      background: rgba(0,0,0,0.55);
+      color: var(--accent);
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-weight: 800;
+    }
+    #flipCameraBtn {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 6;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    #dashboardWrap {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: calc(100vh - 110px);
+      margin-top: 64px;
+      overflow-y: auto;
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      width: 95%;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+    .panel {
+      background: var(--panel-bg);
+      border-radius: 10px;
+      padding: 10px;
+    }
+    canvas.chart {
+      width: 100%;
+      height: 220px;
+    }
+    #fusionEq {
+      margin-top: 8px;
+      text-align: center;
+      font-size: 20px;
+    }
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 3;
+      background: rgba(0,0,0,0.35);
+      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+    }
+    .footer .sliders {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 600px) {
+      .footer .sliders { grid-template-columns: 1fr; }
+    }
+    @media (min-width: 768px) {
+      .dashboard { grid-template-columns: 1fr 1fr; }
+    }
+    @media (min-width: 1200px) {
+      .dashboard { grid-template-columns: 1fr 1fr 1fr; }
+    }
+  </style>
 </head>
 <body>
 
@@ -14,19 +117,10 @@
 <div id="statusBadge">Analyzing</div>
 <button id="flipCameraBtn">Flip Camera</button>
 
-<div id="togglePanel">
-  <button class="icon-btn" id="btnThermal" title="Toggle thermal view">🌡️</button>
-  <button class="icon-btn" id="btnEEG" title="Toggle EEG thermal">🧠</button>
-  <button class="icon-btn" id="btnAnnotations" title="Toggle annotations">✳️</button>
-  <button class="icon-btn" id="btnSpectra" title="Toggle spectra">📈</button>
-  <button class="icon-btn" id="btnSnapshot" title="Capture snapshot">📸</button>
-</div>
-<div id="panelHandle">›</div>
-
 <div id="dashboardWrap">
   <div class="dashboard">
-    <div class="panel"><h3>Heart Rate</h3><canvas id="rppgChart" class="chart"></canvas><div class="colorbar"></div></div>
-    <div class="panel"><h3>EEG</h3><canvas id="eegChart" class="chart"></canvas><div class="colorbar"></div></div>
+    <div class="panel"><h3>Heart Rate</h3><canvas id="rppgChart" class="chart"></canvas></div>
+    <div class="panel"><h3>EEG</h3><canvas id="eegChart" class="chart"></canvas></div>
     <div class="panel"><h3>rPPG</h3><canvas id="rppgFFT" class="chart"></canvas></div>
     <div class="panel">
       <h3>Fusion</h3>
@@ -36,7 +130,7 @@
         <div id="coherenceFusion">3. Cross-Spectral Coherence: 0</div>
       </div>
       <div id="fusionEq">
-        $$F{\text{fusion}}(f) = \text{FFT}{\text{EEG}}(f) + \text{FFT}{\text{rPPG}}(f) + \text{FFT}{\text{HR}}(f)$$
+        $$F_{\text{fusion}}(f) = \text{FFT}_{\text{EEG}}(f) + \text{FFT}_{\text{rPPG}}(f) + \text{FFT}_{\text{HR}}(f)$$
       </div>
     </div>
     <div class="panel"><h3>CPU/GPU</h3><canvas id="sysFlow" class="chart"></canvas></div>
@@ -45,11 +139,11 @@
 
 <div class="footer">
   <div class="sliders">
-    <div class="slider-wrap" title="Smoothing"><div class="label">🎚️</div><input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.5"></div>
-    <div class="slider-wrap" title="FFT window size"><div class="label">🪄</div><input type="range" id="fftWindow" min="128" max="1024" step="128" value="512"></div>
-    <div class="slider-wrap" title="Amplitude scale"><div class="label">🔊</div><input type="range" id="ampScale" min="1" max="5" step="0.5" value="1"></div>
+    <div class="slider-wrap"><div class="label">🎚️</div><input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.5"></div>
+    <div class="slider-wrap"><div class="label">🪄</div><input type="range" id="fftWindow" min="128" max="1024" step="128" value="512"></div>
+    <div class="slider-wrap"><div class="label">🔊</div><input type="range" id="ampScale" min="1" max="5" step="0.5" value="1"></div>
   </div>
-  <div class="right"><div id="countdown" title="Auto-save snapshot countdown">Next auto-save: 60s</div></div>
+  <div class="right"><div id="countdown">Next auto-save: 60s</div></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -58,9 +152,20 @@
 <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
 <script>
-// ... all detection, chart, fusion, and PCAP code same as previous version ...
+// Camera init + flip
+let facingMode = "user";
+function startCamera() {
+  navigator.mediaDevices.getUserMedia({ video: { facingMode }, audio: false })
+    .then(stream => { document.getElementById('camera').srcObject = stream; })
+    .catch(err => { console.error("Camera error:", err); });
+}
+startCamera();
+document.getElementById('flipCameraBtn').addEventListener('click', () => {
+  facingMode = (facingMode === "user") ? "environment" : "user";
+  startCamera();
+});
 
-// ✅ Screenshot fix: capture full dashboard including all charts + LaTeX
+// Screenshot fix: capture full dashboard including all charts + LaTeX
 async function captureDashboardPNG(customName=null){
   const target = document.getElementById('dashboardWrap');
   const canvas = await html2canvas(target, {
@@ -72,18 +177,15 @@ async function captureDashboardPNG(customName=null){
     windowHeight: document.documentElement.scrollHeight
   });
   const link=document.createElement('a');
-  const fname=customName || dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png;
+  const fname=customName || `dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
   link.download=fname;
   link.href=canvas.toDataURL('image/png');
   link.click();
 }
 
-// ✅ PCAP payload already includes:
-// - Fusion metrics
-// - Multi-face IDs, bounding boxes, eyes, pixel arrays
-// - Device metadata
-// - CPU/GPU metrics
-
+// Example chart init
+const rppgCtx=document.getElementById('rppgChart').getContext('2d');
+const rppgChart=new Chart(rppgCtx,{type:'line',data:{labels:[],datasets:[{label:'Heart Rate',data:[]}]},options:{responsive:true}});
 </script>
 </body>
 </html>
