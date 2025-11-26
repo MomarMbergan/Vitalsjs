@@ -34,19 +34,19 @@
     }
     @keyframes glow{0%{text-shadow:0 0 4px #00f,0 0 8px #0ff;}100%{text-shadow:0 0 12px #00f,0 0 24px #0ff;}}
 
-    #togglePanel{
-      position:absolute;top:50%;right:-64px;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;gap:10px;
-      transition:right 0.3s ease;
+    #togglePanel, #footerToggles{
+      position:absolute;display:flex;flex-direction:column;gap:10px;z-index:6;
     }
+    #togglePanel{top:50%;right:-64px;transform:translateY(-50%);transition:right 0.3s ease;}
     #togglePanel.open{ right:12px }
-    #panelHandle{
-      position:absolute;top:50%;right:0;transform:translateY(-50%);z-index:7;background:rgba(0,0,0,0.55);color:#fff;
-      padding:8px 10px;border-radius:8px 0 0 8px;cursor:pointer;font-weight:800;user-select:none
-    }
+    #panelHandle{position:absolute;top:50%;right:0;transform:translateY(-50%);z-index:7;background:rgba(0,0,0,0.55);color:#fff;padding:8px 10px;border-radius:8px 0 0 8px;cursor:pointer;font-weight:800;user-select:none}
+    
     .icon-btn{
       background:rgba(0,0,0,0.55);color:#fff;border-radius:8px;padding:8px;cursor:pointer;font-size:20px;border:1px solid rgba(255,255,255,0.22)
     }
 
+    #footerToggles{bottom:12px;left:50%;transform:translateX(-50%);flex-direction:row;}
+    
     #dashboardWrap{
       position:absolute;z-index:2;width:100%;height:calc(100vh - 110px);
       margin-top:64px;overflow-y:auto;pointer-events:auto;
@@ -64,22 +64,9 @@
 
     #fusionEq{margin-top:8px;text-align:center;font-size:20px}
 
-    .footer{
-      position:absolute;bottom:0;left:0;right:0;z-index:3;background:rgba(0,0,0,0.35);padding:10px 12px;
-      display:grid;grid-template-columns:1fr auto;gap:8px;backdrop-filter:blur(4px)
-    }
-    .footer .sliders{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:center}
-    .slider-wrap{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center}
-    .slider-wrap .label{font-size:14px;opacity:0.9}
-    #countdown{font-size:14px;color:#9cf;opacity:0.95;align-self:center}
-
     .sankey-link{fill:none;stroke-opacity:0.8}
     .sankey-node rect{fill-opacity:0.95}
     .sankey-label{fill:#fff;font-size:12px;pointer-events:none}
-
-    @media (max-width:600px){.footer .sliders{grid-template-columns:1fr}}
-    @media (min-width:768px){.dashboard{grid-template-columns:1fr 1fr}}
-    @media (min-width:1200px){.dashboard{grid-template-columns:1fr 1fr 1fr}}
   </style>
 </head>
 <body>
@@ -99,6 +86,12 @@
     <button class="icon-btn" id="btnSnapshot" title="Capture snapshot">📸</button>
   </div>
   <div id="panelHandle" title="Open/close controls">›</div>
+
+  <div id="footerToggles">
+    <button class="icon-btn" id="toggleSmoothing" title="Toggle Smoothing">🎚️</button>
+    <button class="icon-btn" id="toggleFFT" title="Toggle FFT Window">🪄</button>
+    <button class="icon-btn" id="toggleAmplitude" title="Toggle Amplitude">🔊</button>
+  </div>
 
   <div id="dashboardWrap">
     <div class="dashboard">
@@ -138,15 +131,6 @@
       </div>
     </div>
   </div>
-
-  <div class="footer">
-    <div class="sliders">
-      <div class="slider-wrap" title="Smoothing"><div class="label">🎚️</div><input type="range" id="smoothing" min="0" max="1" step="0.1" value="0.5"></div>
-      <div class="slider-wrap" title="FFT window size"><div class="label">🪄</div><input type="range" id="fftWindow" min="128" max="1024" step="128" value="512"></div>
-      <div class="slider-wrap" title="Amplitude scale"><div class="label">🔊</div><input type="range" id="ampScale" min="0.2" max="5" step="0.1" value="1"></div>
-    </div>
-    <div class="right"><div id="countdown" title="Auto-save snapshot countdown">Next auto-save: 60s</div></div>
-  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -158,31 +142,21 @@
 <script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
 
 <script>
-// ===== Camera & Flip =====
+// ===== Camera =====
 let facingMode = "user";
 const video = document.getElementById('camera');
-let mediaStream=null,avRecorder=null,videoChunks=[];
-const overlay = document.getElementById('overlay');
-const octx = overlay.getContext('2d');
-let rData=[], eegData=[], currentMetrics={freqFusion:0,peakFusion:0,coherence:0};
-const statusBadge=document.getElementById('statusBadge');
 
 async function startCamera(){
   try{
-    if(avRecorder && avRecorder.state==="recording"){ avRecorder.stop(); videoChunks=[]; }
-    mediaStream = await navigator.mediaDevices.getUserMedia({video:{facingMode},audio:true});
-    video.srcObject = mediaStream; await video.play();
-    // Video recorder
-    const mime = MediaRecorder.isTypeSupported("video/mp4;codecs=h264,aac") ? "video/mp4;codecs=h264,aac" : "video/webm";
-    avRecorder = new MediaRecorder(mediaStream,{mimeType:mime});
-    videoChunks=[]; avRecorder.ondataavailable = e=>{ if(e.data && e.data.size>0) videoChunks.push(e.data); };
-    avRecorder.start(1000);
-    statusBadge.textContent = 'Analyzing';
-  }catch(e){ console.error(e); statusBadge.textContent='Camera error'; }
+    const stream = await navigator.mediaDevices.getUserMedia({video:{facingMode},audio:false});
+    video.srcObject = stream;
+    await video.play();
+  }catch(e){console.error(e);}
 }
 startCamera();
 document.getElementById('flipCameraBtn').addEventListener('click', async ()=>{
-  facingMode = facingMode==="user"?"environment":"user"; await startCamera();
+  facingMode = (facingMode==='user')?'environment':'user';
+  await startCamera();
 });
 
 // ===== Panel handle =====
@@ -190,23 +164,11 @@ const panelHandle=document.getElementById('panelHandle');
 const togglePanel=document.getElementById('togglePanel');
 panelHandle.addEventListener('click',()=>{ togglePanel.classList.toggle('open'); panelHandle.textContent=togglePanel.classList.contains('open')?'‹':'›'; });
 
-// ===== Thermal helper =====
-function thermalColor(v,min,max){const t=isFinite(v)?Math.max(0,Math.min(1,(v-min)/(max-min))):0; if(t<0.25){const q=t/0.25;return `rgb(${Math.round(30*(1-q))},${Math.round(95+160*q)},255)`;} else if(t<0.5){const q=(t-0.25)/0.25;return `rgb(${Math.round(255*q)},255,${Math.round(255-255*q)})`; } else if(t<0.75){const q=(t-0.5)/0.25;return `rgb(255,${Math.round(234-90*q)},${Math.round(0+90*q)})`; } else {const q=(t-0.75)/0.25;return `rgb(255,${Math.round(144-144*q)},${Math.round(51-51*q)})`; }}
+// ===== Footer Toggles (now buttons like side panel) =====
+document.getElementById('toggleSmoothing').addEventListener('click',()=>{ alert('Smoothing toggled!') });
+document.getElementById('toggleFFT').addEventListener('click',()=>{ alert('FFT window toggled!') });
+document.getElementById('toggleAmplitude').addEventListener('click',()=>{ alert('Amplitude toggled!') });
 
-// ===== Charts =====
-const rppgChart=new Chart(document.getElementById('rppgChart').getContext('2d'),{type:'line',data:{labels:Array(300).fill(''),datasets:[{label:'Heart Rate',data:Array(300).fill(0),borderWidth:2,pointRadius:0,fill:true,segment:{borderColor:ctx=>thermalColor(ctx.p0.parsed.y,-40,40),backgroundColor:ctx=>thermalColor(ctx.p0.parsed.y,-40,40)}}]},options:{animation:false,elements:{line:{tension:0.5}},scales:{y:{min:-40,max:40}},plugins:{legend:{display:false}}}});
-const eegChart=new Chart(document.getElementById('eegChart').getContext('2d'),{type:'line',data:{labels:Array(300).fill(''),datasets:[{label:'EEG',data:Array(300).fill(0),borderWidth:2,pointRadius:0,fill:true,segment:{borderColor:ctx=>thermalColor(ctx.p0.parsed.y,-150,150),backgroundColor:'rgba(255,255,255,0.03)'}}]},options:{animation:false,elements:{line:{tension:0.5}},scales:{y:{min:-150,max:150}},plugins:{legend:{display:false}}}});
-const rppgFFTChart=new Chart(document.getElementById('rppgFFT').getContext('2d'),{type:'bar',data:{labels:Array(128).fill(''),datasets:[{label:'rPPG',data:Array(128).fill(0),backgroundColor:Array(128).fill('rgba(255,255,255,0.08)')}]},options:{animation:false,scales:{y:{min:0,max:100}},plugins:{legend:{display:false}}}});
-const sysFlowChart=new Chart(document.getElementById('sysFlow').getContext('2d'),{type:'line',data:{labels:Array(120).fill(''),datasets:[{label:'CPU',data:Array(120).fill(0),borderColor:'#00E5FF',backgroundColor:'rgba(0,229,255,0.15)',borderWidth:2,pointRadius:0,fill:true,tension:0.6},{label:'GPU',data:Array(120).fill(0),borderColor:'#FF2EF9',backgroundColor:'rgba(255,46,249,0.12)',borderWidth:2,pointRadius:0,fill:true,tension:0.6}]},options:{animation:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:1}}}});
-
-// ===== Alluvial =====
-const sankeySvg = d3.select('#alluvial');
-function renderAlluvial(flux){
-  const w=document.getElementById('alluvial').clientWidth, h=220;
-  const sankey = d3.sankey().nodeWidth(12).nodePadding(14).size([w,h]);
-  const ironBow = d3.scaleLinear().domain([0,.25,.5,.75,1]).range(["#2a004b","#8b0000","#ff6a00","#ffff00","#ffffff"]);
-  const graph={nodes:[{name:'EEG'},{name:'rPPG'},{name:'HR'},{name:'Freq Fusion'},{name:'Peak Fusion'},{name:'Coherence'}],links:[{source:0,target:3,value:Math.max(1,flux.eeg||1)},{source:1,target:3,value:Math.max(1,flux.rppg||1)},{source:2,target:3,value:Math.max(1,flux.hr||1)},{source:0,target:4,value:Math.max(1,(flux.eeg||1)*0.7)},{source:1,target:4,value:Math.max(1,(flux.rppg||1)*0.7)},{source:2,target:4,value:Math.max(1,(flux.hr||1)*0.7)},{source:0,target:5,value:Math.max(1,(flux.coherence||1))},{source:1,target:5,value:Math.max(1,(flux.coherence||1))},{source:2,target:5,value:Math.max(1,(flux.coherence||1))}]};
-  sankeySvg.selectAll('*').remove();
-  const defs=sankeySvg.append("defs"); const glow=defs.append("filter").attr("id","glow");
-  glow.append("feGaussianBlur").attr("stdDeviation","3").attr("result","blur");
-  const merge=glow.append("feMerge"); merge.append
+</script>
+</body>
+</html>
