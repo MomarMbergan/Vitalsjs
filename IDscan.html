@@ -1,250 +1,125 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<title>SkyNet Biometric Dashboard</title>
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-
-<!-- Astro Font -->
-<link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet"/>
-
-<!-- MathJax -->
-<script>
-window.MathJax = {
-  tex: { inlineMath: [["\\(","\\)"],["$", "$"]] },
-  svg: { fontCache: "global" }
-};
-</script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
-
-<!-- Chart.js (unchanged UI) -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-<!-- Face API (YOUR PATHS) -->
-<script src="https://raw.githubusercontent.com/MomarMbergan/Vitalsjs/main/face-api.min.js"></script>
-<script src="https://raw.githubusercontent.com/MomarMbergan/Vitalsjs/main/face-api.js"></script>
-<script src="https://raw.githubusercontent.com/MomarMbergan/Vitalsjs/main/face-api.js.map"></script>
-
-<style>
-  body{
-    margin:0;
-    background:#000;
-    color:#6cf;
-    font-family:'Audiowide', sans-serif;
-  }
-
-container{
-    width:100vw; height:100vh;
-    display:flex; flex-direction:column;
-    align-items:center; justify-content:flex-start;
-  }
-  video{
-    width:320px; height:auto;
-    border:2px solid #0af;
-    border-radius:12px;
-    margin-top:10px;
-  }
-  canvas{
-    position:absolute; left:0; top:0;
-    pointer-events:none;
-  }
-
-metrics{
-    margin-top:10px;
-    width:90%;
-    color:#8cf;
-    font-size:14px;
-    text-shadow:0 0 8px #0af;
-  }
-
-  .eq{
-    margin-top:6px;
-    padding:6px;
-    background:rgba(0,60,120,0.18);
-    border-radius:12px;
-    border:1px solid rgba(0,140,255,0.4);
-  }
-</style>
-
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dual Camera Thermal Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/js/pico.js"></script>
+  <script src="/js/iploc.js"></script>
+  <style>
+    body { margin:0; background:black; font-family:Arial,sans-serif; }
+    .container { display:flex; flex-direction:row; width:100vw; height:100vh; }
+    .screen { position:relative; flex:1; overflow:hidden; }
+    video, canvas.overlay { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; }
+    .cameraControls { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.6); padding:10px; border-radius:8px; color:#00e5ff; z-index:30; }
+    .cameraControls select, .cameraControls input { display:block; margin:6px 0; width:180px; padding:6px; border-radius:6px; border:none; background:rgba(255,255,255,0.1); color:#00e5ff; }
+    .statusBlock { position:absolute; top:120px; left:10px; background:rgba(0,0,0,0.6); padding:8px 12px; border-radius:6px; font-size:0.9rem; color:#ff4081; z-index:25; }
+    .analyzing { position:absolute; top:12px; left:50%; transform:translateX(-50%); font-size:1.2rem; color:#39ff14; text-shadow:0 0 8px #39ff14,0 0 14px #39ff14; z-index:40; }
+    .hud { position:absolute; top:160px; left:10px; background:rgba(0,0,0,0.5); padding:10px 14px; border-radius:8px; color:#00e5ff; font-size:1rem; line-height:1.6; z-index:20; }
+    .charts { position:absolute; bottom:0; left:0; width:100%; height:32%; display:flex; gap:20px; padding:12px 20px; background:rgba(0,0,0,0.4); z-index:15; }
+    .chartBlock { flex:1; display:flex; flex-direction:column; }
+    .chartLabel { color:#00e5ff; margin-bottom:6px; }
+    .chartCanvas { width:100%; height:100%; background:transparent; }
+    @media(max-width:768px){ .container{flex-direction:column;} .screen{height:50%;} }
+  </style>
 </head>
 <body>
-<div id="container">
+  <div class="container">
+    <!-- FRONT CAMERA -->
+    <div class="screen">
+      <div class="analyzing">Analyzing</div>
+      <div class="cameraControls">
+        <label>Front Camera Source</label>
+        <select id="frontSource" onchange="switchFrontCamera(this.value)">
+          <option value="device">Device Camera</option>
+          <option value="wifi">Wi‑Fi Camera</option>
+        </select>
+        <input id="frontIp" type="text" placeholder="Wi‑Fi IP"/>
+        <input id="frontMac" type="text" placeholder="MAC Address"/>
+      </div>
+      <div id="frontStatus" class="statusBlock">Status: Not Connected</div>
+      <video id="frontCam" autoplay playsinline muted></video>
+      <canvas id="frontOverlay" class="overlay"></canvas>
+      <div class="hud">
+        HR: <span id="hrFront">--</span> bpm<br>
+        SpO₂: <span id="spo2Front">--</span> %
+      </div>
+      <div class="charts">
+        <div class="chartBlock"><div class="chartLabel">Iris-Retina Signal</div><canvas id="ppgFront" class="chartCanvas"></canvas></div>
+        <div class="chartBlock"><div class="chartLabel">Iris-Retina Signal</div><canvas id="spo2FrontChart" class="chartCanvas"></canvas></div>
+      </div>
+    </div>
 
-  <!-- Front Camera -->
-  <video id="camFront" autoplay muted playsinline></video>
-  <canvas id="frontOverlay" width="320" height="240"></canvas>
-
-  <!-- Rear Camera -->
-  <video id="camRear" autoplay muted playsinline></video>
-  <canvas id="rearOverlay" width="320" height="240"></canvas>
-
-  <!-- HUD Metrics (UI unchanged) -->
-  <div id="metrics">
-    <div>HR Front: <span id="hrFront">0</span> bpm</div>
-    <div>HR Rear: <span id="hrRear">0</span> bpm</div>
-    <div>PPG: <span id="ppgValue">0</span></div>
-    <div>SpO₂: <span id="spo2Value">0</span>%</div>
-
-    <!-- NEW METRIC BLOCK (below SpO2), divided by live PPG -->
-    <div id="equationsBlock" class="eq">
-      <strong>Eye Metrics (normalized / PPG):</strong>
-
-      <div id="eqGamma">\( \gamma = \frac{I{max}}{I{min}} \div PPG \)</div>
-      <div id="eqP">\( P = \frac{TP}{TP+FP} \div PPG \)</div>
-      <div id="eqDepth">\( \sqrt{D^2 - d^2} \div PPG \)</div>
-      <div id="eqHRN">\( \text{NormHR} = \frac{Metric}{HR} \div PPG \)</div>
-      <div id="eqLens">\( \frac{1}{f} = \frac{1}{u} + \frac{1}{v} \div PPG \)</div>
-      <div id="eqInvSq">\( L \propto \frac{1}{d^2} \div PPG \)</div>
+    <!-- REAR CAMERA -->
+    <div class="screen">
+      <div class="analyzing">Analyzing</div>
+      <div class="cameraControls">
+        <label>Rear Camera Source</label>
+        <select id="rearSource" onchange="switchRearCamera(this.value)">
+          <option value="device">Device Camera</option>
+          <option value="wifi">Wi‑Fi Camera</option>
+        </select>
+        <input id="rearIp" type="text" placeholder="Wi‑Fi IP"/>
+        <input id="rearMac" type="text" placeholder="MAC Address"/>
+      </div>
+      <div id="rearStatus" class="statusBlock">Status: Not Connected</div>
+      <video id="rearCam" autoplay playsinline muted></video>
+      <canvas id="rearOverlay" class="overlay"></canvas>
+      <div class="hud">
+        HR: <span id="hrRear">--</span> bpm<br>
+        SpO₂: <span id="spo2Rear">--</span> %
+      </div>
+      <div class="charts">
+        <div class="chartBlock"><div class="chartLabel">Iris-Retina Signal</div><canvas id="ppgRear" class="chartCanvas"></canvas></div>
+        <div class="chartBlock"><div class="chartLabel">Iris-Retina Signal</div><canvas id="spo2RearChart" class="chartCanvas"></canvas></div>
+      </div>
     </div>
   </div>
 
-</div>
-
 <script>
-/* ===========================================================
-   LOAD FACE-API MODELS
-=========================================================== */
-async function loadModels(){
-  await faceapi.nets.tinyFaceDetector.loadFromUri('./');
-  await faceapi.nets.faceLandmark68TinyNet.loadFromUri('./');
-}
-loadModels();
+function setStatus(elId,text,ok){const el=document.getElementById(elId);el.textContent="Status: "+text;el.style.color=ok?"#00e676":"#ff4081";}
 
-/* ===========================================================
-   CAMERA START (front + rear)
-=========================================================== */
-async function startCam(id, facingMode){
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video:{ facingMode:facingMode, width:640, height:480 }
-  });
-
-  const vid = document.getElementById(id);
-  vid.srcObject = stream;
-}
-
-startCam("camFront","user");
-startCam("camRear","environment");
-
-/* ===========================================================
-   SNAPSHOT + BICUBIC SCALE 512×384
-=========================================================== */
-function getEyeCrop(video){
-  const tmp = document.createElement("canvas");
-  tmp.width = 512;
-  tmp.height = 384;
-
-  const ctx = tmp.getContext("2d");
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-
-  ctx.drawImage(video, 0, 0, 512, 384);
-  return tmp;
-}
-
-/* ===========================================================
-   MATH — compute eye metrics
-=========================================================== */
-function computeGamma(imgData){
-  let min = 255, max = 0;
-  const d = imgData.data;
-  for(let i=0;i<d.length;i+=4){
-    const v = d[i];
-    if (v<min) min=v;
-    if (v>max) max=v;
+/ FRONT CAMERA SWITCH /
+async function switchFrontCamera(source){
+  const video=document.getElementById("frontCam");
+  if(source==="device"){
+    try{const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"user"},audio:false});
+      video.srcObject=stream;setStatus("frontStatus","✅ Connected to Device Camera",true);}
+    catch{setStatus("frontStatus","❌ Device Camera Access Denied",false);}
+  } else {
+    const ip=document.getElementById("frontIp").value.trim();
+    const mac=document.getElementById("frontMac").value.trim();
+    if(!ip) return setStatus("frontStatus","❌ Missing Wi‑Fi IP",false);
+    video.srcObject=null;video.src=http://${ip}/live.mp4?mac=${encodeURIComponent(mac)};
+    video.play().then(()=>setStatus("frontStatus","✅ Connected to Wi‑Fi Camera",true))
+                .catch(()=>setStatus("frontStatus","❌ Wi‑Fi Camera Unreachable",false));
   }
-  return max/min;
 }
 
-function computePrecision(tp, fp){
-  return tp / (tp + fp + 1e-9);
-}
-
-function computeDepth(D,d){
-  return Math.sqrt(Math.max(DD - dd,0));
-}
-
-function thinLens(u,v){
-  return 1/(1/u + 1/v);
-}
-
-function invSq(d){
-  return 1/(d*d + 1e-9);
-}
-
-/* ===========================================================
-   UPDATE EQUATION HTML (renders with MathJax automatically)
-=========================================================== */
-function updateEquations(gamma, prec, depth, hr, ppg){
-  gamma /= (ppg||1);
-  prec /= (ppg||1);
-  depth /= (ppg||1);
-
-  const lens = (1/30).toFixed(4); // placeholder
-  const inv = (1/5000).toFixed(4);
-
-  document.getElementById("eqGamma").innerHTML = \( \\gamma = ${gamma.toFixed(3)} \);
-  document.getElementById("eqP").innerHTML     = \( P = ${prec.toFixed(3)} \);
-  document.getElementById("eqDepth").innerHTML = \( ${depth.toFixed(3)} \);
-  document.getElementById("eqHRN").innerHTML   = \( \\frac{Metric}{${hr}} = ${(1/(hr||1)).toFixed(3)} \);
-  document.getElementById("eqLens").innerHTML  = \( f = ${lens} \);
-  document.getElementById("eqInvSq").innerHTML = \( L \\propto ${inv} \);
-
-  MathJax.typeset();
-}
-
-/* ===========================================================
-   MAIN LOOP — detect eyes on both cameras
-=========================================================== */
-async function eyeLoop(){
-  const vids = [
-    { vid:camFront, overlay:frontOverlay, hr:hrFront },
-    { vid:camRear,  overlay:rearOverlay,  hr:hrRear  }
-  ];
-
-  for(const v of vids){
-    if(v.vid.readyState >= 2){
-      const det = await faceapi.detectSingleFace(
-        v.vid,
-        new faceapi.TinyFaceDetectorOptions()
-      ).withFaceLandmarks(true);
-
-      const ctx = v.overlay.getContext("2d");
-      ctx.clearRect(0,0,320,240);
-
-      if(det){
-        const pts = det.landmarks.getLeftEye();
-
-        ctx.strokeStyle="#0af";
-        ctx.lineWidth=2;
-        ctx.beginPath();
-        pts.forEach((p,i)=>{
-          if(i===0) ctx.moveTo(p.x,p.y);
-          else ctx.lineTo(p.x,p.y);
-        });
-        ctx.closePath();
-        ctx.stroke();
-
-        const crop = getEyeCrop(v.vid);
-        const imgData = crop.getContext("2d").getImageData(0,0,512,384);
-
-        // Dummy TP/FP for now
-        const P = computePrecision(120,3);
-        const gamma = computeGamma(imgData);
-        const depth = computeDepth(12,4);
-
-        const hrVal = Number(v.hr.textContent)||60;
-        const ppgVal = Number(ppgValue.textContent)||1;
-
-        updateEquations(gamma, P, depth, hrVal, ppgVal);
-      }
-    }
+/ REAR CAMERA SWITCH /
+async function switchRearCamera(source){
+  const video=document.getElementById("rearCam");
+  if(source==="device"){
+    try{const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"},audio:false});
+      video.srcObject=stream;setStatus("rearStatus","✅ Connected to Device Camera",true);}
+    catch{setStatus("rearStatus","❌ Device Camera Access Denied",false);}
+  } else {
+    const ip=document.getElementById("rearIp").value.trim();
+    const mac=document.getElementById("rearMac").value.trim();
+    if(!ip) return setStatus("rearStatus","❌ Missing Wi‑Fi IP",false);
+    video.srcObject=null;video.src=http://${ip}/live.mp4?mac=${encodeURIComponent(mac)};
+    video.play().then(()=>setStatus("rearStatus","✅ Connected to Wi‑Fi Camera",true))
+                .catch(()=>setStatus("rearStatus","❌ Wi‑Fi Camera Unreachable",false));
   }
-
-  requestAnimationFrame(eyeLoop);
 }
-eyeLoop();
 
-</script>
+/ AUTO ACTIVATE DEVICE CAMERAS ON LOAD /
+window.addEventListener("load",()=>{switchFrontCamera("device");switchRearCamera("device");initCharts();startDemoSignals();});
 
-</body>
-</html>
+/ THERMAL CHARTS /
+let charts={};
+function makeGradient(ctx,colors){const g=ctx.createLinearGradient(0,0,0,ctx.canvas.height);colors.forEach(([s,c])=>g.addColorStop(s,c));return g;}
+function createChart(canvasId,colors){
+  const ctx=document.getElementById(canvasId).getContext("2d");
+  return new Chart(ctx,{type:"line",data:{labels:[],datasets:[{data:[],borderColor:makeGradient(ctx,colors),backgroundColor:"rgba(0,0,0,0.2)",fill:true,borderWidth:2.2,tension:0.
