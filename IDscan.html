@@ -17,42 +17,39 @@ window.MathJax = {
 </script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 
-<!-- Chart.js (unchanged UI; defaults configured in script) -->
+<!-- Chart.js (unchanged UI) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<!-- Face API (CDN) -->
-<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<!-- Face API (YOUR PATHS) -->
+<script src="https://raw.githubusercontent.com/MomarMbergan/Vitalsjs/main/face-api.min.js"></script>
+<script src="https://raw.githubusercontent.com/MomarMbergan/Vitalsjs/main/face-api.js"></script>
+<script src="https://raw.githubusercontent.com/MomarMbergan/Vitalsjs/main/face-api.js.map"></script>
 
 <style>
-  /* UI preserved exactly as provided */
   body{
     margin:0;
     background:#000;
     color:#6cf;
     font-family:'Audiowide', sans-serif;
   }
-  #container{
+
+container{
     width:100vw; height:100vh;
     display:flex; flex-direction:column;
     align-items:center; justify-content:flex-start;
-    /* make container a positioned parent so absolute overlays can be placed reliably */
-    position:relative;
-    padding:12px 0;
-    box-sizing:border-box;
   }
   video{
     width:320px; height:auto;
     border:2px solid #0af;
     border-radius:12px;
     margin-top:10px;
-    display:block;
   }
   canvas{
-    position:absolute;
+    position:absolute; left:0; top:0;
     pointer-events:none;
   }
 
-  #metrics{
+metrics{
     margin-top:10px;
     width:90%;
     color:#8cf;
@@ -67,15 +64,8 @@ window.MathJax = {
     border-radius:12px;
     border:1px solid rgba(0,140,255,0.4);
   }
-
-  /* Alluvial SVG matches UI aesthetic, no layout changes */
-  #alluvialSVG{
-    width:90%;
-    height:200px;
-    margin-top:10px;
-    filter: drop-shadow(0 0 6px rgba(0,140,255,0.35));
-  }
 </style>
+
 </head>
 <body>
 <div id="container">
@@ -90,16 +80,16 @@ window.MathJax = {
 
   <!-- HUD Metrics (UI unchanged) -->
   <div id="metrics">
-    <div>HR Front: <span id="hrFront">60</span> bpm</div>
-    <div>HR Rear: <span id="hrRear">60</span> bpm</div>
-    <div>PPG: <span id="ppgValue">1</span></div>
-    <div>SpO₂: <span id="spo2Value">98</span>%</div>
+    <div>HR Front: <span id="hrFront">0</span> bpm</div>
+    <div>HR Rear: <span id="hrRear">0</span> bpm</div>
+    <div>PPG: <span id="ppgValue">0</span></div>
+    <div>SpO₂: <span id="spo2Value">0</span>%</div>
 
     <!-- NEW METRIC BLOCK (below SpO2), divided by live PPG -->
     <div id="equationsBlock" class="eq">
       <strong>Eye Metrics (normalized / PPG):</strong>
 
-      <div id="eqGamma">\( \gamma = \frac{I_{max}}{I_{min}} \div PPG \)</div>
+      <div id="eqGamma">\( \gamma = \frac{I{max}}{I{min}} \div PPG \)</div>
       <div id="eqP">\( P = \frac{TP}{TP+FP} \div PPG \)</div>
       <div id="eqDepth">\( \sqrt{D^2 - d^2} \div PPG \)</div>
       <div id="eqHRN">\( \text{NormHR} = \frac{Metric}{HR} \div PPG \)</div>
@@ -108,107 +98,32 @@ window.MathJax = {
     </div>
   </div>
 
-  <!-- Alluvial Diagram for Iris-Retina Signal (added without altering existing UI elements) -->
-  <svg id="alluvialSVG"></svg>
-
 </div>
 
 <script>
 /* ===========================================================
-   CHART DEFAULTS (thick lines; thermal intent if charts added)
-=========================================================== */
-if (window.Chart) {
-  Chart.defaults.elements.line.borderWidth = 4;
-  Chart.defaults.elements.point.radius = 0;
-  Chart.defaults.plugins.legend.labels.color = '#8cf';
-  Chart.defaults.color = '#8cf';
-}
-
-/* ===========================================================
-   DOM REFERENCES
-=========================================================== */
-const camFront = document.getElementById("camFront");
-const camRear = document.getElementById("camRear");
-const frontOverlay = document.getElementById("frontOverlay");
-const rearOverlay = document.getElementById("rearOverlay");
-const hrFront = document.getElementById("hrFront");
-const hrRear = document.getElementById("hrRear");
-const ppgValue = document.getElementById("ppgValue");
-
-const eqGamma = document.getElementById("eqGamma");
-const eqP = document.getElementById("eqP");
-const eqDepth = document.getElementById("eqDepth");
-const eqHRN = document.getElementById("eqHRN");
-const eqLens = document.getElementById("eqLens");
-const eqInvSq = document.getElementById("eqInvSq");
-
-const alluvialSVG = document.getElementById("alluvialSVG");
-
-/* ===========================================================
-   LOAD FACE-API MODELS (ensure /models hosts the model files)
-   If you prefer built-in hosted models, change loadFromUri path.
+   LOAD FACE-API MODELS
 =========================================================== */
 async function loadModels(){
-  try{
-    await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
-    await faceapi.nets.faceLandmark68TinyNet.loadFromUri('/models');
-    console.log("face-api models loaded");
-  }catch(e){
-    console.warn("Error loading face-api models from /models:", e);
-    // fallback: try CDN-hosted models location if you have one, or notify user
-  }
+  await faceapi.nets.tinyFaceDetector.loadFromUri('./');
+  await faceapi.nets.faceLandmark68TinyNet.loadFromUri('./');
 }
 loadModels();
 
 /* ===========================================================
-   CAMERA START (front + rear) - attempts both cameras
-   Uses facingMode hints; device may ignore or allow only one stream.
+   CAMERA START (front + rear)
 =========================================================== */
 async function startCam(id, facingMode){
-  try{
-    // Request a constrained stream; browsers decide which camera to supply.
-    const constraints = {
-      audio: false,
-      video: { facingMode: facingMode, width: { ideal: 640 }, height: { ideal: 480 } }
-    };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    const vid = document.getElementById(id);
-    vid.srcObject = stream;
-    await vid.play().catch(()=>{/* ignore autoplay block */});
-    console.log(`Camera started for ${id} (facingMode=${facingMode})`);
-    return stream;
-  }catch(err){
-    console.warn(`Could not start ${id} (${facingMode}):`, err);
-    return null;
-  }
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video:{ facingMode:facingMode, width:640, height:480 }
+  });
+
+  const vid = document.getElementById(id);
+  vid.srcObject = stream;
 }
 
-// Try to start both (some devices won't give two simultaneous cameras)
-(async ()=>{
-  await startCam("camFront","user");
-  await startCam("camRear","environment");
-})();
-
-/* ===========================================================
-   ALIGN OVERLAY CANVAS TO VIDEO (no DOM changes)
-   Positions canvas on top of its corresponding video element.
-=========================================================== */
-function alignOverlay(vid, canvas){
-  // If video isn't displayed yet, fallback sizes
-  const rect = vid.getBoundingClientRect();
-  const computedWidth = vid.videoWidth || rect.width || 320;
-  const computedHeight = vid.videoHeight || rect.height || 240;
-
-  canvas.width = Math.round(computedWidth);
-  canvas.height = Math.round(computedHeight);
-
-  // Position overlay absolutely within #container (container is relative)
-  const containerRect = document.getElementById('container').getBoundingClientRect();
-  canvas.style.left = (rect.left - containerRect.left) + "px";
-  canvas.style.top  = (rect.top  - containerRect.top) + "px";
-  canvas.style.width = rect.width + "px";
-  canvas.style.height = rect.height + "px";
-}
+startCam("camFront","user");
+startCam("camRear","environment");
 
 /* ===========================================================
    SNAPSHOT + BICUBIC SCALE 512×384
@@ -222,8 +137,7 @@ function getEyeCrop(video){
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
-  // draw the full video scaled to 512x384 (bicubic-ish via smoothingQuality)
-  ctx.drawImage(video, 0, 0, tmp.width, tmp.height);
+  ctx.drawImage(video, 0, 0, 512, 384);
   return tmp;
 }
 
@@ -234,11 +148,11 @@ function computeGamma(imgData){
   let min = 255, max = 0;
   const d = imgData.data;
   for(let i=0;i<d.length;i+=4){
-    const v = d[i]; // red channel
+    const v = d[i];
     if (v<min) min=v;
     if (v>max) max=v;
   }
-  return (max / Math.max(min, 1e-9));
+  return max/min;
 }
 
 function computePrecision(tp, fp){
@@ -246,13 +160,11 @@ function computePrecision(tp, fp){
 }
 
 function computeDepth(D,d){
-  // fixed formula: sqrt(D^2 - d^2)
-  return Math.sqrt(Math.max(D*D - d*d,0));
+  return Math.sqrt(Math.max(DD - dd,0));
 }
 
 function thinLens(u,v){
-  const denom = (1/u + 1/v);
-  return 1 / (denom || 1e-9);
+  return 1/(1/u + 1/v);
 }
 
 function invSq(d){
@@ -260,169 +172,70 @@ function invSq(d){
 }
 
 /* ===========================================================
-   IRONBOW THERMAL COLOR MAP (yellow->orange->red->purple)
+   UPDATE EQUATION HTML (renders with MathJax automatically)
 =========================================================== */
-function ironbowColor(value, min=0, max=1){
-  const norm = Math.min(Math.max((value-min)/(max-min), 0), 1);
-  const stops = [
-    { pct: 0.0, color: [255,255,0] },   // yellow
-    { pct: 0.3, color: [255,165,0] },   // orange
-    { pct: 0.6, color: [255,0,0] },     // red
-    { pct: 1.0, color: [128,0,128] }    // purple
-  ];
+function updateEquations(gamma, prec, depth, hr, ppg){
+  gamma /= (ppg||1);
+  prec /= (ppg||1);
+  depth /= (ppg||1);
 
-  for(let i=1;i<stops.length;i++){
-    if(norm <= stops[i].pct){
-      const prev = stops[i-1], next = stops[i];
-      const ratio = (norm - prev.pct)/(next.pct - prev.pct || 1);
-      const r = Math.round(prev.color[0] + ratio*(next.color[0]-prev.color[0]));
-      const g = Math.round(prev.color[1] + ratio*(next.color[1]-prev.color[1]));
-      const b = Math.round(prev.color[2] + ratio*(next.color[2]-prev.color[2]));
-      return `rgb(${r},${g},${b})`;
-    }
-  }
-  return "rgb(128,0,128)";
+  const lens = (1/30).toFixed(4); // placeholder
+  const inv = (1/5000).toFixed(4);
+
+  document.getElementById("eqGamma").innerHTML = \( \\gamma = ${gamma.toFixed(3)} \);
+  document.getElementById("eqP").innerHTML     = \( P = ${prec.toFixed(3)} \);
+  document.getElementById("eqDepth").innerHTML = \( ${depth.toFixed(3)} \);
+  document.getElementById("eqHRN").innerHTML   = \( \\frac{Metric}{${hr}} = ${(1/(hr||1)).toFixed(3)} \);
+  document.getElementById("eqLens").innerHTML  = \( f = ${lens} \);
+  document.getElementById("eqInvSq").innerHTML = \( L \\propto ${inv} \);
+
+  MathJax.typeset();
 }
 
 /* ===========================================================
-   UPDATE EQUATION HTML (always divided by LIVE PPG)
-   MathJax-safe innerHTML strings
-=========================================================== */
-function updateEquations(gamma, prec, depth, hr){
-  const ppg = Number(ppgValue.textContent) || 1;  // always live
-
-  const gN = (gamma||0) / ppg;
-  const pN = (prec||0)  / ppg;
-  const dN = (depth||0) / ppg;
-
-  const lens = thinLens(30, 60);          // placeholder focal calc
-  const inv  = invSq(70);                 // placeholder distance
-
-  // Use a single backslash escape in the final HTML: JS string must contain \\( .. \\)
-  eqGamma.innerHTML = `\\( \\gamma = ${gN.toFixed(3)} \\)`;
-  eqP.innerHTML     = `\\( P = ${pN.toFixed(3)} \\)`;
-  eqDepth.innerHTML = `\\( ${dN.toFixed(3)} \\)`;
-  eqHRN.innerHTML   = `\\( \\frac{Metric}{${hr}} = ${(1/(hr||1)).toFixed(3)} \\)`;
-  eqLens.innerHTML  = `\\( f = ${lens.toFixed(4)} \\)`;
-  eqInvSq.innerHTML = `\\( L \\propto ${inv.toFixed(4)} \\)`;
-
-  // Ask MathJax to typeset the new inline formulas
-  if (window.MathJax && MathJax.typesetPromise) {
-    MathJax.typesetPromise();
-  }
-}
-
-/* ===========================================================
-   ALLUVIAL DIAGRAM (Iris–Retina Signal, thermal-coded)
-=========================================================== */
-function drawAlluvial(values){
-  if (!values || values.length === 0) return;
-
-  // values: array of numbers; normalize for color mapping
-  const vMin = Math.min(...values);
-  const vMax = Math.max(...values);
-  const norm = values.map(v => (v - vMin) / Math.max((vMax - vMin), 1e-9));
-
-  // Clear and draw smooth paths
-  while (alluvialSVG.firstChild) alluvialSVG.removeChild(alluvialSVG.firstChild);
-
-  const width = alluvialSVG.clientWidth || alluvialSVG.getBoundingClientRect().width || 320;
-  const height = alluvialSVG.clientHeight || alluvialSVG.getBoundingClientRect().height || 200;
-
-  values.forEach((v,i)=>{
-    const y = 20 + i * (height / (values.length + 1));
-    const x1 = 20, x2 = width - 20;
-
-    const d = `M${x1},${y} C${x1+width*0.3},${y-20} ${x2-width*0.3},${y+20} ${x2},${y}`;
-    const path = document.createElementNS("http://www.w3.org/2000/svg","path");
-    path.setAttribute("d", d);
-    path.setAttribute("stroke", ironbowColor(norm[i], 0, 1));
-    path.setAttribute("stroke-width", "6");
-    path.setAttribute("fill", "none");
-    path.setAttribute("stroke-linecap", "round");
-    path.setAttribute("opacity", "0.95");
-    alluvialSVG.appendChild(path);
-  });
-}
-
-/* ===========================================================
-   STATE FOR LIVE LOOP
-=========================================================== */
-const lastMetrics = {
-  gamma: 1.0,
-  prec:  0.95,
-  depth: 8.0,
-  hr:    60
-};
-
-/* ===========================================================
-   MAIN LOOP — detect eyes on both cameras (thermal overlays)
-   Integrates the bicubic crop + metrics from Script 1
+   MAIN LOOP — detect eyes on both cameras
 =========================================================== */
 async function eyeLoop(){
   const vids = [
-    { vid:camFront, overlay:frontOverlay, hrEl:hrFront },
-    { vid:camRear,  overlay:rearOverlay,  hrEl:hrRear  }
+    { vid:camFront, overlay:frontOverlay, hr:hrFront },
+    { vid:camRear,  overlay:rearOverlay,  hr:hrRear  }
   ];
 
-  // Align overlays every frame (keeps them on top)
-  vids.forEach(v => alignOverlay(v.vid, v.overlay));
-
   for(const v of vids){
-    if(v.vid && v.vid.readyState >= 2){
-      try{
-        // Detect face and landmarks (tiny detector for speed)
-        const det = await faceapi.detectSingleFace(
-          v.vid,
-          new faceapi.TinyFaceDetectorOptions()
-        ).withFaceLandmarks(true);
+    if(v.vid.readyState >= 2){
+      const det = await faceapi.detectSingleFace(
+        v.vid,
+        new faceapi.TinyFaceDetectorOptions()
+      ).withFaceLandmarks(true);
 
-        const ctx = v.overlay.getContext("2d");
-        ctx.clearRect(0,0,v.overlay.width,v.overlay.height);
+      const ctx = v.overlay.getContext("2d");
+      ctx.clearRect(0,0,320,240);
 
-        if(det && det.landmarks){
-          // Use left eye landmarks (you can also draw right eye similarly)
-          const pts = det.landmarks.getLeftEye();
+      if(det){
+        const pts = det.landmarks.getLeftEye();
 
-          // Thermal stroke color chosen by current PPG (visual only)
-          const ppg = Number(ppgValue.textContent) || 1;
-          const thermal = ironbowColor(ppg, 0.5, 2.0);
+        ctx.strokeStyle="#0af";
+        ctx.lineWidth=2;
+        ctx.beginPath();
+        pts.forEach((p,i)=>{
+          if(i===0) ctx.moveTo(p.x,p.y);
+          else ctx.lineTo(p.x,p.y);
+        });
+        ctx.closePath();
+        ctx.stroke();
 
-          ctx.strokeStyle = thermal;
-          ctx.lineWidth = Math.max(2, Math.round(v.overlay.width * 0.01));
-          ctx.beginPath();
-          pts.forEach((p,i)=>{
-            // landmarks are in video coordinate space; scale if needed
-            const scaleX = v.overlay.width / (v.vid.videoWidth || v.vid.clientWidth || v.overlay.width);
-            const scaleY = v.overlay.height / (v.vid.videoHeight || v.vid.clientHeight || v.overlay.height);
-            const x = p.x * scaleX;
-            const y = p.y * scaleY;
-            if(i===0) ctx.moveTo(x,y);
-            else ctx.lineTo(x,y);
-          });
-          ctx.closePath();
-          ctx.stroke();
+        const crop = getEyeCrop(v.vid);
+        const imgData = crop.getContext("2d").getImageData(0,0,512,384);
 
-          // Take a high-quality crop (512x384) and compute metrics
-          const crop = getEyeCrop(v.vid);
-          const imgData = crop.getContext("2d").getImageData(0,0,crop.width,crop.height);
+        // Dummy TP/FP for now
+        const P = computePrecision(120,3);
+        const gamma = computeGamma(imgData);
+        const depth = computeDepth(12,4);
 
-          // Placeholder/classical metrics (replace with real algorithm inputs if available)
-          const P = computePrecision(120,3);
-          const gamma = computeGamma(imgData);
-          const depth = computeDepth(12,4);
+        const hrVal = Number(v.hr.textContent)||60;
+        const ppgVal = Number(ppgValue.textContent)||1;
 
-          const hrVal = Number(v.hrEl.textContent) || 60;
-
-          // Update shared state (lastMetrics)
-          lastMetrics.gamma = gamma;
-          lastMetrics.prec  = P;
-          lastMetrics.depth = depth;
-          lastMetrics.hr    = hrVal;
-        }
-      }catch(e){
-        // Non-fatal: log but continue animation loop
-        // console.debug("eyeLoop error:", e);
+        updateEquations(gamma, P, depth, hrVal, ppgVal);
       }
     }
   }
@@ -430,47 +243,6 @@ async function eyeLoop(){
   requestAnimationFrame(eyeLoop);
 }
 eyeLoop();
-
-/* ===========================================================
-   LIVE EQUATION + ALLUVIAL REFRESH (updates continuously)
-=========================================================== */
-function liveEquationLoop(){
-  const hrVal = Number(hrFront.textContent) || lastMetrics.hr || 60;
-
-  updateEquations(lastMetrics.gamma, lastMetrics.prec, lastMetrics.depth, hrVal);
-
-  // Feed Alluvial with the same metrics divided by live PPG
-  const ppg = Number(ppgValue.textContent) || 1;
-  const vals = [
-    lastMetrics.gamma / ppg,
-    lastMetrics.prec  / ppg,
-    lastMetrics.depth / ppg,
-    (1/(hrVal || 1)) / ppg
-  ];
-  drawAlluvial(vals);
-
-  requestAnimationFrame(liveEquationLoop);
-}
-liveEquationLoop();
-
-/* ===========================================================
-   HANDLE RESIZE/SCROLL (keep overlays aligned)
-=========================================================== */
-function refreshOverlays(){
-  alignOverlay(camFront, frontOverlay);
-  alignOverlay(camRear,  rearOverlay);
-}
-window.addEventListener('resize', refreshOverlays);
-window.addEventListener('scroll', refreshOverlays);
-
-/* ===========================================================
-   Optional: show a small console hint if no camera permission
-=========================================================== */
-navigator.permissions && navigator.permissions.query({name:'camera'}).then((p)=>{
-  if (p.state === 'denied') {
-    console.warn("Camera permission denied. Please enable camera access in your browser to use the dashboard.");
-  }
-}).catch(()=>{/* ignore if unsupported */});
 
 </script>
 
