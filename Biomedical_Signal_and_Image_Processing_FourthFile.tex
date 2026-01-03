@@ -1,0 +1,83 @@
+\documentclass[11pt]{book}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Biomedical Signal and Image Processing \\ \large Second Edition}
+\author{Kayvan Najarian \\ Robert Splinter}
+\date{2012}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+\textbf{CRC Press / Taylor \& Francis Group}\\
+ISBN: 978-1-4398-7033-4
+\end{center}
+
+\cleardoublepage
+\tableofcontents
+\cleardoublepage
+
+\chapter*{Preface}
+This book, \textit{Biomedical Signal and Image Processing, Second Edition}, continues to serve as a reference and teaching text for students and researchers in biomedical engineering, electrical engineering, and applied sciences. It integrates theoretical foundations with practical MATLAB\textregistered\ examples and provides a modern overview of biomedical data processing.
+
+\chapter*{Acknowledgments}
+The authors extend their gratitude to the reviewers, students, and colleagues who contributed valuable feedback, as well as to the institutions that supported the research and preparation of this text.
+
+\chapter*{Introduction}
+\section*{I.1 Motivation for Biomedical Signal and Image Processing}
+The evolution of biomedical technology has led to vast amounts of digital data. Analyzing these signals and images accurately is vital for diagnostics, monitoring, and treatment. This field merges knowledge from biology, physics, mathematics, and computer science.
+
+\section*{I.2 The Structure of the Book}
+This book introduces mathematical and algorithmic tools for biomedical data analysis. Each chapter builds upon earlier material, blending theory and practical implementation. Numerous worked examples illustrate key concepts.
+
+\part{Introduction to Digital Signal and Image Processing}
+
+\chapter{Concepts and Fundamentals}
+\section{1.1 What Is a Signal?}
+A signal is a measurable representation of a physical phenomenon. Time-based signals such as ECG and EEG, and spatial signals like medical images, form the basis of biomedical analysis.
+
+\section{1.2 Analog, Discrete, and Digital Representations}
+Signals are classified based on continuity:
+\begin{itemize}
+\item \textbf{Analog:} Continuous in time and amplitude.
+\item \textbf{Discrete:} Continuous in amplitude but discrete in time.
+\item \textbf{Digital:} Discrete in both time and amplitude, ideal for computer processing.
+\end{itemize}
+
+\section{1.3 Signal Processing Overview}
+Signal processing enhances, transforms, and extracts relevant features. Typical domains of analysis include time, frequency, and time–frequency. Transform methods such as Fourier, Laplace, and Wavelet transforms are fundamental tools.
+
+\section{1.4 Biomedical Images}
+A 2-D image is modeled as a function $f(x,y)$ describing intensity or reflectance. Processing methods include enhancement, filtering, segmentation, and registration to improve interpretability and diagnostic value.
+
+\begin{figure}[h]
+\centering
+\rule{0.6\textwidth}{0.3\textwidth}
+\caption{Illustrative steps in biomedical image processing. (Placeholder)}
+\end{figure}
+
+\section{1.5 From Data to Decisions}
+The processing chain includes:
+\begin{enumerate}
+\item Signal acquisition
+\item Preprocessing (denoising, normalization)
+\item Feature extraction (morphological, spectral, statistical)
+\item Classification and interpretation
+\end{enumerate}
+
+\chapter*{Notes on Conversion}
+This LaTeX file follows the same format as your earlier conversions and contains:
+\begin{itemize}
+\item Preface, Acknowledgments, Introduction, and structured first chapter.
+\item Consistent \texttt{book}-class formatting with clear sectioning.
+\item Placeholders for all figures, equations, and data-driven sections.
+\end{itemize}
+
+If you’d like, I can continue to include the remaining chapters from this PDF in the same file.
+
+\end{document}

@@ -1,0 +1,97 @@
+\documentclass[11pt]{book}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Mathematical Encyclopedia \\ \large Volume 4 (Part 5)}
+\author{Compiled Reference Work}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+\textbf{Comprehensive Mathematics Reference Series}\\
+\textit{Volume 4 (Part 5)}
+\end{center}
+
+\cleardoublepage
+\tableofcontents
+\cleardoublepage
+
+\chapter*{Preface}
+This final installment of Volume 4 of the \textit{Mathematical Encyclopedia} covers topics from \textbf{U} through \textbf{V}. It includes essential entries such as unitary transformations, untouchable numbers, upper and lower bounds, utility graphs, variance, and vector operations. The consistent mathematical style and clear structure align with earlier volumes in the series.
+
+\chapter{U Topics}
+\section{Unitary Perfect Number}
+A \textbf{unitary perfect number} is an integer equal to the sum of its unitary divisors. A unitary divisor $d$ of $n$ satisfies $\gcd(d, n/d) = 1$. Example: $6$ is unitary perfect because its unitary divisors $1$, $2$, $3$, and $6$ sum to $12$.
+
+\section{Unitary Transformation}
+A \textbf{unitary transformation} $U$ on a complex vector space satisfies:
+\begin{equation}
+U^* U = U U^* = I,
+\end{equation}
+where $U^*$ is the conjugate transpose. Such transformations preserve inner products and lengths.
+
+\section{Unknotting Number}
+The \textbf{unknotting number} of a knot is the minimum number of crossing changes required to transform it into an unknot.
+
+\section{Untouchable Number}
+An \textbf{untouchable number} is an integer that cannot be expressed as the sum of proper divisors of any other integer. The smallest untouchable number is 2.
+
+\section{Upper Bound}
+An \textbf{upper bound} of a set $S$ is a number $M$ such that $x \leq M$ for all $x \in S$. If no smaller upper bound exists, $M$ is the \textit{least upper bound} or \textit{supremum}.
+
+\section{Utility Graph}
+The \textbf{utility graph} $K_{3,3}$ represents the problem of connecting three houses to three utilities without intersection in the plane. It is a nonplanar bipartite graph.
+
+\chapter{V Topics}
+\section{Valuation}
+A \textbf{valuation} on a field $K$ is a function $v: K \to \mathbb{R} \cup \{\infty\}$ satisfying:
+\begin{align}
+v(xy) &= v(x) + v(y), \\
+v(x + y) &\geq \min\{v(x), v(y)\}, \\
+v(0) &= \infty.
+\end{align}
+
+\section{Vampire Number}
+A \textbf{vampire number} is a composite number with an even number of digits, which can be factored into two integers (fangs) containing all the digits of the original number. Example: $1260 = 21 \times 60$.
+
+\section{Van der Waerden's Theorem}
+\textbf{Van der Waerden’s theorem} states that for any given positive integers $r$ and $k$, there exists an integer $N$ such that any $r$-coloring of $\{1, 2, ..., N\}$ contains a monochromatic arithmetic progression of length $k$.
+
+\section{Variance}
+The \textbf{variance} of a random variable $X$ with mean $\mu$ is:
+\begin{equation}
+\mathrm{Var}(X) = E[(X - \mu)^2] = E[X^2] - (E[X])^2.
+\end{equation}
+It measures the spread of data around the mean.
+
+\section{Vector}
+A \textbf{vector} is an element of a vector space, often represented by an ordered tuple $(x_1, x_2, ..., x_n)$. Vectors support operations such as addition and scalar multiplication.
+
+\section{Vector Derivative}
+For a vector function $\vec{r}(t) = (x(t), y(t), z(t))$, its derivative is:
+\begin{equation}
+\frac{d\vec{r}}{dt} = \left( \frac{dx}{dt}, \frac{dy}{dt}, \frac{dz}{dt} \right).
+\end{equation}
+This gives the velocity vector in physics applications.
+
+\section{Vector Norm}
+The \textbf{norm} of a vector $\vec{v} = (v_1, v_2, ..., v_n)$ is:
+\begin{equation}
+\|\vec{v}\| = \sqrt{v_1^2 + v_2^2 + \cdots + v_n^2}.
+\end{equation}
+It represents the length of the vector in Euclidean space.
+
+\section{Vector Space}
+A \textbf{vector space} $V$ over a field $F$ satisfies closure under addition and scalar multiplication and follows axioms such as associativity, commutativity, and distributivity.
+
+\chapter*{Notes on Conversion}
+This \LaTeX{} document concludes Volume 4 of the \textit{Mathematical Encyclopedia}, completing the alphabetic range through \textbf{V}. It matches the formatting and structure of the previous parts for a unified compilation.\\[1em]
+You may now begin Volume 5, which I can format identically for continuity.
+
+\end{document}

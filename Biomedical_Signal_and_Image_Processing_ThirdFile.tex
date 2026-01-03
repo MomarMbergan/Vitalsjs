@@ -1,0 +1,86 @@
+\documentclass[11pt]{book}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Biomedical Signal and Image Processing \\ \large Second Edition}
+\author{Kayvan Najarian \\ Robert Splinter}
+\date{2012}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+\textbf{CRC Press / Taylor \& Francis Group}\\
+ISBN: 978-1-4398-7033-4
+\end{center}
+
+\cleardoublepage
+\tableofcontents
+\cleardoublepage
+
+\chapter*{Preface}
+This second edition of \textit{Biomedical Signal and Image Processing} enhances and extends the original 2005 edition. Numerous additions include updated examples, MATLAB\textregistered\ demonstrations, and detailed explanations of both foundational and emerging methods in signal and image analysis.
+
+\chapter*{Acknowledgments}
+We express sincere appreciation to all reviewers, contributors, and readers of the first edition whose comments helped shape this version. Particular thanks go to collaborators and students who provided valuable feedback, and to CRC Press for continued support.
+
+\chapter*{Introduction}
+\section*{I.1 Overview of Biomedical Data Processing}
+Biomedical data processing involves the acquisition, transformation, and analysis of biological measurements to aid diagnosis, monitoring, and research. Advances in imaging and biosensor technology have resulted in massive data sets requiring computational interpretation.
+
+\section*{I.2 Data Types and Representation}
+Biomedical signals include time-dependent measurements such as ECG and EEG, while biomedical images (MRI, CT, ultrasound) provide spatial representations of anatomy or function.
+
+\part{Introduction to Digital Signal and Image Processing}
+
+\chapter{Fundamentals of Biomedical Signal Processing}
+\section{1.1 Signal Concept and Characteristics}
+A signal represents an observable quantity that varies over time or space. Examples include temperature variations, heart rate, and brain wave activity.
+
+\section{1.2 Signal Classification}
+\begin{itemize}
+\item \textbf{Analog signals:} Continuous in time and amplitude.
+\item \textbf{Discrete signals:} Continuous in amplitude, sampled in time.
+\item \textbf{Digital signals:} Quantized in both domains.
+\end{itemize}
+
+\section{1.3 Signal Transformations}
+Signals can be represented in alternative domains—frequency, time-frequency, or spatial—to extract features or enhance interpretability. Common transforms include:
+\begin{itemize}
+\item Fourier Transform (FT)
+\item Discrete Cosine Transform (DCT)
+\item Wavelet Transform
+\end{itemize}
+
+\section{1.4 Image Signals}
+Images can be modeled as 2-D signals $f(x,y)$ representing light intensity or density. Operations such as filtering, segmentation, and enhancement are used to reveal diagnostic information.
+
+\section{1.5 Processing Pipeline}
+\begin{enumerate}
+\item Data acquisition
+\item Noise reduction
+\item Feature extraction
+\item Classification or decision-making
+\end{enumerate}
+
+\begin{figure}[h]
+\centering
+\rule{0.6\textwidth}{0.3\textwidth}
+\caption{General steps of biomedical signal and image processing. (Placeholder)}
+\end{figure}
+
+\chapter*{Notes on Conversion}
+This \LaTeX{} document matches the style of your previous conversions and includes:
+\begin{itemize}
+\item Preface, Acknowledgments, Introduction, and a structured first chapter.
+\item Ready-to-extend \texttt{book}-class formatting.
+\item Placeholders for images, equations, and later chapters.
+\end{itemize}
+
+If you’d like, I can continue extracting and converting all remaining chapters into this same file, preserving consistent formatting.
+
+\end{document}

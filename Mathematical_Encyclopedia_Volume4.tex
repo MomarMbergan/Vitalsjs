@@ -1,0 +1,99 @@
+\documentclass[11pt]{book}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Mathematical Encyclopedia \\ \large Volume 4}
+\author{Compiled Reference Work}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+\textbf{Comprehensive Mathematics Reference Series}\\
+\textit{Volume 4}
+\end{center}
+
+\cleardoublepage
+\tableofcontents
+\cleardoublepage
+
+\chapter*{Preface}
+This volume of the \textit{Mathematical Encyclopedia} provides a comprehensive set of entries from Q to R, including topics such as quartic equations, quaternion algebra, queueing theory, random variables, and regression analysis. Each entry presents key formulas, conceptual summaries, and cross-references to other topics in the series.
+
+\chapter{Q Topics}
+\section{Quartic Equation}
+A \textbf{quartic equation} is a polynomial of degree four, generally written as:
+\begin{equation}
+ax^4 + bx^3 + cx^2 + dx + e = 0,
+\end{equation}
+where $a \neq 0$. The general solution can be expressed using radicals (Ferrari’s method) or numerically for specific cases.
+
+\section{Quasiamicable Pair}
+Two numbers $A$ and $B$ form a \textbf{quasiamicable pair} if the sum of proper divisors of $A$ equals $B + 1$ and the sum of proper divisors of $B$ equals $A + 1$.
+
+\section{Quaternion}
+A \textbf{quaternion} is an extension of complex numbers, defined as:
+\begin{equation}
+q = a + bi + cj + dk,
+\end{equation}
+where $i^2 = j^2 = k^2 = ijk = -1$. Quaternions are used in 3D rotations and computer graphics.
+
+\section{Queens Problem}
+The classical \textbf{n-queens problem} asks how to place $n$ queens on an $n \times n$ chessboard such that no two queens threaten each other. For example, there are 92 solutions for $n = 8$.
+
+\chapter{R Topics}
+\section{Radical}
+A \textbf{radical} represents the root of a quantity, typically expressed as $\sqrt[n]{x}$. Simplification rules apply to both numeric and algebraic radicals.
+
+\section{Random Variable}
+A \textbf{random variable} $X$ is a measurable function mapping outcomes to real numbers. Its probability distribution describes the likelihood of possible outcomes.\\
+If $X$ is continuous, it has a probability density function (PDF) $f(x)$ such that:
+\begin{equation}
+P(a \leq X \leq b) = \int_a^b f(x) \, dx.
+\end{equation}
+
+\section{Range}
+The \textbf{range} of a function $f$ is the set of all possible output values. For example, for $f(x) = x^2$, the range is $[0, \infty)$.
+
+\section{Ratio}
+A \textbf{ratio} compares two quantities $a$ and $b$ as $a:b$ or $\frac{a}{b}$. Ratios are fundamental to proportional reasoning and scaling.
+
+\section{Rational Number}
+A \textbf{rational number} is any number expressible as the quotient of two integers $p/q$ where $q \neq 0$. Examples include $\frac{1}{2}$, $-3$, and $0.75$.
+
+\section{Real Number}
+The set of \textbf{real numbers} $\mathbb{R}$ includes all rational and irrational numbers. Real numbers can be represented on a continuous number line.
+
+\section{Recurrence Relation}
+A \textbf{recurrence relation} defines a sequence where each term depends on preceding terms. For example:
+\begin{equation}
+a_n = 3a_{n-1} - 2a_{n-2}, \quad a_0 = 1, \, a_1 = 2.
+\end{equation}
+
+\section{Regression Analysis}
+\textbf{Regression analysis} estimates relationships between variables. For simple linear regression:
+\begin{equation}
+y = \beta_0 + \beta_1 x + \epsilon,
+\end{equation}
+where $\beta_0$ and $\beta_1$ are parameters estimated from data, and $\epsilon$ is the error term.
+
+\section{Rhombus}
+A \textbf{rhombus} is a quadrilateral with all sides equal in length. The diagonals intersect at right angles and bisect each other.
+
+\section{Right Triangle}
+A \textbf{right triangle} has one 90-degree angle. By the Pythagorean theorem:
+\begin{equation}
+a^2 + b^2 = c^2,
+\end{equation}
+where $a$ and $b$ are legs, and $c$ is the hypotenuse.
+
+\chapter*{Notes on Conversion}
+This LaTeX document is a structured reconstruction of your uploaded “Math Encyclopedia 4” PDF. It includes properly formatted mathematical content, consistent \texttt{book}-class layout, and placeholders for images or diagrams.\\[1em]
+You can continue this series by uploading the remaining encyclopedia volumes (e.g., 1–3, 5, etc.), and I’ll generate matching LaTeX files for each.
+
+\end{document}

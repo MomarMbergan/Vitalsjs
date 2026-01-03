@@ -1,0 +1,132 @@
+\documentclass[11pt]{book}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Mathematical Encyclopedia \\ \large Volume 4 (Part 3)}
+\author{Compiled Reference Work}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+\textbf{Comprehensive Mathematics Reference Series}\\
+\textit{Volume 4 (Part 3)}
+\end{center}
+
+\cleardoublepage
+\tableofcontents
+\cleardoublepage
+
+\chapter*{Preface}
+This third installment of Volume 4 continues the encyclopedia’s coverage of mathematical concepts from \textbf{S} to \textbf{T}. It includes key entries on derivatives, trigonometric functions, Taylor series, topology, and transformations. Each entry retains rigorous yet concise explanations suitable for both study and quick reference.
+
+\chapter{S Topics}
+\section{Second Derivative}
+The \textbf{second derivative} of a function $f(x)$ measures the rate of change of its first derivative:
+\begin{equation}
+f''(x) = \frac{d^2 f}{dx^2}.
+\end{equation}
+It provides information about concavity: if $f''(x) > 0$, $f$ is concave up; if $f''(x) < 0$, $f$ is concave down.
+
+\section{Sequence Convergence}
+A sequence $\{a_n\}$ converges to a limit $L$ if, for every $\epsilon > 0$, there exists $N$ such that:
+\begin{equation}
+|a_n - L| < \epsilon \quad \text{for all } n > N.
+\end{equation}
+
+\section{Series}
+A \textbf{series} is the sum of the terms of a sequence:
+\begin{equation}
+\sum_{n=1}^{\infty} a_n.
+\end{equation}
+Convergence tests such as ratio, root, and comparison tests determine whether a series converges.
+
+\section{Set}
+A \textbf{set} is a collection of distinct objects, written as $A = \{a_1, a_2, a_3, \ldots\}$. Operations include union ($A \cup B$), intersection ($A \cap B$), and complement ($A'$).
+
+\section{Set Theory}
+\textbf{Set theory} forms the foundation of modern mathematics, defining relations, functions, and structures using formal logic and element membership.
+
+\section{Sigma Notation}
+The Greek letter $\Sigma$ represents summation:
+\begin{equation}
+\sum_{i=1}^{n} a_i = a_1 + a_2 + \cdots + a_n.
+\end{equation}
+
+\section{Sine Function}
+The \textbf{sine} of an angle $\theta$ in a right triangle is:
+\begin{equation}
+\sin \theta = \frac{\text{opposite side}}{\text{hypotenuse}}.
+\end{equation}
+Its derivative is $\frac{d}{dx}\sin x = \cos x$.
+
+\section{Slope}
+The \textbf{slope} of a line measures its steepness:
+\begin{equation}
+m = \frac{y_2 - y_1}{x_2 - x_1}.
+\end{equation}
+
+\section{Sphere}
+A \textbf{sphere} in 3D space centered at $(x_0, y_0, z_0)$ with radius $r$ satisfies:
+\begin{equation}
+(x - x_0)^2 + (y - y_0)^2 + (z - z_0)^2 = r^2.
+\end{equation}
+
+\chapter{T Topics}
+\section{Tangent Function}
+The \textbf{tangent} of an angle $\theta$ is:
+\begin{equation}
+\tan \theta = \frac{\sin \theta}{\cos \theta}.
+\end{equation}
+Its derivative is $\frac{d}{dx}\tan x = \sec^2 x$.
+
+\section{Taylor Series}
+The \textbf{Taylor series} of a function $f(x)$ about $x = a$ is:
+\begin{equation}
+f(x) = f(a) + f'(a)(x-a) + \frac{f''(a)}{2!}(x-a)^2 + \cdots.
+\end{equation}
+If $a = 0$, it is called the \textit{Maclaurin series}.
+
+\section{Topology}
+\textbf{Topology} studies properties preserved under continuous deformation. A topological space $(X, \tau)$ consists of a set $X$ and a collection $\tau$ of open subsets satisfying specific axioms.
+
+\section{Transformation}
+A \textbf{transformation} maps points or functions from one form to another. Linear transformations preserve vector addition and scalar multiplication:
+\begin{equation}
+T(\vec{u} + \vec{v}) = T(\vec{u}) + T(\vec{v}), \quad T(c\vec{u}) = cT(\vec{u}).
+\end{equation}
+
+\section{Transcendental Equation}
+A \textbf{transcendental equation} involves transcendental functions (e.g., exponential, logarithmic, trigonometric):
+\begin{equation}
+e^x = x + 2.
+\end{equation}
+Such equations generally lack closed-form solutions and are solved numerically.
+
+\section{Triangle}
+A \textbf{triangle} is a polygon with three sides. The area $A$ is given by:
+\begin{equation}
+A = \frac{1}{2} b h.
+\end{equation}
+
+\section{Trigonometric Identities}
+Fundamental trigonometric identities include:
+\begin{align}
+\sin^2 \theta + \cos^2 \theta &= 1, \\
+1 + \tan^2 \theta &= \sec^2 \theta, \\
+1 + \cot^2 \theta &= \csc^2 \theta.
+\end{align}
+
+\section{Trigonometric Functions}
+Trigonometric functions relate angles to ratios of sides in right triangles and extend periodically to all real numbers.
+
+\chapter*{Notes on Conversion}
+This LaTeX document maintains the consistent design and structure of earlier encyclopedia volumes. It includes definitions, equations, and formatted examples for key mathematical terms beginning with \textbf{S} and \textbf{T}.\\[1em]
+If you upload the next encyclopedia volume or continuation, I’ll format it identically for a seamless series.
+
+\end{document}

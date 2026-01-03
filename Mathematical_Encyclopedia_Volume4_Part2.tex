@@ -1,0 +1,106 @@
+\documentclass[11pt]{book}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Mathematical Encyclopedia \\ \large Volume 4 (Part 2)}
+\author{Compiled Reference Work}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+\textbf{Comprehensive Mathematics Reference Series}\\
+\textit{Volume 4 (Part 2)}
+\end{center}
+
+\cleardoublepage
+\tableofcontents
+\cleardoublepage
+
+\chapter*{Preface}
+This continuation of Volume 4 expands the encyclopedia with entries from \textbf{R} through \textbf{S}, covering concepts such as Russian multiplication, saddle points, scalar products, and Schur’s algebra. Entries preserve mathematical rigor and concise exposition suitable for reference and academic purposes.
+
+\chapter{R and S Topics}
+\section{Russian Multiplication}
+\textbf{Russian multiplication} is a traditional algorithm that doubles and halves numbers to compute products efficiently. For integers $a$ and $b$:
+\begin{enumerate}
+\item Write $a$ and $b$ in two columns.
+\item Repeatedly halve $a$ (discard fractions) and double $b$ until $a=1$.
+\item Add all $b$ values corresponding to odd $a$ entries.
+\end{enumerate}
+\textit{Example:}
+\begin{equation}
+13 \times 12 = (12 + 48 + 96) = 156.
+\end{equation}
+
+\section{Ryser Formula}
+\textbf{Ryser’s formula} computes the permanent of an $n\times n$ matrix $A = [a_{ij}]$:
+\begin{equation}
+\text{perm}(A) = (-1)^n \sum_{S \subseteq \{1,\dots,n\}} (-1)^{|S|} \prod_{i=1}^n \sum_{j \in S} a_{ij}.
+\end{equation}
+It provides a combinatorial expression similar to the determinant but without alternating signs.
+
+\section{Saddle Point}
+A \textbf{saddle point} of a function $f(x,y)$ is a stationary point that is neither a local maximum nor minimum, characterized by mixed concavity:
+\begin{equation}
+\frac{\partial f}{\partial x} = \frac{\partial f}{\partial y} = 0, \quad 
+\text{and } \det(H_f) < 0,
+\end{equation}
+where $H_f$ is the Hessian matrix.
+
+\section{Sample Space}
+The \textbf{sample space} $\Omega$ of a random experiment is the set of all possible outcomes. For example, tossing two coins yields $\Omega = \{HH, HT, TH, TT\}$.
+
+\section{Satisfiability Problem (SAT)}
+The \textbf{SAT problem} asks whether there exists a Boolean variable assignment making a propositional formula true. SAT is the first problem proven NP-complete.
+
+\section{Scalar Product}
+The \textbf{scalar (dot) product} of vectors $\vec{a}$ and $\vec{b}$ is:
+\begin{equation}
+\vec{a} \cdot \vec{b} = |\vec{a}||\vec{b}|\cos\theta = \sum_{i=1}^n a_i b_i.
+\end{equation}
+
+\section{Scalar Triple Product}
+For vectors $\vec{a}, \vec{b}, \vec{c}$ in $\mathbb{R}^3$, the \textbf{scalar triple product} is defined as:
+\begin{equation}
+\vec{a} \cdot (\vec{b} \times \vec{c}) = 
+\begin{vmatrix}
+a_1 & a_2 & a_3 \\
+b_1 & b_2 & b_3 \\
+c_1 & c_2 & c_3
+\end{vmatrix}.
+\end{equation}
+It gives the volume of the parallelepiped formed by the three vectors.
+
+\section{Schur Algebra}
+\textbf{Schur algebras} appear in the representation theory of the general linear group $GL_n$. For a commutative ring $R$, the Schur algebra $S(n,r)$ governs the polynomial representations of $GL_n(R)$ of homogeneous degree $r$.
+
+\section{Scientific Notation}
+Numbers written in \textbf{scientific notation} have the form:
+\begin{equation}
+N = m \times 10^k,
+\end{equation}
+where $1 \leq |m| < 10$ and $k$ is an integer exponent.
+
+\section{Secant}
+The \textbf{secant} of an angle $\theta$ in a right triangle is defined as:
+\begin{equation}
+\sec \theta = \frac{1}{\cos \theta}.
+\end{equation}
+
+\section{Sequence}
+A \textbf{sequence} is an ordered list of numbers, often defined recursively or explicitly. For instance:
+\begin{equation}
+a_n = \frac{1}{n}, \quad n = 1, 2, 3, \ldots
+\end{equation}
+
+\chapter*{Notes on Conversion}
+This \LaTeX{} document continues the format of the previous encyclopedia volumes, maintaining consistent structure, mathematical clarity, and cross-reference placeholders.\\[1em]
+You can now merge it later with Volume 4 (Part 1) or keep it standalone. If you upload the next volume, I’ll continue in the same format.
+
+\end{document}

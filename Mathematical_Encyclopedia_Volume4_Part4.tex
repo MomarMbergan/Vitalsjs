@@ -1,0 +1,113 @@
+\documentclass[11pt]{book}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Mathematical Encyclopedia \\ \large Volume 4 (Part 4)}
+\author{Compiled Reference Work}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+\textbf{Comprehensive Mathematics Reference Series}\\
+\textit{Volume 4 (Part 4)}
+\end{center}
+
+\cleardoublepage
+\tableofcontents
+\cleardoublepage
+
+\chapter*{Preface}
+This fourth installment of Volume 4 continues the encyclopedia with entries in the range of \textbf{T} topics, expanding on trigonometric, geometric, and analytic concepts such as Taylor expansions, tensors, tetrahedra, and theta functions. The consistent notation and concise exposition are intended for advanced students, educators, and researchers.
+
+\chapter{T Topics (Continuation)}
+\section{Tau Function}
+The \textbf{tau function} appears in number theory as the Ramanujan tau function $\tau(n)$, defined by the generating function:
+\begin{equation}
+\sum_{n=1}^{\infty} \tau(n) q^n = q \prod_{m=1}^{\infty} (1 - q^m)^{24}.
+\end{equation}
+It encodes deep arithmetic information about modular forms.
+
+\section{Taylor Polynomial}
+The $n$th-degree \textbf{Taylor polynomial} for a function $f(x)$ about $x = a$ is:
+\begin{equation}
+P_n(x) = \sum_{k=0}^{n} \frac{f^{(k)}(a)}{k!}(x-a)^k.
+\end{equation}
+This polynomial approximates $f(x)$ near $x = a$.
+
+\section{Tensor}
+A \textbf{tensor} is a multidimensional array generalizing scalars, vectors, and matrices. A rank-2 tensor can be represented as $T_{ij}$. Tensor calculus underpins physics, particularly in general relativity.
+
+\section{Tetrahedron}
+A \textbf{tetrahedron} is a polyhedron with four triangular faces. The volume is given by:
+\begin{equation}
+V = \frac{1}{3} A h,
+\end{equation}
+where $A$ is the area of the base and $h$ is the height.
+
+\section{Theta Function}
+The \textbf{Jacobi theta function} is defined as:
+\begin{equation}
+\theta(z, q) = \sum_{n=-\infty}^{\infty} q^{n^2} e^{2\pi i n z}.
+\end{equation}
+It plays an important role in complex analysis and number theory.
+
+\section{Theorem}
+A \textbf{theorem} is a statement proven to be true using logical reasoning based on axioms and prior results.
+
+\section{Three-Dimensional Geometry}
+In 3D geometry, points are represented by ordered triples $(x, y, z)$. The distance between points $A(x_1, y_1, z_1)$ and $B(x_2, y_2, z_2)$ is:
+\begin{equation}
+AB = \sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2 + (z_2 - z_1)^2}.
+\end{equation}
+
+\section{Torus}
+A \textbf{torus} is the surface formed by revolving a circle in three-dimensional space about an axis coplanar with the circle. Its equation in Cartesian coordinates is:
+\begin{equation}
+\left(\sqrt{x^2 + y^2} - R\right)^2 + z^2 = r^2,
+\end{equation}
+where $R$ is the distance from the center of the tube to the center of the torus, and $r$ is the radius of the tube.
+
+\section{Transformation Matrix}
+A \textbf{transformation matrix} represents linear transformations such as rotation, scaling, and reflection in vector spaces. For example, a 2D rotation by angle $\theta$ is:
+\begin{equation}
+R(\theta) = 
+\begin{pmatrix}
+\cos \theta & -\sin \theta \\
+\sin \theta & \cos \theta
+\end{pmatrix}.
+\end{equation}
+
+\section{Transpose of a Matrix}
+For a matrix $A = [a_{ij}]$, the \textbf{transpose} $A^T$ is obtained by interchanging rows and columns:
+\begin{equation}
+(A^T)_{ij} = a_{ji}.
+\end{equation}
+
+\section{Triangle Inequality}
+For real numbers or vectors:
+\begin{equation}
+|a + b| \leq |a| + |b|.
+\end{equation}
+In Euclidean space, the length of one side of a triangle is always less than or equal to the sum of the lengths of the other two sides.
+
+\section{Truncated Cone}
+A \textbf{truncated cone} (frustum) has volume:
+\begin{equation}
+V = \frac{1}{3} \pi h (R^2 + Rr + r^2),
+\end{equation}
+where $R$ and $r$ are the radii of the two circular faces, and $h$ is the height.
+
+\section{Turing Machine}
+A \textbf{Turing machine} is a theoretical computational model with an infinite tape, a read/write head, and a set of states. It formalizes the concept of algorithmic computation.
+
+\chapter*{Notes on Conversion}
+This \LaTeX{} document maintains the uniform formatting of the previous encyclopedia volumes and contains mathematical definitions, formulas, and conceptual summaries for the final \textbf{T} entries.\\[1em]
+If you upload Volume 5 or subsequent sections, I’ll continue formatting them identically.
+
+\end{document}

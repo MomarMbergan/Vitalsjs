@@ -1,0 +1,115 @@
+\documentclass[11pt]{book}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Biomedical Signal and Image Processing \\ \large Second Edition}
+\author{Kayvan Najarian \\ Robert Splinter}
+\date{2012}
+
+\begin{document}
+\maketitle
+
+\begin{center}
+\textbf{CRC Press / Taylor \& Francis Group}\\
+ISBN: 978-1-4398-7033-4
+\end{center}
+
+\cleardoublepage
+\tableofcontents
+\cleardoublepage
+
+\chapter*{Preface}
+The first edition of the book \textit{Biomedical Signal and Image Processing} was published by CRC Press in 2005. It was used by many universities and educational institutions as a textbook for upper undergraduate level and first-year graduate level courses in signal and image processing. It was also used by a number of companies and research institutions as a reference book for their research projects. This highly encouraging impact of the first edition motivated me to look into ways to improve the book and create a second edition.
+
+The following improvements have been made to the second edition:
+
+\begin{itemize}
+\item A number of editorial corrections have been made to address the typos, grammatical errors, and ambiguities in some mathematical equations.
+\item Many examples have been added to almost all chapters, of which the majority are MATLAB\textregistered\ examples, further illustrating the concepts described in the text.
+\item Further explanations and justifications have been provided for some signal and image processing concepts that may have needed more illustration.
+\end{itemize}
+
+Finally, I would like to thank all the people who contacted me and my coauthor, Dr. Robert Splinter, and shared with us their thoughts and ideas regarding this book. I hope that you find the second edition even more useful than the first one!
+
+Kayvan Najarian
+
+\bigskip
+\noindent Richmond, Virginia
+
+\chapter*{Acknowledgments}
+Dr. Najarian thanks Dr. Joo Heon Shin for his invaluable and detailed feedback, which contained a long list of corrections addressed in this edition of the book. Above all, Dr. Najarian would like to thank Dr. Abed Al Raoof Bsoul, his former PhD student, who not only provided him with invaluable feedback on all chapters of the book, but also helped him with forming some of the additional examples included in the second edition. Raoof's diligence and deep insight into signal and image processing were instrumental in forming this edition, and Dr. Najarian cannot thank him enough for his help. Dr. Najarian also thanks Paul Junor at the Department of Electronic Engineering, La Trobe University, Australia, whose editorial corrections helped improve the presentation of this textbook.
+
+We thank Dr. Sharam Shirani from McMaster University for sharing some of his image processing teaching ideas and slides with us and for providing us his feedback on Chapters 3 and 4. We would also like to thank Alireza Darvish and Jerry James Zacharias for providing us with their invaluable feedback on several chapters of this book. The detailed feedback from these individuals helped us improve the signal and image processing chapters of this book.
+
+Moreover, we would like to thank all hospitals, clinics, industrial units, and individuals who shared with us their biomedical and nonbiomedical images and signals. In each chapter, the sources of all contributed images and signals are mentioned, and the contribution of the people or agencies that provided the data is acknowledged.
+
+\chapter*{Introduction}
+\section*{I.1 Processing of Biomedical Data}
+Processing of biological and medical information has long been a dynamic field of life science. Before the widespread use of digital computers, however, almost all processing was performed by human experts directly. For instance, in processing and analysis of the vital signs (such as blood pressure), physicians had to rely entirely on their hearing and visual and heuristic experience. The accuracy and reliability of such ``manual'' diagnostic processes are limited by a number of factors, including limitations of humans in extracting and detecting certain features from signals. Moreover, such manual analysis of medical data suffers from other factors such as human errors due to fatigue and subjectiveness of the decision-making processes. In the last few decades, advancements of the emerging biomedical sensing and imaging technologies such as magnetic resonance imaging (MRI), x-ray computed tomography (CT) imaging, and ultrasound imaging have provided us with very large amounts of biomedical data that can never be processed by medical practitioners within a finite time span.
+
+Biomedical information processing comprises the techniques that apply mathematical tools to extract important diagnostic information from biomedical and biological data. Due to the size and complexity of such data, computers are put to the task of processing, visualizing, and even classifying samples. The main steps of a typical biomedical measurement and processing system are shown in Figure I.1. As can be seen, the first step is to identify the relevant physical properties of the biomedical system that can be measured using suitable sensors. For example, electrocardiogram (ECG) is a signal that records the electrical activities of the heart muscles and is used to evaluate many functional characteristics of the heart.
+
+Once a biomedical signal is recorded by a sensor, it has to be preprocessed and filtered. This is necessary because the measured signal often contains some undesirable noise that is combined with the relevant biomedical signal. The usual sources of noise include the activities of other biological systems that interfere with the desirable signal and the variations due to sensor imperfections. In the ECG example, the electrical signals caused by the respiratory system are the main sources of noise and interference.
+
+The next step is to process the filtered signal and extract features that represent or describe the status and conditions of the biomedical system under study. Such biomedical features (measures) are expected to distinguish between healthy and deviating cases. A group of extracted features are defined based on the medical characteristics of the biomedical system (such as the heart rate calculated from ECG). These features are often defined by physicians and biologists, and the task of biomedical engineers is to create algorithms to extract these features from biomedical signals. Another group of extracted features is the ones defined using signal and image processing procedures. Even though the direct biological interpretation of such features may not be well understood, these features are instrumental in the classification and diagnosis of biomedical systems. In the ECG example, the physiological interpretation of measures such as the fractal dimension of a filtered version of the signal or the energy of the wavelet coefficients in a certain band may not necessarily be known or understood. However, these measures are known to contain informative signal processing--based features that significantly facilitate the classification of biomedical signals.
+
+The last step is classification and diagnostics. In this step, all the extracted features are submitted to a classifier that distinguishes among different classes of samples, e.g., normal and abnormal. These classes are defined based on the biomedical knowledge specific to the signal that is being processed. In the ECG example, these classes might include normal, myocardial infarction, flutter, different types of tachycardia, and so on. The way a classifier is designed is very application specific. In some systems, the features needed to classify samples to each respective class are well known. Therefore, the classifier can be easily designed using the direct implementation of the available knowledge base and features. In other cases, where no clear rules are available (or the existing rules are not sufficient), the classifier must be built and trained using the known examples of each class.
+
+% NOTE: Figure I.1 placeholder
+\begin{figure}[h]
+\centering
+\rule{0.6\textwidth}{0.3\textwidth}
+\caption{Block diagram of a typical biomedical signal/image processing system. (Placeholder)}
+\end{figure}
+
+\section*{I.2 About the Book}
+This book is designed to be used as either a senior level undergraduate course or as a first-year graduate level course. The main background needed to understand and use the book is college level calculus and some familiarity with complex variables. Knowledge of linear algebra would also be helpful in understanding the concepts. The book describes the mathematical concepts in signal and image processing techniques in great detail and, as a result, no prior knowledge of fundamental processing techniques (such as Fourier transform) is required. At the same time, for readers who are already familiar with the main signal processing concepts, the chapters dedicated to signal and image processing techniques can serve as a detailed review of this field.
+
+% (Text continues; included content is what was extracted. Remaining chapters are indicated below.)
+
+\part{Introduction to Digital Signal and Image Processing}
+
+\chapter{Signals and Biomedical Signal Processing}
+\section{1.1 Introduction and Overview}
+The most fundamental concept that is frequently used in this book is a ``signal''. It is imperative to clearly define this concept and to illustrate different types of signals encountered in signal and image processing. In this chapter, different types of signals are defined, and the fundamental concepts of signal transformation and processing are presented while avoiding detailed mathematical formulations.
+
+\section{1.2 What is a ``Signal''?}
+The definition of a signal plays an important role in understanding the capabilities of signal processing. We start this chapter with the definition of one-dimensional (1-D) signals. A 1-D signal is an ordered sequence of numbers that describes the trends and variations of a quantity. The consecutive measurements of a physical quantity taken at different times create a typical signal encountered in science and engineering. The order of the numbers in a signal is often determined by the order of measurements (or events) in ``time.'' A sequence of body temperature recordings collected in consecutive days forms an example of a 1-D signal in time. The characteristics of a signal lie in the order of the numbers as well as the amplitude of the recorded numbers, and the main task of all signal processing tools is to analyze the signal in order to extract important knowledge that may not be clearly visible to the human eyes.
+
+We have to emphasize the point that not all 1-D signals are necessarily ordered in time. As an example, consider the signal formed by the recordings of the temperature simultaneously measured at different points along a metal rod where the distance from one end of the rod defines the order of the sequence. In such a signal, the points that are closer to the origin (one end of the metal rod) appear earlier in the sequence, and, as a result, the concept that orders the sequence is ``distance in space'' as opposed to time. However, due to abundance of time signals in many areas of science, in the literature of signal processing, the word ``time'' is often used to describe the axis that identifies order. In this book, without losing the generality of the results or concepts, we use the concept of time as the ordering axis, knowing that, in some signals, time should be replaced by other concepts such as space.
+
+Many examples of biological 1-D signals are heavily used in medicine and biology. Recording of the electrical activities of the heart muscles, called electrocardiogram (ECG), is widely considered as the main diagnostic signal in assessment of the cardiovascular system. Electroencephalogram (EEG) is a signal that records the electrical activities of the brain and is heavily used in diagnostics of the central nervous system (CNS).
+
+\section{1.3 Analog, Discrete, and Digital Signals}
+Based on the continuity of a signal in time and amplitude axes, the following three types of signals can be recognized:
+
+\subsection{1.3.1 Analog Signals}
+These signals are continuous both in time and amplitude. This means that both time and amplitude axes are continuous axes and can take any real number. In other words, at any given real values of time ``t'' the amplitude value ``g(t)'' can take any number belonging to a continuous interval of real numbers. An example of such a signal is the body temperature readings acquired using an analog mercury thermometer over a certain period of time. In such a thermometer, the temperature is measured at all times and the temperature value (i.e., the height of the mercury column) belongs to a continuous interval of numbers. An example of such a signal is shown in Figure 1.1. The signal illustrates the readings of the body temperature measured continuously for 6000 s (or equivalently 100 min).
+
+\subsection{1.3.2 Discrete Signals}
+In discrete signals, the amplitude axis is continuous but the time axis is discrete. This means that, unlike in analog signals, the measurements of the quantity are available only at certain specific times. In order to see why discrete signals are often preferred over analog signals in many practical applications, consider the example given earlier for analog signals. It is very unlikely that the body temperature may change every second, or even every few minutes, and, therefore, in order to monitor the temperature over a period of time, one can easily measure and sample the temperature only at certain times (as opposed to continuously monitoring the temperature as in the analog signal described earlier). The times at which the temperature is sampled are often multiples of a certain sampling period ``TS.'' It is important to note that as long as TS is small enough, all information in the analog signal is also contained in the discrete signal. Later in this book, an important theorem called Nyquist theorem is described that gives a limit on the size of the sampling period TS. This size limit guarantees that the sampled signal (i.e., discrete signal) contains all information of the original analog signal.
+
+% (Further extracted Chapter 1 content follows...)
+
+\section{1.3.3 Digital Signals}
+In digital signals, both time and amplitude axes are discrete, i.e., a digital signal is defined only at certain times and the amplitude of the signal at each sample can only be one of a fixed finite set of values. In order to better understand this concept, consider measuring the body temperature using a digital thermometer. Such thermometers present values with certain accuracy rather than on a continuous range of amplitudes. For example, if the true temperature is 98.634562 and there are no decimal representations on the digital thermometer, the reading will be 97 (which is the closest allowed level), and the decimal digits are simply ignored. This of course causes some quantization error, but, in reality, the remaining decimals are not very important for physicians and this error can be easily disregarded. What is gained by creating a digital signal is the ease of using digital computers to store and process the data. Figure 1.3 shows the digital signal taken from the discrete signal depicted in Figure 1.2 that is rounded up to the closest integer. It is important to note that almost all techniques discussed in this book and used in digital signal processing are truly dealing with ``discrete signals'' and not ``digital signals'' as the name might suggest. The reason why these techniques are called digital signal processing is that when the algebraic operations are performed inside a digital computer, all the variables are automatically quantized and converted into digital numbers. These digital numbers have a finite but very large number of decimals, and, as a result, even though digital in nature, they are often treated as discrete numbers.
+
+\section{1.4 Processing and Transformation of Signals}
+A signal can be analyzed or processed in many different ways depending on the objectives of the signal analysis. Each of these processing technique attempts to extract, highlight, and emphasize certain properties of a signal. For example, in order to see the number of cold days during a given year, one can easily count the number of days when the temperature signal falls below a threshold value that identifies cold weather. Thresholding is only one example of many different processing techniques and transformations that can manipulate a signal to highlight some of its properties. Some transformations express and evaluate the signal in time domain, while other transformations focus on other ``domains'' among which frequency domain is an important one. In this section, we describe the importance and usefulness of some signal processing transformations without getting into their mathematical details. This would encourage the readers to pay a closer attention to the conceptual meanings of these transformations whose mathematical descriptions will be given in the next few chapters.
+
+% ... (text continues)...
+
+\chapter*{Notes on Conversion}
+This LaTeX file is a best-effort partial conversion using the text extracted from your uploaded PDF. The following points are important:
+\begin{itemize}
+\item The file includes front matter (title, authors), Preface, Acknowledgments, Introduction, and the beginning of Part I / Chapter 1 content extracted from the PDF.
+\item The original PDF is long and the automatic extraction available here was truncated at a certain point. I have placed a few placeholders and comments (``% ...'') where further content should be inserted.
+\item Equations, figures, tables, and complex formatting were inserted as placeholders where needed. For full fidelity (e.g., converting images, complex equations, and tables into native \LaTeX), I can continue converting the rest of the PDF in further steps — but you asked for a single .tex file, so I created this single file containing the material I currently have.
+\item If you want me to continue and include the remainder of the book into this same .tex file (including converting images to files, extracting all chapters, converting equations into math mode, and building a full compiled document), say \textbf{``Continue and include rest''} and I will proceed to extract the remaining pages and append them to this single file. (I'll continue directly without asking further questions.)
+\end{itemize}
+
+\end{document}
