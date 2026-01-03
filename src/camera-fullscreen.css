@@ -1,0 +1,341 @@
+/* Fullscreen Camera Styles - Responsive for All Devices */
+
+/* Charts container fullscreen overlay */
+#charts {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    background: #000;
+    overflow: hidden;
+}
+
+/* Video elements fullscreen */
+#video,
+#multivideo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: cover;
+    z-index: 1;
+}
+
+/* Output canvas fullscreen */
+#output-canvas {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    z-index: 2;
+}
+
+/* Chart containers responsive positioning */
+#solar-nuclear-photovoltaic-chart,
+#chart100d,
+#container,
+#chartsContainer {
+    position: relative;
+    width: 100%;
+    height: auto;
+    z-index: 3;
+}
+
+/* SVG chart responsive */
+#chart-canvas {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 90vh;
+}
+
+/* Control buttons positioned for easy access */
+#printbtn,
+#export100,
+#showascii,
+#snapshot {
+    position: fixed;
+    z-index: 10000;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#printbtn {
+    top: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+}
+
+#export100 {
+    top: 80px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+}
+
+#showascii {
+    top: 140px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+}
+
+#snapshot {
+    top: 200px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+}
+
+/* Slideshow container fullscreen */
+#slideshow-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#slideshow-container img {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+}
+
+/* Image gallery responsive */
+#imageGallery {
+    position: relative;
+    width: 100%;
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px;
+}
+
+/* Info text overlays */
+#solar-nuclear-photovoltaic-resolution,
+#solar-nuclear-photovoltaic-delay,
+#solar-nuclear-photovoltaic-frame-fps,
+#solar-nuclear-photovoltaic-frame-time,
+#solar-nuclear-photovoltaic-video-time,
+#solar-nuclear-photovoltaic-signal,
+#solar-nuclear-photovoltaic-signal-window,
+#gdval,
+#lonval,
+#latval {
+    position: fixed;
+    left: 20px;
+    color: #0f0;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    font-weight: bold;
+    z-index: 10001;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 5px 10px;
+    border-radius: 3px;
+    text-shadow: 0 0 5px #0f0;
+}
+
+#solar-nuclear-photovoltaic-resolution { top: 20px; }
+#solar-nuclear-photovoltaic-delay { top: 50px; }
+#solar-nuclear-photovoltaic-frame-fps { top: 80px; }
+#solar-nuclear-photovoltaic-frame-time { top: 110px; }
+#solar-nuclear-photovoltaic-video-time { top: 140px; }
+#solar-nuclear-photovoltaic-signal { top: 170px; }
+#solar-nuclear-photovoltaic-signal-window { top: 200px; }
+#gdval { top: 230px; }
+#lonval { top: 260px; }
+#latval { top: 290px; }
+
+/* Close button for exiting fullscreen */
+#charts::before {
+    content: '×';
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    font-size: 40px;
+    color: #fff;
+    cursor: pointer;
+    z-index: 10002;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 0, 0, 0.7);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+#charts::before:hover {
+    background: rgba(255, 0, 0, 1);
+    transform: scale(1.1);
+}
+
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* Tablets and smaller laptops (portrait) */
+@media screen and (max-width: 1024px) {
+    #printbtn,
+    #export100,
+    #showascii,
+    #snapshot {
+        width: 40px;
+        height: 40px;
+        right: 15px;
+    }
+    
+    #export100 { top: 70px; }
+    #showascii { top: 120px; }
+    #snapshot { top: 170px; }
+    
+    #solar-nuclear-photovoltaic-resolution,
+    #solar-nuclear-photovoltaic-delay,
+    #solar-nuclear-photovoltaic-frame-fps,
+    #solar-nuclear-photovoltaic-frame-time,
+    #solar-nuclear-photovoltaic-video-time,
+    #solar-nuclear-photovoltaic-signal,
+    #solar-nuclear-photovoltaic-signal-window,
+    #gdval,
+    #lonval,
+    #latval {
+        font-size: 12px;
+        left: 15px;
+    }
+}
+
+/* Mobile devices (landscape and portrait) */
+@media screen and (max-width: 768px) {
+    #printbtn,
+    #export100,
+    #showascii,
+    #snapshot {
+        width: 35px;
+        height: 35px;
+        right: 10px;
+    }
+    
+    #printbtn { top: 15px; }
+    #export100 { top: 60px; }
+    #showascii { top: 105px; }
+    #snapshot { top: 150px; }
+    
+    #solar-nuclear-photovoltaic-resolution,
+    #solar-nuclear-photovoltaic-delay,
+    #solar-nuclear-photovoltaic-frame-fps,
+    #solar-nuclear-photovoltaic-frame-time,
+    #solar-nuclear-photovoltaic-video-time,
+    #solar-nuclear-photovoltaic-signal,
+    #solar-nuclear-photovoltaic-signal-window,
+    #gdval,
+    #lonval,
+    #latval {
+        font-size: 10px;
+        padding: 3px 6px;
+        left: 10px;
+    }
+    
+    #solar-nuclear-photovoltaic-resolution { top: 15px; }
+    #solar-nuclear-photovoltaic-delay { top: 40px; }
+    #solar-nuclear-photovoltaic-frame-fps { top: 65px; }
+    #solar-nuclear-photovoltaic-frame-time { top: 90px; }
+    #solar-nuclear-photovoltaic-video-time { top: 115px; }
+    #solar-nuclear-photovoltaic-signal { top: 140px; }
+    #solar-nuclear-photovoltaic-signal-window { top: 165px; }
+    #gdval { top: 190px; }
+    #lonval { top: 215px; }
+    #latval { top: 240px; }
+}
+
+/* Small mobile devices */
+@media screen and (max-width: 480px) {
+    #printbtn,
+    #export100,
+    #showascii,
+    #snapshot {
+        width: 30px;
+        height: 30px;
+    }
+    
+    #solar-nuclear-photovoltaic-resolution,
+    #solar-nuclear-photovoltaic-delay,
+    #solar-nuclear-photovoltaic-frame-fps,
+    #solar-nuclear-photovoltaic-frame-time,
+    #solar-nuclear-photovoltaic-video-time,
+    #solar-nuclear-photovoltaic-signal,
+    #solar-nuclear-photovoltaic-signal-window,
+    #gdval,
+    #lonval,
+    #latval {
+        font-size: 9px;
+        padding: 2px 4px;
+    }
+    
+    #charts::before {
+        font-size: 30px;
+        width: 40px;
+        height: 40px;
+    }
+}
+
+/* Landscape orientation adjustments */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    #solar-nuclear-photovoltaic-resolution,
+    #solar-nuclear-photovoltaic-delay,
+    #solar-nuclear-photovoltaic-frame-fps,
+    #solar-nuclear-photovoltaic-frame-time,
+    #solar-nuclear-photovoltaic-video-time,
+    #solar-nuclear-photovoltaic-signal,
+    #solar-nuclear-photovoltaic-signal-window,
+    #gdval,
+    #lonval,
+    #latval {
+        font-size: 8px;
+        padding: 2px 4px;
+    }
+    
+    #solar-nuclear-photovoltaic-resolution { top: 10px; }
+    #solar-nuclear-photovoltaic-delay { top: 30px; }
+    #solar-nuclear-photovoltaic-frame-fps { top: 50px; }
+    #solar-nuclear-photovoltaic-frame-time { top: 70px; }
+    #solar-nuclear-photovoltaic-video-time { top: 90px; }
+    #solar-nuclear-photovoltaic-signal { top: 110px; }
+    #solar-nuclear-photovoltaic-signal-window { top: 130px; }
+    #gdval { top: 150px; }
+    #lonval { top: 170px; }
+    #latval { top: 190px; }
+}
+
+/* Very small devices - ultra compact mode */
+@media screen and (max-width: 320px) {
+    #printbtn,
+    #export100,
+    #showascii,
+    #snapshot {
+        width: 25px;
+        height: 25px;
+    }
+}
+
+/* Ensure body doesn't scroll when charts are active */
+body.charts-active {
+    overflow: hidden;
+}
