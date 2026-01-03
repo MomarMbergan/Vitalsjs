@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Dual Camera Thermal Dashboard - Debugged</title>
+  <title>Dual Camera Thermal Dashboard - Flip Camera</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -81,6 +81,15 @@
     }
     .cameraControls button:hover {
       background: rgba(0, 229, 255, 0.4);
+      transform: scale(1.02);
+    }
+    .cameraControls button.flip {
+      background: rgba(255, 193, 7, 0.3);
+      border-color: #ffc107;
+      color: #ffc107;
+    }
+    .cameraControls button.flip:hover {
+      background: rgba(255, 193, 7, 0.5);
     }
     .cameraControls input {
       display: block;
@@ -209,6 +218,22 @@
       text-shadow: 0 0 10px #00e5ff;
     }
     
+    /* Flip animation */
+    @keyframes flipOut {
+      0% { transform: rotateY(0deg); opacity: 1; }
+      100% { transform: rotateY(90deg); opacity: 0.3; }
+    }
+    @keyframes flipIn {
+      0% { transform: rotateY(-90deg); opacity: 0.3; }
+      100% { transform: rotateY(0deg); opacity: 1; }
+    }
+    .flipping-out {
+      animation: flipOut 0.3s ease-in forwards;
+    }
+    .flipping-in {
+      animation: flipIn 0.3s ease-out forwards;
+    }
+    
     /* Responsive Design */
     @media(max-width: 768px) { 
       .container { 
@@ -240,16 +265,17 @@
   <div class="container">
     <!-- LEFT SCREEN - FRONT CAMERA (USER FACING) -->
     <div class="screen" id="frontScreen">
-      <div class="cameraLabel">🎥 FRONT CAMERA (SELFIE)</div>
+      <div class="cameraLabel" id="frontLabel">🎥 FRONT CAMERA (SELFIE)</div>
       <div class="analyzing">● ANALYZING</div>
       
       <div class="cameraControls">
-        <label>📹 Front Camera</label>
+        <label>📹 Left Screen Camera</label>
         <select id="frontCameraSelect">
           <option value="">Select Camera...</option>
         </select>
-        <button onclick="activateFrontCamera()">▶ Activate Front</button>
-        <button onclick="stopFrontCamera()">⏹ Stop Front</button>
+        <button onclick="activateFrontCamera()">▶ Activate Camera</button>
+        <button class="flip" onclick="flipFrontCamera()">🔄 Flip Camera</button>
+        <button onclick="stopFrontCamera()">⏹ Stop Camera</button>
         <hr style="margin: 10px 0; border-color: #00e5ff;">
         <label>Wi-Fi Camera</label>
         <input id="frontIp" type="text" placeholder="IP: 192.168.1.100"/>
@@ -258,7 +284,7 @@
       
       <div id="frontStatus" class="statusBlock">
         Status: Waiting...<br>
-        <small>Click 'Activate Front' to start</small>
+        <small>Click 'Activate Camera' to start</small>
       </div>
       
       <div class="debugInfo" id="frontDebug">
@@ -292,16 +318,16 @@
 
     <!-- RIGHT SCREEN - REAR CAMERA (ENVIRONMENT FACING) -->
     <div class="screen" id="rearScreen">
-      <div class="cameraLabel">🎥 REAR CAMERA (BACK)</div>
+      <div class="cameraLabel" id="rearLabelText">🎥 REAR CAMERA (BACK)</div>
       <div class="analyzing">● ANALYZING</div>
       
       <div class="cameraControls">
-        <label>📹 Rear Camera</label>
+        <label>📹 Right Screen Camera</label>
         <select id="rearCameraSelect">
           <option value="">Select Camera...</option>
         </select>
-        <button onclick="activateRearCamera()">▶ Activate Rear</button>
-        <button onclick="stopRearCamera()">⏹ Stop Rear</button>
+        <button class="flip" onclick="flipRearCamera()">🔄 Flip Camera</button>
+        <button onclick="stopRearCamera()">⏹ Stop Camera</button>
         <hr style="margin: 10px 0; border-color: #00e5ff;">
         <label>Wi-Fi Camera</label>
         <input id="rearIp" type="text" placeholder="IP: 192.168.1.101"/>
@@ -310,7 +336,7 @@
       
       <div id="rearStatus" class="statusBlock">
         Status: Waiting...<br>
-        <small>Click 'Activate Rear' to start</small>
+        <small>Click 'Flip Camera' to start</small>
       </div>
       
       <div class="debugInfo" id="rearDebug">
@@ -355,6 +381,8 @@ let animationFrames = {
   rear: null
 };
 let availableCameras = [];
+let currentFrontFacing = "user";  // Track current facing mode
+let currentRearFacing = "environment";  // Track current facing mode
 
 // ============================================================================
 // STATUS & DEBUG HELPERS
@@ -372,6 +400,32 @@ function updateDebugInfo(camera, info) {
   document.getElementById(`${prefix}Facing`).textContent = info.facing || 'N/A';
   document.getElementById(`${prefix}Res`).textContent = info.resolution || 'N/A';
   document.getElementById(`${prefix}Label`).textContent = info.label || 'N/A';
+}
+
+function updateCameraLabel(camera, facing) {
+  if (camera === 'front') {
+    const label = document.getElementById('frontLabel');
+    if (facing === 'user') {
+      label.innerHTML = '🎥 FRONT CAMERA (SELFIE)';
+      label.style.borderColor = '#00e5ff';
+      label.style.color = '#00e5ff';
+    } else {
+      label.innerHTML = '🎥 REAR CAMERA (BACK)';
+      label.style.borderColor = '#ffc107';
+      label.style.color = '#ffc107';
+    }
+  } else {
+    const label = document.getElementById('rearLabelText');
+    if (facing === 'environment') {
+      label.innerHTML = '🎥 REAR CAMERA (BACK)';
+      label.style.borderColor = '#00e5ff';
+      label.style.color = '#00e5ff';
+    } else {
+      label.innerHTML = '🎥 FRONT CAMERA (SELFIE)';
+      label.style.borderColor = '#ffc107';
+      label.style.color = '#ffc107';
+    }
+  }
 }
 
 // ============================================================================
@@ -427,25 +481,206 @@ function populateCameraDropdowns() {
 }
 
 // ============================================================================
-// FRONT CAMERA (LEFT SCREEN - USER FACING)
+// FLIP CAMERA FUNCTIONS
+// ============================================================================
+async function flipFrontCamera() {
+  console.log("🔄 Flipping FRONT screen camera...");
+  
+  const video = document.getElementById("frontCam");
+  
+  // Add flip animation
+  video.classList.add('flipping-out');
+  
+  // Wait for animation
+  setTimeout(async () => {
+    // Toggle facing mode
+    currentFrontFacing = currentFrontFacing === "user" ? "environment" : "user";
+    
+    console.log(`📌 Switching to ${currentFrontFacing} camera`);
+    
+    // Stop existing stream
+    if (frontStream) {
+      frontStream.getTracks().forEach(track => track.stop());
+      frontStream = null;
+    }
+    
+    const selectedDeviceId = document.getElementById('frontCameraSelect').value;
+    
+    try {
+      setStatus("frontStatus", "🔄 Flipping camera...", false);
+      
+      // Build constraints
+      let constraints = {
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      };
+      
+      // If specific camera selected, use deviceId
+      if (selectedDeviceId) {
+        constraints.video.deviceId = { exact: selectedDeviceId };
+      } else {
+        // Use current facing mode
+        constraints.video.facingMode = { ideal: currentFrontFacing };
+      }
+      
+      // Get new stream
+      frontStream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = frontStream;
+      
+      // Wait for metadata
+      await new Promise((resolve) => {
+        video.onloadedmetadata = resolve;
+      });
+      
+      await video.play();
+      
+      // Get track info
+      const track = frontStream.getVideoTracks()[0];
+      const settings = track.getSettings();
+      
+      console.log("✅ Camera flipped:", track.label);
+      
+      // Update UI
+      setStatus("frontStatus", `✅ Flipped to: ${track.label}`, true);
+      updateCameraLabel('front', currentFrontFacing);
+      
+      updateDebugInfo('front', {
+        streamStatus: 'Active',
+        facing: settings.facingMode || currentFrontFacing,
+        resolution: `${settings.width}x${settings.height}`,
+        label: track.label
+      });
+      
+      // Remove flip-out, add flip-in
+      video.classList.remove('flipping-out');
+      video.classList.add('flipping-in');
+      
+      setTimeout(() => {
+        video.classList.remove('flipping-in');
+      }, 300);
+      
+      // Start processing
+      startVideoProcessing('front');
+      
+    } catch (err) {
+      console.error("❌ Flip error:", err);
+      setStatus("frontStatus", `❌ Error: ${err.message}`, false);
+      video.classList.remove('flipping-out');
+    }
+  }, 300);
+}
+
+async function flipRearCamera() {
+  console.log("🔄 Flipping REAR screen camera...");
+  
+  const video = document.getElementById("rearCam");
+  
+  // Add flip animation
+  video.classList.add('flipping-out');
+  
+  // Wait for animation
+  setTimeout(async () => {
+    // Toggle facing mode
+    currentRearFacing = currentRearFacing === "environment" ? "user" : "environment";
+    
+    console.log(`📌 Switching to ${currentRearFacing} camera`);
+    
+    // Stop existing stream
+    if (rearStream) {
+      rearStream.getTracks().forEach(track => track.stop());
+      rearStream = null;
+    }
+    
+    const selectedDeviceId = document.getElementById('rearCameraSelect').value;
+    
+    try {
+      setStatus("rearStatus", "🔄 Flipping camera...", false);
+      
+      // Build constraints
+      let constraints = {
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      };
+      
+      // If specific camera selected, use deviceId
+      if (selectedDeviceId) {
+        constraints.video.deviceId = { exact: selectedDeviceId };
+      } else {
+        // Use current facing mode
+        constraints.video.facingMode = { ideal: currentRearFacing };
+      }
+      
+      // Get new stream
+      rearStream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = rearStream;
+      
+      // Wait for metadata
+      await new Promise((resolve) => {
+        video.onloadedmetadata = resolve;
+      });
+      
+      await video.play();
+      
+      // Get track info
+      const track = rearStream.getVideoTracks()[0];
+      const settings = track.getSettings();
+      
+      console.log("✅ Camera flipped:", track.label);
+      
+      // Update UI
+      setStatus("rearStatus", `✅ Flipped to: ${track.label}`, true);
+      updateCameraLabel('rear', currentRearFacing);
+      
+      updateDebugInfo('rear', {
+        streamStatus: 'Active',
+        facing: settings.facingMode || currentRearFacing,
+        resolution: `${settings.width}x${settings.height}`,
+        label: track.label
+      });
+      
+      // Remove flip-out, add flip-in
+      video.classList.remove('flipping-out');
+      video.classList.add('flipping-in');
+      
+      setTimeout(() => {
+        video.classList.remove('flipping-in');
+      }, 300);
+      
+      // Start processing
+      startVideoProcessing('rear');
+      
+    } catch (err) {
+      console.error("❌ Flip error:", err);
+      setStatus("rearStatus", `❌ Error: ${err.message}`, false);
+      video.classList.remove('flipping-out');
+    }
+  }, 300);
+}
+
+// ============================================================================
+// FRONT CAMERA (LEFT SCREEN)
 // ============================================================================
 async function activateFrontCamera() {
-  console.log("🎥 Activating FRONT camera (user-facing)...");
-  
-  // Stop existing stream
-  if (frontStream) {
-    console.log("⏹ Stopping existing front stream");
-    frontStream.getTracks().forEach(track => track.stop());
-    frontStream = null;
-  }
+  console.log("🎥 Activating FRONT screen camera...");
   
   const video = document.getElementById("frontCam");
   const selectedDeviceId = document.getElementById('frontCameraSelect').value;
   
+  // Stop existing stream
+  if (frontStream) {
+    frontStream.getTracks().forEach(track => track.stop());
+    frontStream = null;
+  }
+  
   try {
-    setStatus("frontStatus", "🔄 Connecting to front camera...", false);
+    setStatus("frontStatus", "🔄 Connecting...", false);
     
-    // Build constraints
     let constraints = {
       video: {
         width: { ideal: 1920 },
@@ -454,63 +689,43 @@ async function activateFrontCamera() {
       audio: false
     };
     
-    // If specific camera selected, use deviceId
     if (selectedDeviceId) {
       constraints.video.deviceId = { exact: selectedDeviceId };
-      console.log("📌 Using selected device:", selectedDeviceId);
     } else {
-      // Try to get front-facing camera
-      constraints.video.facingMode = { ideal: "user" };
-      console.log("📌 Requesting user-facing camera");
+      constraints.video.facingMode = { ideal: currentFrontFacing };
     }
     
-    // Get stream
     frontStream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = frontStream;
     
-    // Wait for metadata
     await new Promise((resolve) => {
       video.onloadedmetadata = resolve;
     });
     
     await video.play();
     
-    // Get track info
     const track = frontStream.getVideoTracks()[0];
     const settings = track.getSettings();
     
-    console.log("✅ Front camera activated:", track.label);
-    console.log("📊 Settings:", settings);
-    
-    // Update UI
     setStatus("frontStatus", `✅ Connected: ${track.label}`, true);
+    updateCameraLabel('front', currentFrontFacing);
     
     updateDebugInfo('front', {
       streamStatus: 'Active',
-      facing: settings.facingMode || 'unknown',
+      facing: settings.facingMode || currentFrontFacing,
       resolution: `${settings.width}x${settings.height}`,
       label: track.label
     });
     
-    // Start processing
     startVideoProcessing('front');
     
   } catch (err) {
-    console.error("❌ Front camera error:", err);
+    console.error("❌ Error:", err);
     setStatus("frontStatus", `❌ Error: ${err.message}`, false);
-    
-    updateDebugInfo('front', {
-      streamStatus: 'Error: ' + err.message,
-      facing: 'N/A',
-      resolution: 'N/A',
-      label: 'N/A'
-    });
   }
 }
 
 function stopFrontCamera() {
-  console.log("⏹ Stopping front camera");
-  
   if (frontStream) {
     frontStream.getTracks().forEach(track => track.stop());
     frontStream = null;
@@ -535,15 +750,11 @@ function stopFrontCamera() {
 
 async function connectFrontWiFi() {
   const ip = document.getElementById("frontIp").value.trim();
-  
   if (!ip) {
-    setStatus("frontStatus", "❌ Enter Wi-Fi IP address", false);
+    setStatus("frontStatus", "❌ Enter Wi-Fi IP", false);
     return;
   }
   
-  console.log("🌐 Connecting to front Wi-Fi camera:", ip);
-  
-  // Stop existing stream
   stopFrontCamera();
   
   const video = document.getElementById("frontCam");
@@ -554,7 +765,7 @@ async function connectFrontWiFi() {
   
   video.play()
     .then(() => {
-      setStatus("frontStatus", `✅ Connected: Wi-Fi ${ip}`, true);
+      setStatus("frontStatus", `✅ Wi-Fi: ${ip}`, true);
       updateDebugInfo('front', {
         streamStatus: 'Wi-Fi Active',
         facing: 'Wi-Fi Camera',
@@ -564,96 +775,14 @@ async function connectFrontWiFi() {
       startVideoProcessing('front');
     })
     .catch((err) => {
-      console.error("❌ Wi-Fi camera error:", err);
-      setStatus("frontStatus", `❌ Wi-Fi Error: ${err.message}`, false);
+      setStatus("frontStatus", `❌ Wi-Fi Error`, false);
     });
 }
 
 // ============================================================================
-// REAR CAMERA (RIGHT SCREEN - ENVIRONMENT FACING)
+// REAR CAMERA (RIGHT SCREEN) - NO ACTIVATE FUNCTION, ONLY FLIP
 // ============================================================================
-async function activateRearCamera() {
-  console.log("🎥 Activating REAR camera (environment-facing)...");
-  
-  // Stop existing stream
-  if (rearStream) {
-    console.log("⏹ Stopping existing rear stream");
-    rearStream.getTracks().forEach(track => track.stop());
-    rearStream = null;
-  }
-  
-  const video = document.getElementById("rearCam");
-  const selectedDeviceId = document.getElementById('rearCameraSelect').value;
-  
-  try {
-    setStatus("rearStatus", "🔄 Connecting to rear camera...", false);
-    
-    // Build constraints
-    let constraints = {
-      video: {
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
-      },
-      audio: false
-    };
-    
-    // If specific camera selected, use deviceId
-    if (selectedDeviceId) {
-      constraints.video.deviceId = { exact: selectedDeviceId };
-      console.log("📌 Using selected device:", selectedDeviceId);
-    } else {
-      // Try to get rear-facing camera
-      constraints.video.facingMode = { ideal: "environment" };
-      console.log("📌 Requesting environment-facing camera");
-    }
-    
-    // Get stream
-    rearStream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = rearStream;
-    
-    // Wait for metadata
-    await new Promise((resolve) => {
-      video.onloadedmetadata = resolve;
-    });
-    
-    await video.play();
-    
-    // Get track info
-    const track = rearStream.getVideoTracks()[0];
-    const settings = track.getSettings();
-    
-    console.log("✅ Rear camera activated:", track.label);
-    console.log("📊 Settings:", settings);
-    
-    // Update UI
-    setStatus("rearStatus", `✅ Connected: ${track.label}`, true);
-    
-    updateDebugInfo('rear', {
-      streamStatus: 'Active',
-      facing: settings.facingMode || 'unknown',
-      resolution: `${settings.width}x${settings.height}`,
-      label: track.label
-    });
-    
-    // Start processing
-    startVideoProcessing('rear');
-    
-  } catch (err) {
-    console.error("❌ Rear camera error:", err);
-    setStatus("rearStatus", `❌ Error: ${err.message}`, false);
-    
-    updateDebugInfo('rear', {
-      streamStatus: 'Error: ' + err.message,
-      facing: 'N/A',
-      resolution: 'N/A',
-      label: 'N/A'
-    });
-  }
-}
-
 function stopRearCamera() {
-  console.log("⏹ Stopping rear camera");
-  
   if (rearStream) {
     rearStream.getTracks().forEach(track => track.stop());
     rearStream = null;
@@ -678,15 +807,11 @@ function stopRearCamera() {
 
 async function connectRearWiFi() {
   const ip = document.getElementById("rearIp").value.trim();
-  
   if (!ip) {
-    setStatus("rearStatus", "❌ Enter Wi-Fi IP address", false);
+    setStatus("rearStatus", "❌ Enter Wi-Fi IP", false);
     return;
   }
   
-  console.log("🌐 Connecting to rear Wi-Fi camera:", ip);
-  
-  // Stop existing stream
   stopRearCamera();
   
   const video = document.getElementById("rearCam");
@@ -697,7 +822,7 @@ async function connectRearWiFi() {
   
   video.play()
     .then(() => {
-      setStatus("rearStatus", `✅ Connected: Wi-Fi ${ip}`, true);
+      setStatus("rearStatus", `✅ Wi-Fi: ${ip}`, true);
       updateDebugInfo('rear', {
         streamStatus: 'Wi-Fi Active',
         facing: 'Wi-Fi Camera',
@@ -707,8 +832,7 @@ async function connectRearWiFi() {
       startVideoProcessing('rear');
     })
     .catch((err) => {
-      console.error("❌ Wi-Fi camera error:", err);
-      setStatus("rearStatus", `❌ Wi-Fi Error: ${err.message}`, false);
+      setStatus("rearStatus", `❌ Wi-Fi Error`, false);
     });
 }
 
@@ -722,9 +846,6 @@ function startVideoProcessing(camera) {
   const canvas = document.getElementById(canvasId);
   const ctx = canvas.getContext('2d');
   
-  console.log(`🎬 Starting video processing for ${camera} camera`);
-  
-  // Stop existing animation
   if (animationFrames[camera]) {
     cancelAnimationFrame(animationFrames[camera]);
   }
@@ -734,17 +855,12 @@ function startVideoProcessing(camera) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       
-      // Draw video frame
       ctx.drawImage(video, 0, 0);
       
-      // Get image data for analysis
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
       
-      // Simple PPG analysis (average red and green channels)
-      let redSum = 0;
-      let greenSum = 0;
-      let blueSum = 0;
+      let redSum = 0, greenSum = 0, blueSum = 0;
       
       for (let i = 0; i < data.length; i += 4) {
         redSum += data[i];
@@ -757,7 +873,6 @@ function startVideoProcessing(camera) {
       const avgGreen = greenSum / pixels;
       const avgBlue = blueSum / pixels;
       
-      // Update biometrics
       updateBiometrics(camera, avgRed, avgGreen, avgBlue);
     }
     
@@ -767,7 +882,6 @@ function startVideoProcessing(camera) {
   processFrame();
 }
 
-// Data buffers for charts
 let dataBuffers = {
   front: { ppg: [], spo2: [], time: 0 },
   rear: { ppg: [], spo2: [], time: 0 }
@@ -776,29 +890,23 @@ let dataBuffers = {
 function updateBiometrics(camera, red, green, blue) {
   const prefix = camera === 'front' ? 'Front' : 'Rear';
   
-  // Simulate biometric calculations with realistic variations
   const time = dataBuffers[camera].time++;
   const hr = Math.floor(65 + Math.sin(time / 30) * 15 + (Math.random() - 0.5) * 3);
   const spo2 = Math.floor(96 + Math.sin(time / 50) * 2 + (Math.random() - 0.5) * 1);
   const temp = (98.2 + Math.sin(time / 100) * 0.6 + (Math.random() - 0.5) * 0.2).toFixed(1);
   
-  // Update HUD
   document.getElementById(`hr${prefix}`).textContent = hr;
   document.getElementById(`spo2${prefix}`).textContent = spo2;
   document.getElementById(`temp${prefix}`).textContent = temp;
   
-  // Update chart data
   const maxPoints = 60;
   
-  // PPG signal (use red channel with noise)
   const ppgValue = red + Math.sin(time / 10) * 20;
   dataBuffers[camera].ppg.push(ppgValue);
   
-  // SpO2 signal (use green channel with noise)
   const spo2Value = green + Math.sin(time / 15) * 15;
   dataBuffers[camera].spo2.push(spo2Value);
   
-  // Trim buffers
   if (dataBuffers[camera].ppg.length > maxPoints) {
     dataBuffers[camera].ppg.shift();
   }
@@ -806,7 +914,6 @@ function updateBiometrics(camera, red, green, blue) {
     dataBuffers[camera].spo2.shift();
   }
   
-  // Update charts
   if (charts[`ppg${prefix}`]) {
     charts[`ppg${prefix}`].data.labels = dataBuffers[camera].ppg.map((_, i) => i);
     charts[`ppg${prefix}`].data.datasets[0].data = dataBuffers[camera].ppg;
@@ -865,47 +972,34 @@ function createChart(canvasId, colors) {
 }
 
 function initCharts() {
-  console.log("📊 Initializing charts...");
   charts.ppgFront = createChart("ppgFront", [[0, "#ff006e"], [1, "#ff4081"]]);
   charts.spo2FrontChart = createChart("spo2FrontChart", [[0, "#00e5ff"], [1, "#39ff14"]]);
   charts.ppgRear = createChart("ppgRear", [[0, "#ff006e"], [1, "#ff4081"]]);
   charts.spo2RearChart = createChart("spo2RearChart", [[0, "#00e5ff"], [1, "#39ff14"]]);
-  console.log("✅ Charts initialized");
 }
 
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
 window.addEventListener("load", async () => {
-  console.log("🚀 Dual Camera System Starting...");
-  console.log("📍 Left Screen = FRONT Camera (User-Facing)");
-  console.log("📍 Right Screen = REAR Camera (Environment-Facing)");
+  console.log("🚀 Dual Camera System with Flip Function Starting...");
   
-  // Initialize charts
   initCharts();
-  
-  // Enumerate cameras
   await enumerateCameras();
   
-  // Auto-activate cameras after enumeration
   setTimeout(async () => {
     console.log("🎬 Auto-activating cameras...");
-    
-    // Activate front camera (left screen)
     await activateFrontCamera();
     
-    // Small delay before activating rear
     setTimeout(() => {
-      activateRearCamera();
+      flipRearCamera(); // Use flip for rear camera
     }, 1000);
   }, 500);
   
-  console.log("✅ Dual Camera System Ready!");
+  console.log("✅ System Ready!");
 });
 
-// Cleanup on page unload
 window.addEventListener("beforeunload", () => {
-  console.log("🧹 Cleaning up...");
   if (frontStream) {
     frontStream.getTracks().forEach(track => track.stop());
   }
