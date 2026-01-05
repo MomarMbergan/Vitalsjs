@@ -368,6 +368,10 @@ function drawLineChart() {
 // ============================================================================
 
 function createBars(data) {
+  // Store the data globally for export
+  lastBarChartData = [...data];
+  console.log('Bar chart updated with', data.length, 'data points');
+  
   const getRandomColor = () => {
     const letters = '0123456789ABCDEF';
     let color = '#';
@@ -403,7 +407,8 @@ function createBars(data) {
       .attr("y", d => y(d))
       .attr("width", x.bandwidth())
       .attr("height", d => height - margin.bottom - y(d))
-      .attr("fill", () => getRandomColor());
+      .attr("fill", () => getRandomColor())
+      .attr("data-value", d => d); // Store value as attribute
 
   // Append rotated text labels
   svg.selectAll("text")
@@ -557,10 +562,13 @@ function ccalc(xval) {
 }
 
 // ============================================================================
-// DEBUGGED: EXPORT100 FUNCTION
+// DEBUGGED: EXPORT100 FUNCTION WITH BAR CHART FIX
 // ============================================================================
 
 document.querySelector('#export100').addEventListener('click', generateChartsAndDownloadPDF);
+
+// Store the last bar chart data for export
+let lastBarChartData = [];
 
 function generateChartsAndDownloadPDF() {
   try {
@@ -569,8 +577,30 @@ function generateChartsAndDownloadPDF() {
     
     console.log('Starting Export100 process...');
     console.log('Collected values count:', allValues.length);
+    console.log('Last bar chart data points:', lastBarChartData.length);
     
-    // Wait for data collection
+    // Validate that we have chart data
+    const chartContainer = document.querySelector("#chart100d");
+    const svgChart = document.querySelector("#chart-canvas");
+    
+    if (!chartContainer || !svgChart) {
+      alert('Chart containers not found. Please start analysis first.');
+      isPrinting = false;
+      hideLoading();
+      return;
+    }
+    
+    // Check if bar chart has actual bars
+    const bars = svgChart.querySelectorAll('rect');
+    if (bars.length === 0) {
+      console.warn('No bar chart data found. Generating data...');
+      // Trigger a calculation to generate bar chart
+      if (xMean > 0) {
+        ccalc(xMean);
+      }
+    }
+    
+    // Wait for data collection and bar chart rendering
     setTimeout(function() {
       // Create comprehensive dataset
       const exportData = {
@@ -585,11 +615,12 @@ function generateChartsAndDownloadPDF() {
           lonval: lonval,
           latval: latval
         },
+        barChartData: lastBarChartData.slice(0, 64), // Include actual bar values
         datasets: []
       };
 
       // Collect all available data
-      // 1. From allValues array
+      // 1. From allValues array (most complete data source)
       if (allValues.length > 0) {
         allValues.slice(-100).forEach((val, index) => {
           exportData.datasets.push({
@@ -600,14 +631,31 @@ function generateChartsAndDownloadPDF() {
             fval: val.fval,
             zramval: val.zramval,
             pwrval: val.pwrval,
-            calculationCount: val.calculations.length
+            calculationCount: val.calculations ? val.calculations.length : 0,
+            firstCalc: val.calculations ? val.calculations[0] : null,
+            lastCalc: val.calculations ? val.calculations[val.calculations.length - 1] : null
           });
         });
       }
 
-      // 2. From xMeanArr
-      if (xMeanArr.length > 0) {
-        xMeanArr.slice(-100).forEach((data, index) => {
+      // 2. From bar chart data directly
+      if (lastBarChartData.length > 0 && exportData.datasets.length < 100) {
+        lastBarChartData.slice(0, 64).forEach((value, index) => {
+          if (exportData.datasets.length < 100) {
+            exportData.datasets.push({
+              index: exportData.datasets.length,
+              type: 'bar-chart-data',
+              barIndex: index,
+              value: value,
+              timestamp: new Date().toISOString()
+            });
+          }
+        });
+      }
+
+      // 3. From xMeanArr (signal data)
+      if (xMeanArr.length > 0 && exportData.datasets.length < 100) {
+        xMeanArr.slice(-50).forEach((data, index) => {
           if (exportData.datasets.length < 100) {
             exportData.datasets.push({
               index: exportData.datasets.length,
@@ -619,13 +667,13 @@ function generateChartsAndDownloadPDF() {
         });
       }
 
-      // 3. From lineArr (chart data)
-      if (lineArr.length > 0) {
-        lineArr.forEach((data, index) => {
+      // 4. From lineArr (chart display data)
+      if (lineArr.length > 0 && exportData.datasets.length < 100) {
+        lineArr.slice(0, 30).forEach((data, index) => {
           if (exportData.datasets.length < 100) {
             exportData.datasets.push({
               index: exportData.datasets.length,
-              type: 'chart-data',
+              type: 'line-chart-data',
               time: data.time,
               x: data.x,
               signal: data.signal
@@ -634,7 +682,7 @@ function generateChartsAndDownloadPDF() {
         });
       }
 
-      // 4. Generate synthetic data if needed
+      // 5. Generate synthetic data only if needed
       while (exportData.datasets.length < 100) {
         exportData.datasets.push({
           index: exportData.datasets.length,
@@ -649,14 +697,21 @@ function generateChartsAndDownloadPDF() {
       exportData.datasets = exportData.datasets.slice(0, 100);
 
       console.log('Export data prepared:', exportData.datasets.length, 'datasets');
-
-      // Capture the chart
-      html2canvas(document.querySelector("#chart100d"), { 
-        scale: 2,
+      console.log('Bar chart values included:', exportData.barChartData.length);
+      
+      // Make sure chart is visible for capture
+      chartContainer.style.display = 'block';
+      
+      // Capture the bar chart with higher quality
+      html2canvas(chartContainer, { 
+        scale: 3,
         useCORS: true,
-        logging: false
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: chartContainer.scrollWidth,
+        height: chartContainer.scrollHeight
       }).then(canvas => {
-        const imgData = canvas.toDataURL('image/jpeg', 0.8);
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('l', 'mm', 'a4', true);
         
@@ -668,40 +723,129 @@ function generateChartsAndDownloadPDF() {
         const imgScaledWidth = canvasWidth * ratio;
         const imgScaledHeight = canvasHeight * ratio;
 
-        // Add chart image
+        // Add bar chart image (Page 1)
         pdf.addImage(imgData, 'JPEG', 0, 0, imgScaledWidth, imgScaledHeight);
 
-        // Add new page for data table
+        // Add new page for system info and bar chart values (Page 2)
         pdf.addPage();
-        pdf.setFontSize(10);
+        pdf.setFontSize(12);
+        pdf.setFont(undefined, 'bold');
         pdf.text('Biometric Network - 100 Dataset Export', 10, 10);
-        pdf.setFontSize(8);
-        pdf.text(`Generated: ${exportData.timestamp}`, 10, 16);
-        pdf.text(`System Info: Power=${exportData.systemInfo.pwrval}, Memory=${exportData.systemInfo.zramval}`, 10, 22);
         
-        // Add data summary
-        let yPos = 30;
-        pdf.text('Dataset Summary:', 10, yPos);
+        pdf.setFont(undefined, 'normal');
+        pdf.setFontSize(9);
+        pdf.text(`Generated: ${exportData.timestamp}`, 10, 18);
+        
+        let yPos = 28;
+        
+        // System Information Section
+        pdf.setFontSize(10);
+        pdf.setFont(undefined, 'bold');
+        pdf.text('System Information:', 10, yPos);
         yPos += 6;
         
-        exportData.datasets.slice(0, 50).forEach((dataset, index) => {
+        pdf.setFontSize(8);
+        pdf.setFont(undefined, 'normal');
+        pdf.text(`Power Level: ${exportData.systemInfo.pwrval}`, 15, yPos);
+        yPos += 5;
+        pdf.text(`Memory (zRAM): ${exportData.systemInfo.zramval}`, 15, yPos);
+        yPos += 5;
+        pdf.text(`Audio Frequency: ${exportData.systemInfo.fval}`, 15, yPos);
+        yPos += 5;
+        pdf.text(`X Mean (PPG Signal): ${exportData.systemInfo.xMean}`, 15, yPos);
+        yPos += 5;
+        pdf.text(`Frame Count: ${exportData.systemInfo.frameCount}`, 15, yPos);
+        yPos += 5;
+        if (exportData.systemInfo.gdval) {
+          pdf.text(`GPS - Zoom: ${exportData.systemInfo.gdval}, Lat: ${exportData.systemInfo.latval}, Lon: ${exportData.systemInfo.lonval}`, 15, yPos);
+          yPos += 5;
+        }
+        
+        yPos += 5;
+        
+        // Bar Chart Values Section
+        pdf.setFontSize(10);
+        pdf.setFont(undefined, 'bold');
+        pdf.text(`Bar Chart Data (${exportData.barChartData.length} calculations):`, 10, yPos);
+        yPos += 6;
+        
+        pdf.setFontSize(7);
+        pdf.setFont(undefined, 'normal');
+        
+        // Display bar values in a grid format (4 columns)
+        let col = 0;
+        const colWidth = 70;
+        const startX = 15;
+        
+        exportData.barChartData.forEach((value, index) => {
+          const xPos = startX + (col * colWidth);
+          pdf.text(`[${index}]: ${value.toFixed(6)}`, xPos, yPos);
+          col++;
+          if (col >= 4) {
+            col = 0;
+            yPos += 4;
+            if (yPos > 200) {
+              pdf.addPage();
+              yPos = 10;
+            }
+          }
+        });
+        
+        if (col > 0) yPos += 4; // Move down if we didn't fill the last row
+        yPos += 5;
+        
+        // Dataset Summary Section (Page 3+)
+        pdf.addPage();
+        yPos = 10;
+        pdf.setFontSize(10);
+        pdf.setFont(undefined, 'bold');
+        pdf.text('Dataset Summary (100 Datasets):', 10, yPos);
+        yPos += 8;
+        
+        pdf.setFontSize(7);
+        pdf.setFont(undefined, 'normal');
+        
+        exportData.datasets.forEach((dataset, index) => {
           if (yPos > 200) {
             pdf.addPage();
             yPos = 10;
           }
-          const text = `${index + 1}. ${dataset.type}: ${JSON.stringify(dataset).substring(0, 80)}...`;
-          pdf.text(text, 10, yPos);
-          yPos += 5;
+          
+          const typeColor = {
+            'calculation-data': 0,
+            'bar-chart-data': 100,
+            'signal-data': 150,
+            'line-chart-data': 180,
+            'synthetic-data': 200
+          };
+          
+          // Add slight gray background for alternating rows
+          if (index % 2 === 0) {
+            pdf.setFillColor(245, 245, 245);
+            pdf.rect(10, yPos - 3, 277, 4, 'F');
+          }
+          
+          const summary = `${index + 1}. [${dataset.type}] ${JSON.stringify(dataset).substring(0, 100)}...`;
+          pdf.text(summary, 12, yPos);
+          yPos += 4;
         });
 
-        pdf.save("biometric_100datasets_" + Date.now() + ".pdf");
+        // Save the PDF
+        const filename = "biometric_100datasets_" + Date.now() + ".pdf";
+        pdf.save(filename);
         
-        console.log('Export100 PDF generated successfully');
+        console.log('Export100 PDF generated successfully:', filename);
+        console.log('- Pages: 3+');
+        console.log('- Bar chart captured: ✓');
+        console.log('- System info included: ✓');
+        console.log('- Bar values: ' + exportData.barChartData.length);
+        console.log('- Datasets: ' + exportData.datasets.length);
+        
         isPrinting = false;
         hideLoading();
       }).catch(error => {
-        console.error('Export100 error:', error);
-        alert('Error generating PDF: ' + error.message);
+        console.error('Export100 canvas error:', error);
+        alert('Error capturing chart: ' + error.message);
         isPrinting = false;
         hideLoading();
       });
@@ -802,10 +946,19 @@ function showascii() {
   try {
     showLoading();
     
-    var n = pwrval;
-    var i = xMean;
-    var a = fval;
-    var b = zramval;
+    // Check if element exists first
+    var $contentDiv = $('#asciicontent');
+    if (!$contentDiv.length) {
+      console.error('Element #asciicontent not found');
+      alert('Error: Content container not found in page. Please ensure #asciicontent element exists.');
+      hideLoading();
+      return;
+    }
+    
+    var n = pwrval || 0.5;
+    var i = xMean || 0.5;
+    var a = fval || 0.5;
+    var b = zramval || 0.5;
 
     function convertToLaTeX(asciiEquation) {
       asciiEquation = asciiEquation.replace(/sum_\((.*?)\)\^(.*?) /g, '\\sum_{$1}^{$2} ');
@@ -814,21 +967,25 @@ function showascii() {
       return asciiEquation;
     }
 
-    // Generate equations (using first 100 from original)
+    // Generate equations with proper defaults
     var asciiarray = [ 
-      `sum_(${gdval || 1}=${comGval || 1})^${in$1val || 1} ${b}^${lonval || 1}=(((${latval || 1}(${in$1val || 1}+1))/2))^2`,
-      `sum_(${n || 1}=${parval || 1})^${kworval || 1} ${i}^${n}=(((${kworval || 1}(${kworval || 1}+1))/2))^2`,
-      `sum_(${gdval || 1}=${kwROval || 1})^${ppval || 1} ${n}^${a}=(((${ppval || 1}(${ppval || 1}+${parval || 1}))/2))^2`,
-      `sum_(${n || 1}=${b})^${astrval || 1} ${b}^${n}=(((${astrval || 1}(${astrval || 1}+${plugval || 1}))/2))^2`,
-      `sum_(${a || 1}=${in$1val || 1})^${resWval || 1} ${b}^${a}=(((${resWval || 1}(${resWval || 1}+${comGval || 1}))/2))^2`,
-      // Add more equations as needed... (keeping it shorter for performance)
+      `sum_(${gdval || 1}=${comGval || 1})^${in$1val || 10} ${b}^${lonval || 1}=(((${latval || 1}(${in$1val || 10}+1))/2))^2`,
+      `sum_(${n}=${parval || 1})^${kworval || 10} ${i}^${n}=(((${kworval || 10}(${kworval || 10}+1))/2))^2`,
+      `sum_(${gdval || 1}=${kwROval || 1})^${ppval || 10} ${n}^${a}=(((${ppval || 10}(${ppval || 10}+${parval || 1}))/2))^2`,
+      `sum_(${n}=${b})^${astrval || 10} ${b}^${n}=(((${astrval || 10}(${astrval || 10}+${plugval || 1}))/2))^2`,
+      `sum_(${a}=${in$1val || 1})^${resWval || 10} ${b}^${a}=(((${resWval || 10}(${resWval || 10}+${comGval || 1}))/2))^2`,
+      `sum_(${i}=${nodval || 1})^${lBval || 10} ${n}^${b}=(((${lBval || 10}(${lBval || 10}+${astrval || 1}))/2))^2`,
+      `sum_(${b}=${typval || 1})^${curval || 10} ${a}^${i}=(((${curval || 10}(${curval || 10}+${refval || 1}))/2))^2`,
+      `sum_(${a}=${astrval || 1})^${defaval || 10} ${b}^${a}=(((${defaval || 10}(${defaval || 10}+${kwROval || 1}))/2))^2`,
+      `sum_(${n}=${kworval || 1})^${in$1val || 10} ${n}^${b}=(((${in$1val || 10}(${in$1val || 10}+${typval || 1}))/2))^2`,
+      `sum_(${a}=${plugval || 1})^${typval || 10} ${b}^${a}=(((${typval || 10}(${typval || 10}+${curval || 1}))/2))^2`
     ];
 
     // Convert to LaTeX
     var asciiarray2 = asciiarray.map(convertToLaTeX);
     
-    var $contentDiv = $('#asciicontent');
     $contentDiv.empty(); // Clear previous content
+    $contentDiv.css('display', 'block'); // Ensure visible for rendering
 
     // Append equations
     $.each(asciiarray2, function(index, equation) {
@@ -843,13 +1000,45 @@ function showascii() {
     $contentDiv.append(`<p>Audio Frequency: ${fval}</p>`);
     $contentDiv.append(`<p>X Mean: ${xMean}</p>`);
     $contentDiv.append(`<p>Frame Count: ${frameCount}</p>`);
+    $contentDiv.append(`<p>Timestamp: ${new Date().toISOString()}</p>`);
 
     console.log('MathJax rendering started...');
 
-    MathJax.typesetPromise().then(function () {
+    // Check if MathJax is loaded
+    if (typeof MathJax === 'undefined') {
+      console.error('MathJax is not loaded');
+      alert('MathJax library not loaded. Generating PDF without equation rendering.');
+      generatePDFWithoutMathJax($contentDiv[0]);
+      return;
+    }
+
+    // Use correct MathJax API based on version
+    function renderMathJax() {
+      return new Promise((resolve, reject) => {
+        try {
+          if (MathJax.typesetPromise) {
+            // MathJax 3.x
+            MathJax.typesetPromise([$contentDiv[0]]).then(resolve).catch(reject);
+          } else if (MathJax.Hub && MathJax.Hub.Queue) {
+            // MathJax 2.x
+            MathJax.Hub.Queue(['Typeset', MathJax.Hub, $contentDiv[0]], resolve);
+          } else if (MathJax.typeset) {
+            // MathJax 3.x alternative
+            MathJax.typeset([$contentDiv[0]]);
+            resolve();
+          } else {
+            reject(new Error('MathJax API not recognized'));
+          }
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }
+
+    renderMathJax().then(function () {
       console.log('MathJax rendering complete');
       
-      var element = $('#asciicontent')[0];
+      var element = $contentDiv[0];
       
       // OPTIMIZED settings for faster generation
       var opt = {
@@ -873,7 +1062,7 @@ function showascii() {
 
       html2pdf().set(opt).from(element).save().then(function () {
         console.log("ASCII PDF generated successfully");
-        $contentDiv.empty();
+        $contentDiv.css('display', 'none'); // Hide after generation
         hideLoading();
       }).catch(function(error) {
         console.error('ASCII PDF error:', error);
@@ -881,14 +1070,49 @@ function showascii() {
         hideLoading();
       });
     }).catch(function(error) {
-      console.error('MathJax error:', error);
-      alert('Error rendering equations: ' + error.message);
-      hideLoading();
+      console.error('MathJax rendering error:', error);
+      console.log('Attempting to generate PDF without MathJax...');
+      generatePDFWithoutMathJax($contentDiv[0]);
     });
     
   } catch (error) {
     console.error('ShowASCII error:', error);
     alert('Error in ShowASCII: ' + error.message);
+    hideLoading();
+  }
+}
+
+// Fallback function to generate PDF without MathJax rendering
+function generatePDFWithoutMathJax(element) {
+  try {
+    var opt = {
+      margin: 10,
+      filename: 'biometric_equations_' + Date.now() + '.pdf',
+      image: { type: 'jpeg', quality: 0.8 },
+      html2canvas: { 
+        scale: 1,
+        useCORS: true,
+        logging: false
+      },
+      jsPDF: { 
+        unit: 'mm', 
+        format: 'a4', 
+        orientation: 'portrait'
+      }
+    };
+
+    html2pdf().set(opt).from(element).save().then(function () {
+      console.log("PDF generated without MathJax rendering");
+      $('#asciicontent').css('display', 'none');
+      hideLoading();
+    }).catch(function(error) {
+      console.error('PDF generation error:', error);
+      alert('Error generating PDF: ' + error.message);
+      hideLoading();
+    });
+  } catch (error) {
+    console.error('Fallback PDF error:', error);
+    alert('Error generating PDF: ' + error.message);
     hideLoading();
   }
 }
