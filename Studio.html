@@ -1,331 +1,439 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Biometric Studio</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        :root {
-            --neon-cyan: #00ffff; --neon-magenta: #ff00ff; --neon-yellow: #ffff00; --neon-green: #00ff00;
-            --neon-orange: #ff6600; --neon-blue: #0080ff; --neon-purple: #9d00ff; --neon-red: #ff3366;
-            --pearl-white: #f8f8ff; --pearl-light: #ffffff; --pearl-dark: #e8e8f0; --pearl-shadow: #d8d8e8;
-            --bg-dark: #0a0a0f; --bg-darker: #050508; --bg-panel: #12121a; --bg-elevated: #1a1a25;
-        }
-
-        body { font-family: 'Rajdhani', sans-serif; background: var(--bg-dark); color: var(--pearl-white); overflow: hidden; height: 100vh; }
-        .app-container { display:flex; flex-direction:column; height:100vh; background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-darker) 100%); }
-        .menu-bar { height:35px; background:var(--pearl-white); border-bottom:2px solid var(--neon-cyan); display:flex; align-items:center; padding:0 12px; gap:15px; box-shadow:0 0 20px rgba(0,255,255,0.5); z-index:100; }
-        .logo { font-family:'Orbitron',sans-serif; font-weight:900; font-size:14px; background:linear-gradient(135deg,var(--neon-cyan),var(--neon-magenta)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-right:auto; }
-
-        .main-content { display:flex; flex:1; overflow:hidden; }
-        .center-area { flex:1; display:flex; flex-direction:column; background:var(--bg-panel); }
-
-        .toolbar { height:50px; background:var(--pearl-white); border-bottom:2px solid var(--neon-green); display:flex; align-items:center; padding:0 10px; gap:6px; box-shadow:0 0 20px rgba(0,255,0,0.3); overflow-x:auto; }
-        .instrument-tabs { display:flex; gap:4px; margin-right:10px; padding-right:10px; border-right:2px solid var(--pearl-shadow); }
-        .instrument-tab { background:linear-gradient(135deg,var(--pearl-light),var(--pearl-dark)); border:2px solid var(--pearl-shadow); padding:5px 10px; border-radius:6px; font-family:'Orbitron',sans-serif; font-weight:600; color:var(--bg-dark); font-size:10px; }
-        .tool-btn { background: linear-gradient(135deg,var(--pearl-light),var(--pearl-dark)); border:2px solid var(--pearl-shadow); padding:5px 8px; border-radius:6px; cursor:pointer; font-family:'Orbitron',sans-serif; font-weight:600; color:var(--bg-dark); font-size:10px; }
-        .play-btn { width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,var(--neon-cyan),var(--neon-blue)); color:var(--pearl-white); border:none; }
-
-        /* Piano roll grid with controllable piano column */
-        .piano-roll { flex:1; position:relative; background:var(--bg-panel); border-bottom:2px solid var(--neon-purple); }
-        .piano-roll-grid { display:grid; grid-template-columns: var(--piano-width, 80px) 1fr; background:var(--bg-darker); height:100%; overflow:hidden; transition: grid-template-columns 220ms ease; }
-        .piano-column { position:relative; }
-        .piano-keys { background:var(--pearl-white); border-right:2px solid var(--neon-purple); overflow-y:auto; overflow-x:hidden; width:var(--piano-width,80px); transition: width 220ms ease, opacity 220ms ease; min-width:0; }
-        .piano-key { height:25px; border-bottom:1px solid var(--pearl-shadow); display:flex; align-items:center; justify-content:center; padding:0 10px; font-size:11px; color:var(--bg-dark); }
-
-        .note-grid { position:relative; height:100%; overflow-x:auto; overflow-y:auto; background:var(--bg-darker); }
-        .note-grid-content { position:relative; width:6000px; min-height:800px; background-image: repeating-linear-gradient(0deg, transparent, transparent 24px, var(--neon-purple) 24px, var(--neon-purple) 25px), repeating-linear-gradient(90deg, transparent, transparent 99px, rgba(0,255,255,0.2) 99px, rgba(0,255,255,0.2) 100px); background-size:100% 25px, 100px 100%; }
-
-        .timeline-ruler { position:absolute; top:0; left:0; width:100%; height:30px; background:rgba(0,0,0,0.9); border-bottom:2px solid var(--neon-cyan); z-index:100; display:flex; font-family:'Orbitron',sans-serif; font-size:10px; color:var(--neon-cyan); font-weight:600; }
-        .timeline-marker { width:100px; text-align:center; border-right:1px solid rgba(0,255,255,0.3); padding-top:8px; flex-shrink:0; }
-        .waveform-canvas, .spectrum-canvas { position:absolute; top:30px; left:0; width:100%; height:calc(100% - 30px); pointer-events:none; }
-        .playhead { position:absolute; top:0; left:0; width:3px; height:100%; z-index:50; pointer-events:none; background:linear-gradient(180deg,var(--neon-red),var(--neon-orange)); box-shadow:0 0 15px var(--neon-red); }
-
-        .note { position:absolute; height:23px; background:linear-gradient(135deg,var(--neon-cyan),var(--neon-blue)); border:2px solid var(--neon-cyan); border-radius:4px; cursor:move; box-shadow:0 0 15px var(--neon-cyan); }
-
-        /* Collapse buttons */
-        .collapse-btn { position:absolute; left:-18px; top:12px; width:28px; height:28px; border-radius:6px; background:linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); border:2px solid rgba(255,255,255,0.06); color:var(--neon-cyan); display:flex; align-items:center; justify-content:center; cursor:pointer; font-family:'Orbitron',sans-serif; font-size:12px; z-index:120; }
-        .piano-collapsed .piano-keys { width:0 !important; opacity:0; pointer-events:none; }
-        .mixer-column { position:relative; }
-
-        /* Mixer strip scroll */
-        .mixer-strip { overflow-x:auto; overflow-y:hidden; white-space:nowrap; -webkit-overflow-scrolling:touch; scrollbar-width:thin; height:300px; background:var(--pearl-white); border-top:3px solid var(--neon-yellow); box-shadow:0 0 30px rgba(255,255,0,0.3); padding:10px; gap:8px; }
-        .mixer-strip .channel { display:inline-flex; vertical-align:top; flex-direction:column; flex-shrink:0; margin-right:8px; min-width:115px; width:115px; }
-        .mixer-strip .channel.master { min-width:130px; width:130px; }
-        .mixer-collapsed .mixer-strip { height:40px !important; overflow:hidden; }
-
-        /* Media block styles */
-        .media-block { position:absolute; border-radius:8px; padding:8px; color:#001; font-weight:700; display:flex; align-items:center; gap:8px; cursor:move; }
-        .media-label { font-family:'Orbitron',sans-serif; font-size:11px; color:#fff; text-shadow:0 0 6px rgba(0,0,0,0.6); }
-
-        .media-audio { background:linear-gradient(135deg, rgba(0,255,255,0.15), rgba(0,128,255,0.12)); border:2px solid var(--neon-cyan); box-shadow:0 0 18px rgba(0,255,255,0.25); }
-        .media-video { background:linear-gradient(135deg, rgba(255,0,255,0.12), rgba(128,0,255,0.08)); border:2px solid var(--neon-magenta); box-shadow:0 0 18px rgba(255,0,255,0.25); }
-        .media-image { background:linear-gradient(135deg, rgba(0,255,0,0.08), rgba(0,200,0,0.06)); border:2px solid var(--neon-green); box-shadow:0 0 18px rgba(0,255,0,0.18); }
-        .media-chart { background:linear-gradient(135deg, rgba(255,255,0,0.08), rgba(255,200,0,0.06)); border:2px solid var(--neon-yellow); box-shadow:0 0 18px rgba(255,255,0,0.18); }
-        .media-line { background:linear-gradient(135deg, rgba(157,0,255,0.06), rgba(120,0,255,0.04)); border:2px solid var(--neon-purple); box-shadow:0 0 18px rgba(157,0,255,0.16); }
-
-        .media-thumb { max-width:100%; max-height:100%; border-radius:6px; }
-
-        /* Media panel */
-        .media-panel { position:fixed; right:20px; top:60px; width:320px; background:linear-gradient(135deg,var(--bg-panel),var(--bg-darker)); border:2px solid var(--neon-cyan); border-radius:10px; padding:12px; z-index:1000; box-shadow:0 0 30px rgba(0,255,255,0.12); display:none; }
-        .media-panel.active { display:block; }
-        .media-panel h3 { font-family:'Orbitron',sans-serif; font-size:14px; color:var(--neon-cyan); margin-bottom:8px; }
-        .media-panel .row { display:flex; gap:8px; margin-bottom:8px; }
-        .media-panel input[type=file] { width:100%; }
-        .btn { padding:8px 10px; border-radius:6px; background:linear-gradient(135deg,var(--pearl-light),var(--pearl-dark)); border:2px solid var(--pearl-shadow); cursor:pointer; font-family:'Orbitron',sans-serif; font-weight:600; }
-
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vitals Studio</title>
+  <style>
+    :root{--bg:#0f1720;--panel:#0b1220;--accent:#22c1c3;--muted:#94a3b8;--white:#e6eef6}
+    body{margin:0;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;color:var(--white);background:linear-gradient(180deg,#071221 0%,#071829 100%);}
+    #app{display:flex;height:100vh;}
+    #media-panel{width:300px;background:var(--panel);padding:12px;box-sizing:border-box;transition:transform .2s ease-in-out;border-right:1px solid rgba(255,255,255,0.03)}
+    #media-panel.closed{transform:translateX(-320px)}
+    .btn{display:inline-block;padding:8px 10px;margin:6px 4px;background:rgba(255,255,255,0.04);border-radius:6px;border:1px solid rgba(255,255,255,0.03);cursor:pointer;color:var(--white)}
+    .btn:active{transform:translateY(1px)}
+    #timeline-wrap{flex:1;display:flex;flex-direction:column;padding:12px;box-sizing:border-box}
+    #controls{height:48px;display:flex;align-items:center;gap:8px}
+    #timeline{flex:1;background:#08121a;border-radius:8px;padding:12px;overflow:auto;position:relative}
+    .ruler{height:28px;border-bottom:1px solid rgba(255,255,255,0.03);position:relative}
+    .tracks{position:relative;margin-top:8px}
+    .track{height:100px;border-bottom:1px dashed rgba(255,255,255,0.02);position:relative}
+    .media-block{position:absolute;top:8px;height:84px;background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.02));border-radius:6px;border:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;padding:8px;box-sizing:border-box;gap:8px}
+    .media-details{flex:1;min-width:0}
+    .media-title{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .media-controls{display:flex;gap:6px}
+    .handle{width:8px;cursor:ew-resize;background:linear-gradient(90deg,rgba(255,255,255,0.06),transparent);height:100%;border-radius:0 6px 6px 0}
+    canvas.wave{height:60px;width:220px;background:#021018;border-radius:4px}
+    .thumbnail{width:110px;height:60px;object-fit:cover;border-radius:4px}
+    #file-input{display:none}
+    .grid-line{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.02)}
+    .small{font-size:12px;color:var(--muted)}
+  </style>
 </head>
 <body>
-
-<div class="app-container">
-    <div class="menu-bar">
-        <div class="logo">VitalsJS</div>
-        <div class="menu-item">File</div>
-        <div class="menu-item">Edit</div>
-        <div class="menu-item">View</div>
+  <div id="app">
+    <div id="media-panel" class="closed">
+      <h3>Media Panel</h3>
+      <div>
+        <button id="toggle-panel" class="btn">Toggle Panel (Ctrl+M)</button>
+        <button id="add-media" class="btn">Add Media</button>
+        <button id="add-bar" class="btn">Add Bar Chart</button>
+        <button id="add-line" class="btn">Add Line Graph</button>
+      </div>
+      <div style="margin-top:12px">
+        <button id="save-project" class="btn">Save Project (Ctrl+S)</button>
+        <button id="load-project" class="btn">Load Project (Ctrl+O)</button>
+      </div>
+      <p class="small">Grid snap: <span id="grid-status">On</span> (Ctrl+G)</p>
+      <input id="file-input" type="file" multiple />
     </div>
 
-    <div class="main-content">
-        <div class="center-area">
-            <div class="toolbar">
-                <div class="instrument-tabs">
-                    <div class="instrument-tab active">Piano</div>
-                    <div class="instrument-tab">Drums</div>
-                    <div class="instrument-tab">Bass</div>
-                    <div class="instrument-tab">Synth</div>
-                </div>
-                <button class="tool-btn play-btn" title="Play">▶</button>
-                <div class="bpm-display">120 BPM</div>
+    <div id="timeline-wrap">
+      <div id="controls">
+        <div class="btn" id="add-track">Add Track</div>
+        <div class="btn" id="zoom-in">Zoom In</div>
+        <div class="btn" id="zoom-out">Zoom Out</div>
+        <div class="small">Tip: Drag blocks horizontally to move, drag right handle to resize. Play/pause per block.</div>
+      </div>
 
-                <!-- Media upload button -->
-                <button class="tool-btn" id="mediaBtn">Media</button>
-            </div>
-
-            <div class="piano-roll">
-                <div class="piano-roll-grid">
-                    <div class="piano-column">
-                        <button class="collapse-btn" id="pianoToggle" aria-pressed="false" title="Collapse/Expand Piano column">◀</button>
-                        <div class="piano-keys" id="pianoKeys">
-                            <div class="piano-key">C8</div>
-                            <div class="piano-key black">B7</div>
-                            <div class="piano-key">A7</div>
-                            <div class="piano-key black">G#7</div>
-                            <div class="piano-key">G7</div>
-                            <div class="piano-key">F7</div>
-                            <div class="piano-key black">E7</div>
-                            <div class="piano-key">D7</div>
-                            <div class="piano-key black">C#7</div>
-                            <div class="piano-key">C7</div>
-                        </div>
-                    </div>
-
-                    <div class="note-grid" id="noteGrid">
-                        <div class="timeline-ruler" aria-hidden="true">
-                            <div class="timeline-marker">0s</div>
-                            <div class="timeline-marker">1s</div>
-                            <div class="timeline-marker">2s</div>
-                            <div class="timeline-marker">3s</div>
-                            <div class="timeline-marker">4s</div>
-                            <div class="timeline-marker">5s</div>
-                        </div>
-
-                        <canvas class="waveform-canvas"></canvas>
-                        <canvas class="spectrum-canvas"></canvas>
-
-                        <div class="note-grid-content" id="noteGridContent">
-                            <div class="note" style="left:100px; top:40px; width:200px;"></div>
-                            <div class="note" style="left:350px; top:80px; width:120px;"></div>
-                        </div>
-
-                        <div class="playhead" id="playhead"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mixer-column" id="mixerColumn">
-                <button class="collapse-btn" id="mixerToggle" aria-pressed="false" title="Collapse/Expand Mixer">◀</button>
-                <div class="mixer-strip" id="mixerStrip">
-                    <!-- channels 1..11 and master -->
-                    <div class="channel" id="ch1"><div class="channel-header"><div class="channel-number">1</div><div class="channel-label">Kick</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:60%"></div></div></div></div>
-                    <div class="channel" id="ch2"><div class="channel-header"><div class="channel-number">2</div><div class="channel-label">Snare</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:50%"></div></div></div></div>
-                    <div class="channel" id="ch3"><div class="channel-header"><div class="channel-number">3</div><div class="channel-label">HiHat</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:40%"></div></div></div></div>
-                    <div class="channel" id="ch4"><div class="channel-header"><div class="channel-number">4</div><div class="channel-label">Bass</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:70%"></div></div></div></div>
-                    <div class="channel" id="ch5"><div class="channel-header"><div class="channel-number">5</div><div class="channel-label">Pad</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:55%"></div></div></div></div>
-                    <div class="channel" id="ch6"><div class="channel-header"><div class="channel-number">6</div><div class="channel-label">Lead</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:45%"></div></div></div></div>
-                    <div class="channel" id="ch7"><div class="channel-header"><div class="channel-number">7</div><div class="channel-label">FX1</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:30%"></div></div></div></div>
-                    <div class="channel" id="ch8"><div class="channel-header"><div class="channel-number">8</div><div class="channel-label">FX2</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:35%"></div></div></div></div>
-                    <div class="channel" id="ch9"><div class="channel-header"><div class="channel-number">9</div><div class="channel-label">Vox</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:65%"></div></div></div></div>
-                    <div class="channel" id="ch10"><div class="channel-header"><div class="channel-number">10</div><div class="channel-label">Aux</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:20%"></div></div></div></div>
-                    <div class="channel" id="ch11"><div class="channel-header"><div class="channel-number">11</div><div class="channel-label">Bus</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:50%"></div></div></div></div>
-                    <div class="channel master" id="chMaster"><div class="channel-header"><div class="channel-number">12</div><div class="channel-label">Master</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:80%"></div></div></div></div>
-                </div>
-            </div>
-
-        </div>
+      <div id="timeline">
+        <div class="ruler" id="ruler"></div>
+        <div class="tracks" id="tracks"></div>
+      </div>
     </div>
-</div>
+  </div>
 
-<!-- Media panel -->
-<div class="media-panel" id="mediaPanel" role="dialog" aria-hidden="true">
-    <h3>Media</h3>
-    <div class="row">
-        <input type="file" id="mediaInput" accept="audio/*,video/*,image/*,application/json" />
-    </div>
-    <div class="row">
-        <button class="btn" id="addChart">Add Bar Chart</button>
-        <button class="btn" id="addLine">Add Line Graph</button>
-    </div>
-    <div class="row">
-        <button class="btn" id="closeMedia">Close</button>
-    </div>
-</div>
+  <input id="project-loader" type="file" accept="application/json" style="display:none" />
 
-<script>
-(function(){
-    // Toggle media panel
-    const mediaBtn = document.getElementById('mediaBtn');
-    const mediaPanel = document.getElementById('mediaPanel');
-    const mediaInput = document.getElementById('mediaInput');
-    const addChartBtn = document.getElementById('addChart');
-    const addLineBtn = document.getElementById('addLine');
-    const closeMedia = document.getElementById('closeMedia');
-    const noteGrid = document.getElementById('noteGrid');
-    const noteGridContent = document.getElementById('noteGridContent');
+  <script>
+    // Basic studio app
+    const state = {
+      tracks: [],
+      mediaBlocks: [],
+      pxPerSecond: 100, // scaling
+      grid: {enabled:true, sizePx:10},
+    };
 
-    mediaBtn.addEventListener('click', () => {
-        mediaPanel.classList.toggle('active');
-        mediaPanel.setAttribute('aria-hidden', mediaPanel.classList.contains('active') ? 'false' : 'true');
-    });
-    closeMedia.addEventListener('click', () => { mediaPanel.classList.remove('active'); mediaPanel.setAttribute('aria-hidden','true'); });
+    const elements = {
+      mediaPanel: document.getElementById('media-panel'),
+      togglePanelBtn: document.getElementById('toggle-panel'),
+      addMediaBtn: document.getElementById('add-media'),
+      fileInput: document.getElementById('file-input'),
+      addBar: document.getElementById('add-bar'),
+      addLine: document.getElementById('add-line'),
+      saveProject: document.getElementById('save-project'),
+      loadProject: document.getElementById('load-project'),
+      tracks: document.getElementById('tracks'),
+      ruler: document.getElementById('ruler'),
+      projectLoader: document.getElementById('project-loader'),
+      gridStatus: document.getElementById('grid-status'),
+    };
 
-    // Helpers
-    function createMediaBlock({type, name, url, kind}){
-        const el = document.createElement('div');
-        el.classList.add('media-block');
-        const top = noteGrid.scrollTop + 80; // place somewhat into view
-        const left = noteGrid.scrollLeft + 60;
-        el.style.top = top + 'px';
-        el.style.left = left + 'px';
-        el.style.width = '360px';
-        el.style.height = '90px';
-        const label = document.createElement('div');
-        label.className = 'media-label';
-        label.textContent = name + ' (' + kind + ')';
-        el.appendChild(label);
-
-        // style by type/kind
-        if(kind === 'audio') el.classList.add('media-audio');
-        else if(kind === 'video') el.classList.add('media-video');
-        else if(kind === 'image') el.classList.add('media-image');
-        else if(kind === 'chart') el.classList.add('media-chart');
-        else if(kind === 'line') el.classList.add('media-line');
-
-        // for images show thumb
-        if(kind === 'image' && url){
-            const img = document.createElement('img'); img.src = url; img.className = 'media-thumb'; img.style.maxHeight = '68px'; img.style.maxWidth = '120px'; el.appendChild(img);
-        }
-
-        // for videos/audio attach hidden element for playback (optional)
-        if((kind === 'audio' || kind === 'video') && url){
-            const media = document.createElement(kind === 'audio' ? 'audio' : 'video');
-            media.src = url; media.controls = true; media.style.maxHeight = '68px'; media.style.maxWidth = '180px'; el.appendChild(media);
-        }
-
-        // For chart/line create simple SVG visualization
-        if(kind === 'chart'){
-            const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-            svg.setAttribute('width','300'); svg.setAttribute('height','60'); svg.style.marginLeft='8px';
-            // draw three bars
-            const data = [40,70,50];
-            data.forEach((d,i)=>{
-                const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-                rect.setAttribute('x', 10 + i*90);
-                rect.setAttribute('y', 60 - d);
-                rect.setAttribute('width', 60);
-                rect.setAttribute('height', d);
-                rect.setAttribute('fill','rgba(255,255,0,0.9)');
-                svg.appendChild(rect);
-            });
-            el.appendChild(svg);
-        }
-        if(kind === 'line'){
-            const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-            svg.setAttribute('width','300'); svg.setAttribute('height','60'); svg.style.marginLeft='8px';
-            const path = document.createElementNS('http://www.w3.org/2000/svg','polyline');
-            path.setAttribute('points','0,40 60,20 120,30 180,10 240,45 300,20');
-            path.setAttribute('fill','none'); path.setAttribute('stroke','rgba(157,0,255,0.95)'); path.setAttribute('stroke-width','3');
-            svg.appendChild(path);
-            el.appendChild(svg);
-        }
-
-        // Make draggable within noteGridContent
-        el.addEventListener('pointerdown', (ev)=>{
-            ev.preventDefault();
-            const startX = ev.clientX; const startY = ev.clientY;
-            const origLeft = parseInt(el.style.left,10); const origTop = parseInt(el.style.top,10);
-            function moveHandler(e){
-                const dx = e.clientX - startX; const dy = e.clientY - startY;
-                el.style.left = (origLeft + dx) + 'px'; el.style.top = (origTop + dy) + 'px';
-            }
-            function upHandler(){ window.removeEventListener('pointermove', moveHandler); window.removeEventListener('pointerup', upHandler); }
-            window.addEventListener('pointermove', moveHandler); window.addEventListener('pointerup', upHandler);
-        });
-
-        noteGridContent.appendChild(el);
+    function ensureTrack(idx){
+      while(state.tracks.length<=idx){
+        const t = {id:state.tracks.length, el:createTrackEl(state.tracks.length)};
+        state.tracks.push(t);
+      }
     }
 
-    // handle file selection
-    mediaInput.addEventListener('change', (e)=>{
-        const files = Array.from(e.target.files || []);
-        files.forEach(file=>{
-            const url = URL.createObjectURL(file);
-            const type = file.type || '';
-            let kind = 'unknown';
-            if(type.startsWith('audio')) kind = 'audio';
-            else if(type.startsWith('video')) kind = 'video';
-            else if(type.startsWith('image')) kind = 'image';
-            else if(file.name.endsWith('.json')) kind = 'chart';
-            createMediaBlock({type, name: file.name, url, kind});
+    function createTrackEl(index){
+      const div = document.createElement('div');
+      div.className='track';
+      div.dataset.index = index;
+      elements.tracks.appendChild(div);
+      return div;
+    }
+
+    // initial track
+    ensureTrack(0);
+
+    // Grid lines
+    function renderRuler(){
+      elements.ruler.innerHTML='';
+      const width = 2000; // create many lines; timeline is scrollable
+      const step = state.grid.sizePx;
+      for(let x=0;x<width;x+=step){
+        const line = document.createElement('div');
+        line.className='grid-line';
+        line.style.left = x+'px';
+        elements.ruler.appendChild(line);
+      }
+    }
+    renderRuler();
+
+    // Utility
+    function snapX(x){
+      if(!state.grid.enabled) return x;
+      const s = state.grid.sizePx;
+      return Math.round(x/s)*s;
+    }
+
+    function pxToSeconds(px){return px / state.pxPerSecond}
+    function secondsToPx(s){return s * state.pxPerSecond}
+
+    // Add media block
+    function addMediaBlock(opts){
+      // opts: {type:'audio'|'video'|'image'|'chart',title,src,duration,thumbnail,dataUrl}
+      ensureTrack(opts.track||0);
+      const track = state.tracks[opts.track||0];
+      const block = {
+        id:crypto.randomUUID(),
+        type:opts.type||'audio',
+        title:opts.title||opts.type||'Media',
+        x: opts.x||0,
+        width: opts.width!==undefined?opts.width:secondsToPx(opts.duration||3),
+        track: track.id,
+        src: opts.src||null,
+        duration: opts.duration||3,
+        thumbnail: opts.thumbnail||null,
+        dataUrl: opts.dataUrl||null,
+        meta: opts.meta||{}
+      };
+      state.mediaBlocks.push(block);
+      renderBlock(block);
+    }
+
+    function renderBlock(block){
+      const trackEl = state.tracks[block.track].el;
+      const el = document.createElement('div');
+      el.className='media-block';
+      el.dataset.id = block.id;
+      el.style.left = block.x+'px';
+      el.style.width = block.width+'px';
+
+      const details = document.createElement('div');
+      details.className='media-details';
+      const title = document.createElement('div');
+      title.className='media-title';
+      title.textContent = block.title;
+      details.appendChild(title);
+
+      if(block.type==='audio'){
+        const canvas = document.createElement('canvas');
+        canvas.className='wave';
+        canvas.width = 220; canvas.height = 60;
+        details.appendChild(canvas);
+        if(block.dataUrl){ generateWaveformFromDataUrl(block.dataUrl, canvas); }
+      } else if(block.type==='video'){
+        const thumb = document.createElement('img');
+        thumb.className='thumbnail';
+        thumb.src = block.thumbnail || '';
+        details.appendChild(thumb);
+      } else if(block.type==='image'){
+        const thumb = document.createElement('img');
+        thumb.className='thumbnail';
+        thumb.src = block.dataUrl || block.src || '';
+        details.appendChild(thumb);
+      } else if(block.type==='chart'){
+        const canvas = document.createElement('canvas');
+        canvas.width = 220; canvas.height = 60;
+        canvas.style.background='#04161a';
+        details.appendChild(canvas);
+        drawChartPlaceholder(canvas, block.meta.chartType||'bar');
+      }
+
+      const controls = document.createElement('div');
+      controls.className='media-controls';
+      const playBtn = document.createElement('button'); playBtn.className='btn'; playBtn.textContent='Play';
+      const pauseBtn = document.createElement('button'); pauseBtn.className='btn'; pauseBtn.textContent='Pause';
+      const removeBtn = document.createElement('button'); removeBtn.className='btn'; removeBtn.textContent='Remove';
+      controls.appendChild(playBtn); controls.appendChild(pauseBtn); controls.appendChild(removeBtn);
+
+      el.appendChild(details);
+      el.appendChild(controls);
+
+      const handle = document.createElement('div'); handle.className='handle';
+      el.appendChild(handle);
+
+      // hidden media element
+      let mediaEl = null;
+      if(block.type==='audio'){
+        mediaEl = document.createElement('audio'); mediaEl.src = block.dataUrl || block.src || ''; mediaEl.preload='auto';
+      } else if(block.type==='video'){
+        mediaEl = document.createElement('video'); mediaEl.src = block.dataUrl || block.src || ''; mediaEl.preload='metadata';
+      }
+
+      // attach events
+      playBtn.addEventListener('click',()=>{ if(mediaEl){ mediaEl.play(); } });
+      pauseBtn.addEventListener('click',()=>{ if(mediaEl){ mediaEl.pause(); } });
+      removeBtn.addEventListener('click',()=>{ removeBlock(block.id); });
+
+      // dragging
+      let drag = {active:false, startX:0, origLeft:0};
+      el.addEventListener('pointerdown', (e)=>{
+        if(e.target===handle || e.target.closest('.btn')) return; // ignore if resizing or clicking controls
+        el.setPointerCapture(e.pointerId);
+        drag.active=true; drag.startX = e.clientX; drag.origLeft = parseFloat(el.style.left || 0);
+      });
+      window.addEventListener('pointermove',(e)=>{
+        if(!drag.active) return;
+        const dx = e.clientX - drag.startX;
+        let newLeft = drag.origLeft + dx;
+        newLeft = Math.max(0,newLeft);
+        newLeft = snapX(newLeft);
+        el.style.left = newLeft + 'px';
+      });
+      window.addEventListener('pointerup',(e)=>{
+        if(!drag.active) return;
+        drag.active=false; el.releasePointerCapture(e.pointerId);
+        block.x = parseFloat(el.style.left || 0);
+      });
+
+      // resizing horizontally via handle
+      let resizing = {active:false, startX:0, origW:0};
+      handle.addEventListener('pointerdown',(e)=>{
+        e.stopPropagation(); handle.setPointerCapture(e.pointerId);
+        resizing.active=true; resizing.startX = e.clientX; resizing.origW = parseFloat(el.style.width||0);
+      });
+      window.addEventListener('pointermove',(e)=>{
+        if(!resizing.active) return;
+        const dx = e.clientX - resizing.startX;
+        let newW = Math.max(30, resizing.origW + dx);
+        newW = snapX(newW);
+        el.style.width = newW+'px';
+      });
+      window.addEventListener('pointerup',(e)=>{
+        if(!resizing.active) return;
+        resizing.active=false; handle.releasePointerCapture(e.pointerId);
+        block.width = parseFloat(el.style.width||0);
+        // update duration if media exists
+        block.duration = pxToSeconds(block.width);
+      });
+
+      trackEl.appendChild(el);
+    }
+
+    function removeBlock(id){
+      const idx = state.mediaBlocks.findIndex(b=>b.id===id);
+      if(idx===-1) return;
+      state.mediaBlocks.splice(idx,1);
+      const node = document.querySelector(`.media-block[data-id='${id}']`);
+      if(node && node.parentNode) node.parentNode.removeChild(node);
+    }
+
+    // File import
+    elements.addMediaBtn.addEventListener('click',()=> elements.fileInput.click());
+    elements.fileInput.addEventListener('change', async (ev)=>{
+      const files = Array.from(ev.target.files);
+      for(const f of files){
+        const dataUrl = await fileToDataUrl(f);
+        if(f.type.startsWith('audio')){
+          // get duration
+          const duration = await probeDuration(dataUrl,'audio');
+          addMediaBlock({type:'audio',title:f.name, dataUrl, duration, width:secondsToPx(duration)});
+        } else if(f.type.startsWith('video')){
+          const duration = await probeDuration(dataUrl,'video');
+          const thumbnail = await extractVideoThumbnail(dataUrl, 0.1);
+          addMediaBlock({type:'video',title:f.name,dataUrl,duration,thumbnail,width:secondsToPx(duration)});
+        } else if(f.type.startsWith('image')){
+          addMediaBlock({type:'image',title:f.name,dataUrl,width:200});
+        } else {
+          // unknown -> treat as file
+          addMediaBlock({type:'image',title:f.name,dataUrl,width:200});
+        }
+      }
+      elements.fileInput.value='';
+    });
+
+    function fileToDataUrl(file){
+      return new Promise((res,rej)=>{
+        const r = new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error); r.readAsDataURL(file);
+      });
+    }
+
+    function probeDuration(dataUrl, type){
+      return new Promise((res,rej)=>{
+        const el = document.createElement(type);
+        el.preload='metadata';
+        el.src = dataUrl;
+        el.addEventListener('loadedmetadata',()=>{
+          let d = el.duration || 3; if(!isFinite(d)) d=3;
+          res(d);
         });
-        // close panel after adding
-        mediaPanel.classList.remove('active'); mediaPanel.setAttribute('aria-hidden','true');
-    });
+        el.addEventListener('error',()=>res(3));
+      });
+    }
 
-    // Drag & drop onto the piano roll
-    noteGrid.addEventListener('dragover', (e)=>{ e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
-    noteGrid.addEventListener('drop', (e)=>{
-        e.preventDefault();
-        const files = Array.from(e.dataTransfer.files || []);
-        files.forEach(file=>{
-            const url = URL.createObjectURL(file);
-            const type = file.type || '';
-            let kind = 'unknown';
-            if(type.startsWith('audio')) kind = 'audio';
-            else if(type.startsWith('video')) kind = 'video';
-            else if(type.startsWith('image')) kind = 'image';
-            else if(file.name.endsWith('.json')) kind = 'chart';
-            createMediaBlock({type, name: file.name, url, kind});
+    // Waveform generation for audio using WebAudio
+    async function generateWaveformFromDataUrl(dataUrl, canvas){
+      try{
+        const resp = await fetch(dataUrl);
+        const ab = await resp.arrayBuffer();
+        const ac = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuf = await ac.decodeAudioData(ab.slice(0));
+        const raw = audioBuf.getChannelData(0);
+        drawWaveform(raw, canvas);
+      }catch(err){ console.warn('waveform err',err); }
+    }
+
+    function drawWaveform(samples, canvas){
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width, h=canvas.height; ctx.clearRect(0,0,w,h);
+      ctx.fillStyle='#062026'; ctx.fillRect(0,0,w,h);
+      ctx.strokeStyle = '#1ad3d6'; ctx.lineWidth=1;
+      const step = Math.ceil(samples.length / w);
+      ctx.beginPath();
+      for(let i=0;i<w;i++){
+        const start = i*step; let min=1,max=-1;
+        for(let j=0;j<step;j++){ const s = samples[start+j]; if(s<min) min=s; if(s>max) max=s; }
+        const y1 = ((1+min)/2)*h; const y2 = ((1+max)/2)*h;
+        ctx.moveTo(i,y1); ctx.lineTo(i,y2);
+      }
+      ctx.stroke();
+    }
+
+    // Video thumbnail extraction
+    function extractVideoThumbnail(dataUrl, atSec=0.1){
+      return new Promise((res,rej)=>{
+        const vid = document.createElement('video'); vid.crossOrigin='anonymous'; vid.preload='metadata'; vid.src = dataUrl;
+        vid.muted = true; vid.currentTime = atSec;
+        vid.addEventListener('loadeddata',()=>{
+          // some browsers need a small timeout
+          setTimeout(()=>{
+            try{
+              const c = document.createElement('canvas'); c.width=220; c.height=120; const ctx=c.getContext('2d');
+              ctx.drawImage(vid,0,0,c.width,c.height);
+              const data = c.toDataURL('image/png'); res(data);
+            }catch(e){ res(''); }
+          },120);
         });
+        vid.addEventListener('error',()=>res(''));
+      });
+    }
+
+    // Charts
+    function drawChartPlaceholder(canvas, type='bar'){
+      const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle='#022428'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      const w = canvas.width, h = canvas.height; ctx.fillStyle='#1ad3d6';
+      const data = Array.from({length:6},()=>Math.random());
+      if(type==='bar'){
+        const bw = w / data.length;
+        data.forEach((v,i)=>{ ctx.fillRect(i*bw+8,h - v*h, bw-12, v*h); });
+      } else {
+        ctx.beginPath(); data.forEach((v,i)=>{ const x = i*(w/(data.length-1)); const y = h - v*h; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke();
+      }
+    }
+
+    // Panels
+    elements.togglePanelBtn.addEventListener('click',()=>elements.mediaPanel.classList.toggle('closed'));
+    elements.addBar.addEventListener('click',()=>{
+      addMediaBlock({type:'chart',title:'Bar Chart',meta:{chartType:'bar'},width:200});
+    });
+    elements.addLine.addEventListener('click',()=>{
+      addMediaBlock({type:'chart',title:'Line Graph',meta:{chartType:'line'},width:200});
     });
 
-    // Add chart / line via UI buttons
-    addChartBtn.addEventListener('click', ()=>{
-        createMediaBlock({type:'chart', name:'Bar Chart', url:null, kind:'chart'});
-        mediaPanel.classList.remove('active'); mediaPanel.setAttribute('aria-hidden','true');
-    });
-    addLineBtn.addEventListener('click', ()=>{
-        createMediaBlock({type:'line', name:'Line Graph', url:null, kind:'line'});
-        mediaPanel.classList.remove('active'); mediaPanel.setAttribute('aria-hidden','true');
+    // Save/load
+    elements.saveProject.addEventListener('click', saveProject);
+    elements.loadProject.addEventListener('click', ()=> elements.projectLoader.click());
+    elements.projectLoader.addEventListener('change', async (ev)=>{
+      const f = ev.target.files[0]; if(!f) return; const txt = await f.text(); loadProjectFromJson(txt);
+      elements.projectLoader.value='';
     });
 
-})();
-</script>
+    function saveProject(){
+      // pack project with dataUrls already stored in blocks
+      const p = {pxPerSecond: state.pxPerSecond, grid: state.grid, mediaBlocks: state.mediaBlocks};
+      const blob = new Blob([JSON.stringify(p, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'vitals-project.json'; a.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
 
+    function loadProjectFromJson(jsonText){
+      try{
+        const p = JSON.parse(jsonText);
+        // clear existing
+        state.mediaBlocks = [];
+        elements.tracks.innerHTML=''; state.tracks=[]; ensureTrack(0);
+        if(p.pxPerSecond) state.pxPerSecond = p.pxPerSecond;
+        if(p.grid) state.grid = p.grid;
+        (p.mediaBlocks||[]).forEach(b=> addMediaBlock(b));
+        renderRuler();
+      }catch(e){ alert('Invalid project file'); }
+    }
+
+    // Keyboard shortcuts
+    window.addEventListener('keydown', (e)=>{
+      if(e.ctrlKey && e.key.toLowerCase()==='m'){ e.preventDefault(); elements.mediaPanel.classList.toggle('closed'); }
+      if(e.ctrlKey && e.key.toLowerCase()==='s'){ e.preventDefault(); saveProject(); }
+      if(e.ctrlKey && e.key.toLowerCase()==='o'){ e.preventDefault(); elements.projectLoader.click(); }
+      if(e.ctrlKey && e.key.toLowerCase()==='g'){ e.preventDefault(); state.grid.enabled = !state.grid.enabled; elements.gridStatus.textContent = state.grid.enabled? 'On':'Off'; }
+    });
+
+    // initialize
+    elements.gridStatus.textContent = state.grid.enabled? 'On':'Off';
+
+    // simple zoom in/out
+    document.getElementById('zoom-in').addEventListener('click',()=>{ state.pxPerSecond = Math.min(500, state.pxPerSecond*1.2); renderRuler(); });
+    document.getElementById('zoom-out').addEventListener('click',()=>{ state.pxPerSecond = Math.max(20, state.pxPerSecond/1.2); renderRuler(); });
+
+    // create initial sample block for demo
+    addMediaBlock({type:'chart',title:'Welcome Chart',width:240,meta:{chartType:'bar'}});
+
+    // Expose load/save helpers to console for easy testing
+    window._studio = {state, saveProject, loadProjectFromJson};
+  </script>
 </body>
 </html>
