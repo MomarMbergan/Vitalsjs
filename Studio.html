@@ -8,183 +8,76 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            /* Neon Colors */
-            --neon-cyan: #00ffff;
-            --neon-magenta: #ff00ff;
-            --neon-yellow: #ffff00;
-            --neon-green: #00ff00;
-            --neon-orange: #ff6600;
-            --neon-pink: #ff1493;
-            --neon-blue: #0080ff;
-            --neon-purple: #9d00ff;
-            --neon-red: #ff3366;
-            
-            /* Pearl White Tones */
-            --pearl-white: #f8f8ff;
-            --pearl-light: #ffffff;
-            --pearl-dark: #e8e8f0;
-            --pearl-shadow: #d8d8e8;
-            
-            /* Dark Background for Glow */
-            --bg-dark: #0a0a0f;
-            --bg-darker: #050508;
-            --bg-panel: #12121a;
-            --bg-elevated: #1a1a25;
+            --neon-cyan: #00ffff; --neon-magenta: #ff00ff; --neon-yellow: #ffff00; --neon-green: #00ff00;
+            --neon-orange: #ff6600; --neon-blue: #0080ff; --neon-purple: #9d00ff; --neon-red: #ff3366;
+            --pearl-white: #f8f8ff; --pearl-light: #ffffff; --pearl-dark: #e8e8f0; --pearl-shadow: #d8d8e8;
+            --bg-dark: #0a0a0f; --bg-darker: #050508; --bg-panel: #12121a; --bg-elevated: #1a1a25;
         }
 
-        body {
-            font-family: 'Rajdhani', sans-serif;
-            background: var(--bg-dark);
-            color: var(--pearl-white);
-            overflow: hidden;
-            height: 100vh;
-        }
+        body { font-family: 'Rajdhani', sans-serif; background: var(--bg-dark); color: var(--pearl-white); overflow: hidden; height: 100vh; }
+        .app-container { display:flex; flex-direction:column; height:100vh; background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-darker) 100%); }
+        .menu-bar { height:35px; background:var(--pearl-white); border-bottom:2px solid var(--neon-cyan); display:flex; align-items:center; padding:0 12px; gap:15px; box-shadow:0 0 20px rgba(0,255,255,0.5); z-index:100; }
+        .logo { font-family:'Orbitron',sans-serif; font-weight:900; font-size:14px; background:linear-gradient(135deg,var(--neon-cyan),var(--neon-magenta)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-right:auto; }
 
-        .app-container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-darker) 100%);
-        }
+        .main-content { display:flex; flex:1; overflow:hidden; }
+        .center-area { flex:1; display:flex; flex-direction:column; background:var(--bg-panel); }
 
-        /* Top Menu Bar */
-        .menu-bar {
-            height: 35px;
-            background: var(--pearl-white);
-            border-bottom: 2px solid var(--neon-cyan);
-            display: flex;
-            align-items: center;
-            padding: 0 12px;
-            gap: 15px;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
-            position: relative;
-            z-index: 100;
-        }
+        .toolbar { height:50px; background:var(--pearl-white); border-bottom:2px solid var(--neon-green); display:flex; align-items:center; padding:0 10px; gap:6px; box-shadow:0 0 20px rgba(0,255,0,0.3); overflow-x:auto; }
+        .instrument-tabs { display:flex; gap:4px; margin-right:10px; padding-right:10px; border-right:2px solid var(--pearl-shadow); }
+        .instrument-tab { background:linear-gradient(135deg,var(--pearl-light),var(--pearl-dark)); border:2px solid var(--pearl-shadow); padding:5px 10px; border-radius:6px; font-family:'Orbitron',sans-serif; font-weight:600; color:var(--bg-dark); font-size:10px; }
+        .tool-btn { background: linear-gradient(135deg,var(--pearl-light),var(--pearl-dark)); border:2px solid var(--pearl-shadow); padding:5px 8px; border-radius:6px; cursor:pointer; font-family:'Orbitron',sans-serif; font-weight:600; color:var(--bg-dark); font-size:10px; }
+        .play-btn { width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,var(--neon-cyan),var(--neon-blue)); color:var(--pearl-white); border:none; }
 
-        .logo { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 14px; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-magenta)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-shadow: 0 0 20px rgba(0,255,255,0.5); margin-right: auto; }
+        /* Piano roll grid with controllable piano column */
+        .piano-roll { flex:1; position:relative; background:var(--bg-panel); border-bottom:2px solid var(--neon-purple); }
+        .piano-roll-grid { display:grid; grid-template-columns: var(--piano-width, 80px) 1fr; background:var(--bg-darker); height:100%; overflow:hidden; transition: grid-template-columns 220ms ease; }
+        .piano-column { position:relative; }
+        .piano-keys { background:var(--pearl-white); border-right:2px solid var(--neon-purple); overflow-y:auto; overflow-x:hidden; width:var(--piano-width,80px); transition: width 220ms ease, opacity 220ms ease; min-width:0; }
+        .piano-key { height:25px; border-bottom:1px solid var(--pearl-shadow); display:flex; align-items:center; justify-content:center; padding:0 10px; font-size:11px; color:var(--bg-dark); }
 
-        /* Main Content Area */
-        .main-content { display: flex; flex: 1; overflow: hidden; }
+        .note-grid { position:relative; height:100%; overflow-x:auto; overflow-y:auto; background:var(--bg-darker); }
+        .note-grid-content { position:relative; width:6000px; min-height:800px; background-image: repeating-linear-gradient(0deg, transparent, transparent 24px, var(--neon-purple) 24px, var(--neon-purple) 25px), repeating-linear-gradient(90deg, transparent, transparent 99px, rgba(0,255,255,0.2) 99px, rgba(0,255,255,0.2) 100px); background-size:100% 25px, 100px 100%; }
 
-        /* Center Area - Piano Roll & Tracks */
-        .center-area { flex: 1; display: flex; flex-direction: column; background: var(--bg-panel); }
-
-        /* Toolbar */
-        .toolbar { height: 50px; background: var(--pearl-white); border-bottom: 2px solid var(--neon-green); display: flex; align-items: center; padding: 0 10px; gap: 6px; box-shadow: 0 0 20px rgba(0,255,0,0.3); overflow-x: auto; }
-
-        /* Piano Roll - 60 Second Scrollable Timeline */
-        .piano-roll { flex: 1; overflow: hidden; position: relative; background: var(--bg-panel); border-bottom: 2px solid var(--neon-purple); }
-
-        /* Make piano column width controllable via CSS variable so it can collapse */
-        .piano-roll-grid {
-            display: grid;
-            grid-template-columns: var(--piano-width, 80px) 1fr;
-            background: var(--bg-darker);
-            height: 100%;
-            overflow: hidden;
-            transition: grid-template-columns 220ms ease;
-        }
-
-        .piano-column { position: relative; }
-
-        .piano-keys {
-            background: var(--pearl-white);
-            border-right: 2px solid var(--neon-purple);
-            box-shadow: 0 0 20px rgba(157,0,255,0.3);
-            overflow-y: auto;
-            overflow-x: hidden;
-            position: relative;
-            z-index: 10;
-            width: var(--piano-width, 80px);
-            transition: width 220ms ease, opacity 220ms ease;
-            min-width: 0;
-        }
-
-        .piano-key { height: 25px; border-bottom: 1px solid var(--pearl-shadow); display: flex; align-items: center; justify-content: center; padding: 0 10px; font-size: 11px; font-weight: 600; color: var(--bg-dark); cursor: pointer; }
-
-        .note-grid { position: relative; height: 100%; overflow-x: auto; overflow-y: auto; background: var(--bg-darker); }
-
-        .note-grid-content { position: relative; width: 6000px; min-height: 800px; background-image: repeating-linear-gradient(0deg, transparent, transparent 24px, var(--neon-purple) 24px, var(--neon-purple) 25px), repeating-linear-gradient(90deg, transparent, transparent 99px, rgba(0,255,255,0.2) 99px, rgba(0,255,255,0.2) 100px); background-size: 100% 25px, 100px 100%; }
-
-        /* Timeline ruler */
-        .timeline-ruler { position:absolute; top:0; left:0; width:100%; height:30px; background: rgba(0,0,0,0.9); border-bottom: 2px solid var(--neon-cyan); z-index:100; display:flex; font-family:'Orbitron',sans-serif; font-size:10px; color:var(--neon-cyan); font-weight:600; }
+        .timeline-ruler { position:absolute; top:0; left:0; width:100%; height:30px; background:rgba(0,0,0,0.9); border-bottom:2px solid var(--neon-cyan); z-index:100; display:flex; font-family:'Orbitron',sans-serif; font-size:10px; color:var(--neon-cyan); font-weight:600; }
         .timeline-marker { width:100px; text-align:center; border-right:1px solid rgba(0,255,255,0.3); padding-top:8px; flex-shrink:0; }
-
-        /* Waveform / Spectrum */
         .waveform-canvas, .spectrum-canvas { position:absolute; top:30px; left:0; width:100%; height:calc(100% - 30px); pointer-events:none; }
+        .playhead { position:absolute; top:0; left:0; width:3px; height:100%; z-index:50; pointer-events:none; background:linear-gradient(180deg,var(--neon-red),var(--neon-orange)); box-shadow:0 0 15px var(--neon-red); }
 
-        /* Playhead */
-        .playhead { position:absolute; top:0; left:0; width:3px; height:100%; z-index:50; pointer-events:none; background: linear-gradient(180deg, var(--neon-red), var(--neon-orange)); box-shadow:0 0 15px var(--neon-red); }
-
-        /* Note */
         .note { position:absolute; height:23px; background:linear-gradient(135deg,var(--neon-cyan),var(--neon-blue)); border:2px solid var(--neon-cyan); border-radius:4px; cursor:move; box-shadow:0 0 15px var(--neon-cyan); }
 
-        /* Collapse / Scroll controls for Piano & Mixer */
-        .collapse-btn {
-            position: absolute;
-            left: -18px;
-            top: 12px;
-            width: 28px;
-            height: 28px;
-            border-radius: 6px;
-            background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-            border: 2px solid rgba(255,255,255,0.06);
-            color: var(--neon-cyan);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-family: 'Orbitron', sans-serif;
-            font-size: 12px;
-            box-shadow: 0 0 10px rgba(0,255,255,0.04);
-            transition: transform 140ms ease, background 140ms ease;
-            z-index: 120;
-        }
-        .collapse-btn:hover { transform: translateX(-2px); }
-        .collapse-btn.collapsed { transform: rotate(180deg); }
+        /* Collapse buttons */
+        .collapse-btn { position:absolute; left:-18px; top:12px; width:28px; height:28px; border-radius:6px; background:linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); border:2px solid rgba(255,255,255,0.06); color:var(--neon-cyan); display:flex; align-items:center; justify-content:center; cursor:pointer; font-family:'Orbitron',sans-serif; font-size:12px; z-index:120; }
+        .piano-collapsed .piano-keys { width:0 !important; opacity:0; pointer-events:none; }
+        .mixer-column { position:relative; }
 
-        /* Collapsed piano */
-        .piano-collapsed .piano-keys { width: 0 !important; opacity: 0; pointer-events: none; }
-
-        /* Mixer container wrap so we can collapse vertically */
-        .mixer-column { position: relative; }
-
-        /* Ensure mixer channels horizontally scrollable (left-right) */
-        .mixer-strip { overflow-x: auto; overflow-y: hidden; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: thin; height: 300px; background: var(--pearl-white); border-top:3px solid var(--neon-yellow); box-shadow:0 0 30px rgba(255,255,0,0.3); padding:10px; gap:8px; }
-        .mixer-strip::-webkit-scrollbar { height: 10px; }
-        .mixer-strip::-webkit-scrollbar-thumb { background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta), var(--neon-yellow)); border-radius:5px; box-shadow:0 0 15px var(--neon-cyan); border:2px solid var(--pearl-white); }
-
-        /* Keep channel cards non-shrinking so they scroll instead of wrap */
-        .mixer-strip .channel { display: inline-flex; vertical-align: top; flex-direction: column; flex-shrink: 0; margin-right: 8px; min-width:115px; width:115px; }
+        /* Mixer strip scroll */
+        .mixer-strip { overflow-x:auto; overflow-y:hidden; white-space:nowrap; -webkit-overflow-scrolling:touch; scrollbar-width:thin; height:300px; background:var(--pearl-white); border-top:3px solid var(--neon-yellow); box-shadow:0 0 30px rgba(255,255,0,0.3); padding:10px; gap:8px; }
+        .mixer-strip .channel { display:inline-flex; vertical-align:top; flex-direction:column; flex-shrink:0; margin-right:8px; min-width:115px; width:115px; }
         .mixer-strip .channel.master { min-width:130px; width:130px; }
+        .mixer-collapsed .mixer-strip { height:40px !important; overflow:hidden; }
 
-        /* Collapsed mixer: shrink to a small bar (shows a handle) */
-        .mixer-collapsed .mixer-strip { height: 40px !important; overflow: hidden; transition: height 220ms ease; }
+        /* Media block styles */
+        .media-block { position:absolute; border-radius:8px; padding:8px; color:#001; font-weight:700; display:flex; align-items:center; gap:8px; cursor:move; }
+        .media-label { font-family:'Orbitron',sans-serif; font-size:11px; color:#fff; text-shadow:0 0 6px rgba(0,0,0,0.6); }
 
-        /* Mixer collapse button positioning */
-        .mixer-column .collapse-btn { left: -18px; top: 12px; }
+        .media-audio { background:linear-gradient(135deg, rgba(0,255,255,0.15), rgba(0,128,255,0.12)); border:2px solid var(--neon-cyan); box-shadow:0 0 18px rgba(0,255,255,0.25); }
+        .media-video { background:linear-gradient(135deg, rgba(255,0,255,0.12), rgba(128,0,255,0.08)); border:2px solid var(--neon-magenta); box-shadow:0 0 18px rgba(255,0,255,0.25); }
+        .media-image { background:linear-gradient(135deg, rgba(0,255,0,0.08), rgba(0,200,0,0.06)); border:2px solid var(--neon-green); box-shadow:0 0 18px rgba(0,255,0,0.18); }
+        .media-chart { background:linear-gradient(135deg, rgba(255,255,0,0.08), rgba(255,200,0,0.06)); border:2px solid var(--neon-yellow); box-shadow:0 0 18px rgba(255,255,0,0.18); }
+        .media-line { background:linear-gradient(135deg, rgba(157,0,255,0.06), rgba(120,0,255,0.04)); border:2px solid var(--neon-purple); box-shadow:0 0 18px rgba(157,0,255,0.16); }
 
-        /* Small responsive tweak */
-        @media (max-width: 680px) { .collapse-btn { left: -22px; } }
+        .media-thumb { max-width:100%; max-height:100%; border-radius:6px; }
 
-        /* Mixer/channel base styles (kept largely from original) */
-        .channel { background: linear-gradient(135deg, var(--pearl-light), var(--pearl-dark)); border: 2px solid var(--pearl-shadow); border-radius:8px; padding:8px 3px; gap:3px; transition: all 0.3s ease; }
-        .channel:hover { border-color: var(--neon-cyan); box-shadow:0 0 20px var(--neon-cyan); transform: translateY(-3px); }
-        .channel.master { background: linear-gradient(135deg,#ffffff,var(--pearl-light)); border:3px solid var(--neon-yellow); box-shadow:0 0 25px rgba(255,255,0,0.5); }
-        .channel-header { display:flex; flex-direction:column; align-items:center; gap:3px; width:100%; }
-        .channel-label { font-family:'Orbitron',sans-serif; font-weight:600; font-size:9px; color:var(--bg-dark); text-align:center; }
-        .channel-number { font-family:'Orbitron',sans-serif; font-weight:700; font-size:11px; color:var(--pearl-white); background:var(--neon-cyan); padding:4px 10px; border-radius:4px; }
-
-        /* basic fader/led styles retained for continuity */
-        .vertical-fader { width:22px; height:60px; background:var(--pearl-dark); border-radius:10px; position:relative; border:2px solid var(--pearl-shadow); }
-        .vertical-fader-fill { position:absolute; bottom:0; width:100%; background:linear-gradient(180deg, var(--neon-cyan), var(--neon-magenta)); border-radius:10px; }
+        /* Media panel */
+        .media-panel { position:fixed; right:20px; top:60px; width:320px; background:linear-gradient(135deg,var(--bg-panel),var(--bg-darker)); border:2px solid var(--neon-cyan); border-radius:10px; padding:12px; z-index:1000; box-shadow:0 0 30px rgba(0,255,255,0.12); display:none; }
+        .media-panel.active { display:block; }
+        .media-panel h3 { font-family:'Orbitron',sans-serif; font-size:14px; color:var(--neon-cyan); margin-bottom:8px; }
+        .media-panel .row { display:flex; gap:8px; margin-bottom:8px; }
+        .media-panel input[type=file] { width:100%; }
+        .btn { padding:8px 10px; border-radius:6px; background:linear-gradient(135deg,var(--pearl-light),var(--pearl-dark)); border:2px solid var(--pearl-shadow); cursor:pointer; font-family:'Orbitron',sans-serif; font-weight:600; }
 
     </style>
 </head>
@@ -199,7 +92,6 @@
     </div>
 
     <div class="main-content">
-        <!-- Left / Piano & Center Area -->
         <div class="center-area">
             <div class="toolbar">
                 <div class="instrument-tabs">
@@ -210,15 +102,16 @@
                 </div>
                 <button class="tool-btn play-btn" title="Play">▶</button>
                 <div class="bpm-display">120 BPM</div>
+
+                <!-- Media upload button -->
+                <button class="tool-btn" id="mediaBtn">Media</button>
             </div>
 
             <div class="piano-roll">
                 <div class="piano-roll-grid">
-                    <!-- Piano column wrapped for collapse button -->
                     <div class="piano-column">
                         <button class="collapse-btn" id="pianoToggle" aria-pressed="false" title="Collapse/Expand Piano column">◀</button>
                         <div class="piano-keys" id="pianoKeys">
-                            <!-- simple piano key list -->
                             <div class="piano-key">C8</div>
                             <div class="piano-key black">B7</div>
                             <div class="piano-key">A7</div>
@@ -229,29 +122,23 @@
                             <div class="piano-key">D7</div>
                             <div class="piano-key black">C#7</div>
                             <div class="piano-key">C7</div>
-                            <!-- more keys as needed -->
                         </div>
                     </div>
 
-                    <!-- Note grid / timeline -->
                     <div class="note-grid" id="noteGrid">
                         <div class="timeline-ruler" aria-hidden="true">
-                            <!-- markers for 60 seconds at 100px per second -->
-                            <!-- show 60 markers but keep a few for demo -->
                             <div class="timeline-marker">0s</div>
                             <div class="timeline-marker">1s</div>
                             <div class="timeline-marker">2s</div>
                             <div class="timeline-marker">3s</div>
                             <div class="timeline-marker">4s</div>
                             <div class="timeline-marker">5s</div>
-                            <!-- ... -->
                         </div>
 
                         <canvas class="waveform-canvas"></canvas>
                         <canvas class="spectrum-canvas"></canvas>
 
-                        <div class="note-grid-content">
-                            <!-- Example note blocks -->
+                        <div class="note-grid-content" id="noteGridContent">
                             <div class="note" style="left:100px; top:40px; width:200px;"></div>
                             <div class="note" style="left:350px; top:80px; width:120px;"></div>
                         </div>
@@ -261,126 +148,181 @@
                 </div>
             </div>
 
-            <!-- Mixer (placed at bottom) -->
             <div class="mixer-column" id="mixerColumn">
                 <button class="collapse-btn" id="mixerToggle" aria-pressed="false" title="Collapse/Expand Mixer">◀</button>
                 <div class="mixer-strip" id="mixerStrip">
-                    <!-- Channels 1..11 -->
-                    <div class="channel" id="ch1">
-                        <div class="channel-header"><div class="channel-number">1</div><div class="channel-label">Kick</div></div>
-                        <div class="channel-content">
-                            <div class="vertical-fader"><div class="vertical-fader-fill" style="height:60%"></div></div>
-                        </div>
-                    </div>
-                    <div class="channel" id="ch2">
-                        <div class="channel-header"><div class="channel-number">2</div><div class="channel-label">Snare</div></div>
-                        <div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:50%"></div></div></div>
-                    </div>
-                    <div class="channel" id="ch3">
-                        <div class="channel-header"><div class="channel-number">3</div><div class="channel-label">HiHat</div></div>
-                        <div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:40%"></div></div></div>
-                    </div>
-                    <div class="channel" id="ch4">
-                        <div class="channel-header"><div class="channel-number">4</div><div class="channel-label">Bass</div></div>
-                        <div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:70%"></div></div></div>
-                    </div>
-                    <div class="channel" id="ch5">
-                        <div class="channel-header"><div class="channel-number">5</div><div class="channel-label">Pad</div></div>
-                        <div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:55%"></div></div></div>
-                    </div>
-                    <div class="channel" id="ch6">
-                        <div class="channel-header"><div class="channel-number">6</div><div class="channel-label">Lead</div></div>
-                        <div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:45%"></div></div></div>
-                    </div>
-                    <div class="channel" id="ch7">
-                        <div class="channel-header"><div class="channel-number">7</div><div class="channel-label">FX1</div></div>
-                        <div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:30%"></div></div></div>
-                    </div>
-                    <div class="channel" id="ch8">
-                        <div class="channel-header"><div class="channel-number">8</div><div class="channel-label">FX2</div></div>
-                        <div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:35%"></div></div></div>
-                    </div>
-                    <div class="channel" id="ch9">
-                        <div class="channel-header"><div class="channel-number">9</div><div class="channel-label">Vox</div></div>
-                        <div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:65%"></div></div></div>
-                    </div>
-                    <div class="channel" id="ch10">
-                        <div class="channel-header"><div class="channel-number">10</div><div class="channel-label">Aux</div></div>
-                        <div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:20%"></div></div></div>
-                    </div>
-                    <div class="channel" id="ch11">
-                        <div class="channel-header"><div class="channel-number">11</div><div class="channel-label">Bus</div></div>
-                        <div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:50%"></div></div></div>
-                    </div>
-
-                    <!-- Master channel (channel 12) -->
-                    <div class="channel master" id="chMaster">
-                        <div class="channel-header"><div class="channel-number">12</div><div class="channel-label">Master</div></div>
-                        <div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:80%"></div></div></div>
-                    </div>
-
+                    <!-- channels 1..11 and master -->
+                    <div class="channel" id="ch1"><div class="channel-header"><div class="channel-number">1</div><div class="channel-label">Kick</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:60%"></div></div></div></div>
+                    <div class="channel" id="ch2"><div class="channel-header"><div class="channel-number">2</div><div class="channel-label">Snare</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:50%"></div></div></div></div>
+                    <div class="channel" id="ch3"><div class="channel-header"><div class="channel-number">3</div><div class="channel-label">HiHat</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:40%"></div></div></div></div>
+                    <div class="channel" id="ch4"><div class="channel-header"><div class="channel-number">4</div><div class="channel-label">Bass</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:70%"></div></div></div></div>
+                    <div class="channel" id="ch5"><div class="channel-header"><div class="channel-number">5</div><div class="channel-label">Pad</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:55%"></div></div></div></div>
+                    <div class="channel" id="ch6"><div class="channel-header"><div class="channel-number">6</div><div class="channel-label">Lead</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:45%"></div></div></div></div>
+                    <div class="channel" id="ch7"><div class="channel-header"><div class="channel-number">7</div><div class="channel-label">FX1</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:30%"></div></div></div></div>
+                    <div class="channel" id="ch8"><div class="channel-header"><div class="channel-number">8</div><div class="channel-label">FX2</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:35%"></div></div></div></div>
+                    <div class="channel" id="ch9"><div class="channel-header"><div class="channel-number">9</div><div class="channel-label">Vox</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:65%"></div></div></div></div>
+                    <div class="channel" id="ch10"><div class="channel-header"><div class="channel-number">10</div><div class="channel-label">Aux</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:20%"></div></div></div></div>
+                    <div class="channel" id="ch11"><div class="channel-header"><div class="channel-number">11</div><div class="channel-label">Bus</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:50%"></div></div></div></div>
+                    <div class="channel master" id="chMaster"><div class="channel-header"><div class="channel-number">12</div><div class="channel-label">Master</div></div><div class="channel-content"><div class="vertical-fader"><div class="vertical-fader-fill" style="height:80%"></div></div></div></div>
                 </div>
             </div>
 
-        </div> <!-- end center-area -->
+        </div>
+    </div>
+</div>
 
-    </div> <!-- end main-content -->
+<!-- Media panel -->
+<div class="media-panel" id="mediaPanel" role="dialog" aria-hidden="true">
+    <h3>Media</h3>
+    <div class="row">
+        <input type="file" id="mediaInput" accept="audio/*,video/*,image/*,application/json" />
+    </div>
+    <div class="row">
+        <button class="btn" id="addChart">Add Bar Chart</button>
+        <button class="btn" id="addLine">Add Line Graph</button>
+    </div>
+    <div class="row">
+        <button class="btn" id="closeMedia">Close</button>
+    </div>
+</div>
 
-</div> <!-- end app-container -->
-
-<!-- Toggle script for piano & mixer collapse -->
 <script>
-(function () {
-    const body = document.body;
-    const pianoToggle = document.getElementById('pianoToggle');
-    const mixerToggle = document.getElementById('mixerToggle');
-    const pianoClass = 'piano-collapsed';
-    const mixerClass = 'mixer-collapsed';
+(function(){
+    // Toggle media panel
+    const mediaBtn = document.getElementById('mediaBtn');
+    const mediaPanel = document.getElementById('mediaPanel');
+    const mediaInput = document.getElementById('mediaInput');
+    const addChartBtn = document.getElementById('addChart');
+    const addLineBtn = document.getElementById('addLine');
+    const closeMedia = document.getElementById('closeMedia');
+    const noteGrid = document.getElementById('noteGrid');
+    const noteGridContent = document.getElementById('noteGridContent');
 
-    function applyInitialState() {
-        const pianoCollapsed = localStorage.getItem('vitalsjs.pianoCollapsed') === '1';
-        const mixerCollapsed = localStorage.getItem('vitalsjs.mixerCollapsed') === '1';
+    mediaBtn.addEventListener('click', () => {
+        mediaPanel.classList.toggle('active');
+        mediaPanel.setAttribute('aria-hidden', mediaPanel.classList.contains('active') ? 'false' : 'true');
+    });
+    closeMedia.addEventListener('click', () => { mediaPanel.classList.remove('active'); mediaPanel.setAttribute('aria-hidden','true'); });
 
-        if (pianoCollapsed) {
-            body.classList.add(pianoClass);
-            document.documentElement.style.setProperty('--piano-width', '0px');
-            if (pianoToggle) { pianoToggle.classList.add('collapsed'); pianoToggle.setAttribute('aria-pressed','true'); pianoToggle.textContent = '▶'; }
+    // Helpers
+    function createMediaBlock({type, name, url, kind}){
+        const el = document.createElement('div');
+        el.classList.add('media-block');
+        const top = noteGrid.scrollTop + 80; // place somewhat into view
+        const left = noteGrid.scrollLeft + 60;
+        el.style.top = top + 'px';
+        el.style.left = left + 'px';
+        el.style.width = '360px';
+        el.style.height = '90px';
+        const label = document.createElement('div');
+        label.className = 'media-label';
+        label.textContent = name + ' (' + kind + ')';
+        el.appendChild(label);
+
+        // style by type/kind
+        if(kind === 'audio') el.classList.add('media-audio');
+        else if(kind === 'video') el.classList.add('media-video');
+        else if(kind === 'image') el.classList.add('media-image');
+        else if(kind === 'chart') el.classList.add('media-chart');
+        else if(kind === 'line') el.classList.add('media-line');
+
+        // for images show thumb
+        if(kind === 'image' && url){
+            const img = document.createElement('img'); img.src = url; img.className = 'media-thumb'; img.style.maxHeight = '68px'; img.style.maxWidth = '120px'; el.appendChild(img);
         }
 
-        if (mixerCollapsed) {
-            body.classList.add(mixerClass);
-            if (mixerToggle) { mixerToggle.classList.add('collapsed'); mixerToggle.setAttribute('aria-pressed','true'); mixerToggle.textContent = '▶'; }
+        // for videos/audio attach hidden element for playback (optional)
+        if((kind === 'audio' || kind === 'video') && url){
+            const media = document.createElement(kind === 'audio' ? 'audio' : 'video');
+            media.src = url; media.controls = true; media.style.maxHeight = '68px'; media.style.maxWidth = '180px'; el.appendChild(media);
         }
-    }
 
-    if (pianoToggle) {
-        pianoToggle.addEventListener('click', function () {
-            const collapsed = document.body.classList.toggle(pianoClass);
-            pianoToggle.classList.toggle('collapsed', collapsed);
-            pianoToggle.setAttribute('aria-pressed', collapsed ? 'true' : 'false');
-            pianoToggle.textContent = collapsed ? '▶' : '◀';
-            if (collapsed) {
-                document.documentElement.style.setProperty('--piano-width', '0px');
-                localStorage.setItem('vitalsjs.pianoCollapsed', '1');
-            } else {
-                document.documentElement.style.removeProperty('--piano-width');
-                localStorage.setItem('vitalsjs.pianoCollapsed', '0');
+        // For chart/line create simple SVG visualization
+        if(kind === 'chart'){
+            const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+            svg.setAttribute('width','300'); svg.setAttribute('height','60'); svg.style.marginLeft='8px';
+            // draw three bars
+            const data = [40,70,50];
+            data.forEach((d,i)=>{
+                const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+                rect.setAttribute('x', 10 + i*90);
+                rect.setAttribute('y', 60 - d);
+                rect.setAttribute('width', 60);
+                rect.setAttribute('height', d);
+                rect.setAttribute('fill','rgba(255,255,0,0.9)');
+                svg.appendChild(rect);
+            });
+            el.appendChild(svg);
+        }
+        if(kind === 'line'){
+            const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+            svg.setAttribute('width','300'); svg.setAttribute('height','60'); svg.style.marginLeft='8px';
+            const path = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+            path.setAttribute('points','0,40 60,20 120,30 180,10 240,45 300,20');
+            path.setAttribute('fill','none'); path.setAttribute('stroke','rgba(157,0,255,0.95)'); path.setAttribute('stroke-width','3');
+            svg.appendChild(path);
+            el.appendChild(svg);
+        }
+
+        // Make draggable within noteGridContent
+        el.addEventListener('pointerdown', (ev)=>{
+            ev.preventDefault();
+            const startX = ev.clientX; const startY = ev.clientY;
+            const origLeft = parseInt(el.style.left,10); const origTop = parseInt(el.style.top,10);
+            function moveHandler(e){
+                const dx = e.clientX - startX; const dy = e.clientY - startY;
+                el.style.left = (origLeft + dx) + 'px'; el.style.top = (origTop + dy) + 'px';
             }
+            function upHandler(){ window.removeEventListener('pointermove', moveHandler); window.removeEventListener('pointerup', upHandler); }
+            window.addEventListener('pointermove', moveHandler); window.addEventListener('pointerup', upHandler);
         });
+
+        noteGridContent.appendChild(el);
     }
 
-    if (mixerToggle) {
-        mixerToggle.addEventListener('click', function () {
-            const collapsed = document.body.classList.toggle(mixerClass);
-            mixerToggle.classList.toggle('collapsed', collapsed);
-            mixerToggle.setAttribute('aria-pressed', collapsed ? 'true' : 'false');
-            mixerToggle.textContent = collapsed ? '▶' : '◀';
-            localStorage.setItem('vitalsjs.mixerCollapsed', collapsed ? '1' : '0');
+    // handle file selection
+    mediaInput.addEventListener('change', (e)=>{
+        const files = Array.from(e.target.files || []);
+        files.forEach(file=>{
+            const url = URL.createObjectURL(file);
+            const type = file.type || '';
+            let kind = 'unknown';
+            if(type.startsWith('audio')) kind = 'audio';
+            else if(type.startsWith('video')) kind = 'video';
+            else if(type.startsWith('image')) kind = 'image';
+            else if(file.name.endsWith('.json')) kind = 'chart';
+            createMediaBlock({type, name: file.name, url, kind});
         });
-    }
+        // close panel after adding
+        mediaPanel.classList.remove('active'); mediaPanel.setAttribute('aria-hidden','true');
+    });
 
-    // Apply initial state on load
-    applyInitialState();
+    // Drag & drop onto the piano roll
+    noteGrid.addEventListener('dragover', (e)=>{ e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+    noteGrid.addEventListener('drop', (e)=>{
+        e.preventDefault();
+        const files = Array.from(e.dataTransfer.files || []);
+        files.forEach(file=>{
+            const url = URL.createObjectURL(file);
+            const type = file.type || '';
+            let kind = 'unknown';
+            if(type.startsWith('audio')) kind = 'audio';
+            else if(type.startsWith('video')) kind = 'video';
+            else if(type.startsWith('image')) kind = 'image';
+            else if(file.name.endsWith('.json')) kind = 'chart';
+            createMediaBlock({type, name: file.name, url, kind});
+        });
+    });
+
+    // Add chart / line via UI buttons
+    addChartBtn.addEventListener('click', ()=>{
+        createMediaBlock({type:'chart', name:'Bar Chart', url:null, kind:'chart'});
+        mediaPanel.classList.remove('active'); mediaPanel.setAttribute('aria-hidden','true');
+    });
+    addLineBtn.addEventListener('click', ()=>{
+        createMediaBlock({type:'line', name:'Line Graph', url:null, kind:'line'});
+        mediaPanel.classList.remove('active'); mediaPanel.setAttribute('aria-hidden','true');
+    });
 
 })();
 </script>
