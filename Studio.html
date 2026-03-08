@@ -1,58 +1,439 @@
-<!-- Biometric Visualization Modal -->
-<div id="biometric-modal" class="modal">
-    <div class="modal-content">
-        <span class="close">&times;</span>
-        <h2>Biometric Visualization</h2>
-        <div id="ppg-chart"></div>
-        <div id="spectrum-chart"></div>
-        <div id="tracking-chart"></div>
-        <div id="alluvial-diagram"></div>
-        <div id="binary-classification"></div>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vitals Studio</title>
+  <style>
+    :root{--bg:#0f1720;--panel:#0b1220;--accent:#22c1c3;--muted:#94a3b8;--white:#e6eef6}
+    body{margin:0;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;color:var(--white);background:linear-gradient(180deg,#071221 0%,#071829 100%);}
+    #app{display:flex;height:100vh;}
+    #media-panel{width:300px;background:var(--panel);padding:12px;box-sizing:border-box;transition:transform .2s ease-in-out;border-right:1px solid rgba(255,255,255,0.03)}
+    #media-panel.closed{transform:translateX(-320px)}
+    .btn{display:inline-block;padding:8px 10px;margin:6px 4px;background:rgba(255,255,255,0.04);border-radius:6px;border:1px solid rgba(255,255,255,0.03);cursor:pointer;color:var(--white)}
+    .btn:active{transform:translateY(1px)}
+    #timeline-wrap{flex:1;display:flex;flex-direction:column;padding:12px;box-sizing:border-box}
+    #controls{height:48px;display:flex;align-items:center;gap:8px}
+    #timeline{flex:1;background:#08121a;border-radius:8px;padding:12px;overflow:auto;position:relative}
+    .ruler{height:28px;border-bottom:1px solid rgba(255,255,255,0.03);position:relative}
+    .tracks{position:relative;margin-top:8px}
+    .track{height:100px;border-bottom:1px dashed rgba(255,255,255,0.02);position:relative}
+    .media-block{position:absolute;top:8px;height:84px;background:linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.02));border-radius:6px;border:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;padding:8px;box-sizing:border-box;gap:8px}
+    .media-details{flex:1;min-width:0}
+    .media-title{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .media-controls{display:flex;gap:6px}
+    .handle{width:8px;cursor:ew-resize;background:linear-gradient(90deg,rgba(255,255,255,0.06),transparent);height:100%;border-radius:0 6px 6px 0}
+    canvas.wave{height:60px;width:220px;background:#021018;border-radius:4px}
+    .thumbnail{width:110px;height:60px;object-fit:cover;border-radius:4px}
+    #file-input{display:none}
+    .grid-line{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.02)}
+    .small{font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="media-panel" class="closed">
+      <h3>Media Panel</h3>
+      <div>
+        <button id="toggle-panel" class="btn">Toggle Panel (Ctrl+M)</button>
+        <button id="add-media" class="btn">Add Media</button>
+        <button id="add-bar" class="btn">Add Bar Chart</button>
+        <button id="add-line" class="btn">Add Line Graph</button>
+      </div>
+      <div style="margin-top:12px">
+        <button id="save-project" class="btn">Save Project (Ctrl+S)</button>
+        <button id="load-project" class="btn">Load Project (Ctrl+O)</button>
+      </div>
+      <p class="small">Grid snap: <span id="grid-status">On</span> (Ctrl+G)</p>
+      <input id="file-input" type="file" multiple />
     </div>
-</div>
 
-<style>
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 1000;
-        left: 0;
-        top: 0;
-        width: 25%;
-        height: 25%;
-        overflow: auto;
-        background-color: rgba(0,0,0,0.8);
-    }
-    .modal-content {
-        background-color: #fefefe;
-        margin: 15% auto;
-        padding: 20px;
-        border: 1px solid transparent;
-        border-radius: 5px;
-        box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-        border: 2px solid rgba(0, 255, 255, 0.5);
-    }
-    .modal-content h2 {
-        color: #00ffff;
-    }
-</style>
+    <div id="timeline-wrap">
+      <div id="controls">
+        <div class="btn" id="add-track">Add Track</div>
+        <div class="btn" id="zoom-in">Zoom In</div>
+        <div class="btn" id="zoom-out">Zoom Out</div>
+        <div class="small">Tip: Drag blocks horizontally to move, drag right handle to resize. Play/pause per block.</div>
+      </div>
 
-<script>
-    document.getElementById('play-button').addEventListener('click', function() { showModal(); });
-    document.getElementById('vitals-button').addEventListener('click', function() { showModal(); });
-    document.getElementById('eeg-button').addEventListener('click', function() { showModal(); });
+      <div id="timeline">
+        <div class="ruler" id="ruler"></div>
+        <div class="tracks" id="tracks"></div>
+      </div>
+    </div>
+  </div>
 
-    function showModal() {
-        document.getElementById('biometric-modal').style.display = 'block';
+  <input id="project-loader" type="file" accept="application/json" style="display:none" />
+
+  <script>
+    // Basic studio app
+    const state = {
+      tracks: [],
+      mediaBlocks: [],
+      pxPerSecond: 100, // scaling
+      grid: {enabled:true, sizePx:10},
+    };
+
+    const elements = {
+      mediaPanel: document.getElementById('media-panel'),
+      togglePanelBtn: document.getElementById('toggle-panel'),
+      addMediaBtn: document.getElementById('add-media'),
+      fileInput: document.getElementById('file-input'),
+      addBar: document.getElementById('add-bar'),
+      addLine: document.getElementById('add-line'),
+      saveProject: document.getElementById('save-project'),
+      loadProject: document.getElementById('load-project'),
+      tracks: document.getElementById('tracks'),
+      ruler: document.getElementById('ruler'),
+      projectLoader: document.getElementById('project-loader'),
+      gridStatus: document.getElementById('grid-status'),
+    };
+
+    function ensureTrack(idx){
+      while(state.tracks.length<=idx){
+        const t = {id:state.tracks.length, el:createTrackEl(state.tracks.length)};
+        state.tracks.push(t);
+      }
     }
-    document.getElementsByClassName('close')[0].onclick = function() { 
-        document.getElementById('biometric-modal').style.display = 'none';
+
+    function createTrackEl(index){
+      const div = document.createElement('div');
+      div.className='track';
+      div.dataset.index = index;
+      elements.tracks.appendChild(div);
+      return div;
     }
-    window.onclick = function(event) { 
-        if (event.target == document.getElementById('biometric-modal')) {
-            document.getElementById('biometric-modal').style.display = 'none';
+
+    // initial track
+    ensureTrack(0);
+
+    // Grid lines
+    function renderRuler(){
+      elements.ruler.innerHTML='';
+      const width = 2000; // create many lines; timeline is scrollable
+      const step = state.grid.sizePx;
+      for(let x=0;x<width;x+=step){
+        const line = document.createElement('div');
+        line.className='grid-line';
+        line.style.left = x+'px';
+        elements.ruler.appendChild(line);
+      }
+    }
+    renderRuler();
+
+    // Utility
+    function snapX(x){
+      if(!state.grid.enabled) return x;
+      const s = state.grid.sizePx;
+      return Math.round(x/s)*s;
+    }
+
+    function pxToSeconds(px){return px / state.pxPerSecond}
+    function secondsToPx(s){return s * state.pxPerSecond}
+
+    // Add media block
+    function addMediaBlock(opts){
+      // opts: {type:'audio'|'video'|'image'|'chart',title,src,duration,thumbnail,dataUrl}
+      ensureTrack(opts.track||0);
+      const track = state.tracks[opts.track||0];
+      const block = {
+        id:crypto.randomUUID(),
+        type:opts.type||'audio',
+        title:opts.title||opts.type||'Media',
+        x: opts.x||0,
+        width: opts.width!==undefined?opts.width:secondsToPx(opts.duration||3),
+        track: track.id,
+        src: opts.src||null,
+        duration: opts.duration||3,
+        thumbnail: opts.thumbnail||null,
+        dataUrl: opts.dataUrl||null,
+        meta: opts.meta||{}
+      };
+      state.mediaBlocks.push(block);
+      renderBlock(block);
+    }
+
+    function renderBlock(block){
+      const trackEl = state.tracks[block.track].el;
+      const el = document.createElement('div');
+      el.className='media-block';
+      el.dataset.id = block.id;
+      el.style.left = block.x+'px';
+      el.style.width = block.width+'px';
+
+      const details = document.createElement('div');
+      details.className='media-details';
+      const title = document.createElement('div');
+      title.className='media-title';
+      title.textContent = block.title;
+      details.appendChild(title);
+
+      if(block.type==='audio'){
+        const canvas = document.createElement('canvas');
+        canvas.className='wave';
+        canvas.width = 220; canvas.height = 60;
+        details.appendChild(canvas);
+        if(block.dataUrl){ generateWaveformFromDataUrl(block.dataUrl, canvas); }
+      } else if(block.type==='video'){
+        const thumb = document.createElement('img');
+        thumb.className='thumbnail';
+        thumb.src = block.thumbnail || '';
+        details.appendChild(thumb);
+      } else if(block.type==='image'){
+        const thumb = document.createElement('img');
+        thumb.className='thumbnail';
+        thumb.src = block.dataUrl || block.src || '';
+        details.appendChild(thumb);
+      } else if(block.type==='chart'){
+        const canvas = document.createElement('canvas');
+        canvas.width = 220; canvas.height = 60;
+        canvas.style.background='#04161a';
+        details.appendChild(canvas);
+        drawChartPlaceholder(canvas, block.meta.chartType||'bar');
+      }
+
+      const controls = document.createElement('div');
+      controls.className='media-controls';
+      const playBtn = document.createElement('button'); playBtn.className='btn'; playBtn.textContent='Play';
+      const pauseBtn = document.createElement('button'); pauseBtn.className='btn'; pauseBtn.textContent='Pause';
+      const removeBtn = document.createElement('button'); removeBtn.className='btn'; removeBtn.textContent='Remove';
+      controls.appendChild(playBtn); controls.appendChild(pauseBtn); controls.appendChild(removeBtn);
+
+      el.appendChild(details);
+      el.appendChild(controls);
+
+      const handle = document.createElement('div'); handle.className='handle';
+      el.appendChild(handle);
+
+      // hidden media element
+      let mediaEl = null;
+      if(block.type==='audio'){
+        mediaEl = document.createElement('audio'); mediaEl.src = block.dataUrl || block.src || ''; mediaEl.preload='auto';
+      } else if(block.type==='video'){
+        mediaEl = document.createElement('video'); mediaEl.src = block.dataUrl || block.src || ''; mediaEl.preload='metadata';
+      }
+
+      // attach events
+      playBtn.addEventListener('click',()=>{ if(mediaEl){ mediaEl.play(); } });
+      pauseBtn.addEventListener('click',()=>{ if(mediaEl){ mediaEl.pause(); } });
+      removeBtn.addEventListener('click',()=>{ removeBlock(block.id); });
+
+      // dragging
+      let drag = {active:false, startX:0, origLeft:0};
+      el.addEventListener('pointerdown', (e)=>{
+        if(e.target===handle || e.target.closest('.btn')) return; // ignore if resizing or clicking controls
+        el.setPointerCapture(e.pointerId);
+        drag.active=true; drag.startX = e.clientX; drag.origLeft = parseFloat(el.style.left || 0);
+      });
+      window.addEventListener('pointermove',(e)=>{
+        if(!drag.active) return;
+        const dx = e.clientX - drag.startX;
+        let newLeft = drag.origLeft + dx;
+        newLeft = Math.max(0,newLeft);
+        newLeft = snapX(newLeft);
+        el.style.left = newLeft + 'px';
+      });
+      window.addEventListener('pointerup',(e)=>{
+        if(!drag.active) return;
+        drag.active=false; el.releasePointerCapture(e.pointerId);
+        block.x = parseFloat(el.style.left || 0);
+      });
+
+      // resizing horizontally via handle
+      let resizing = {active:false, startX:0, origW:0};
+      handle.addEventListener('pointerdown',(e)=>{
+        e.stopPropagation(); handle.setPointerCapture(e.pointerId);
+        resizing.active=true; resizing.startX = e.clientX; resizing.origW = parseFloat(el.style.width||0);
+      });
+      window.addEventListener('pointermove',(e)=>{
+        if(!resizing.active) return;
+        const dx = e.clientX - resizing.startX;
+        let newW = Math.max(30, resizing.origW + dx);
+        newW = snapX(newW);
+        el.style.width = newW+'px';
+      });
+      window.addEventListener('pointerup',(e)=>{
+        if(!resizing.active) return;
+        resizing.active=false; handle.releasePointerCapture(e.pointerId);
+        block.width = parseFloat(el.style.width||0);
+        // update duration if media exists
+        block.duration = pxToSeconds(block.width);
+      });
+
+      trackEl.appendChild(el);
+    }
+
+    function removeBlock(id){
+      const idx = state.mediaBlocks.findIndex(b=>b.id===id);
+      if(idx===-1) return;
+      state.mediaBlocks.splice(idx,1);
+      const node = document.querySelector(`.media-block[data-id='${id}']`);
+      if(node && node.parentNode) node.parentNode.removeChild(node);
+    }
+
+    // File import
+    elements.addMediaBtn.addEventListener('click',()=> elements.fileInput.click());
+    elements.fileInput.addEventListener('change', async (ev)=>{
+      const files = Array.from(ev.target.files);
+      for(const f of files){
+        const dataUrl = await fileToDataUrl(f);
+        if(f.type.startsWith('audio')){
+          // get duration
+          const duration = await probeDuration(dataUrl,'audio');
+          addMediaBlock({type:'audio',title:f.name, dataUrl, duration, width:secondsToPx(duration)});
+        } else if(f.type.startsWith('video')){
+          const duration = await probeDuration(dataUrl,'video');
+          const thumbnail = await extractVideoThumbnail(dataUrl, 0.1);
+          addMediaBlock({type:'video',title:f.name,dataUrl,duration,thumbnail,width:secondsToPx(duration)});
+        } else if(f.type.startsWith('image')){
+          addMediaBlock({type:'image',title:f.name,dataUrl,width:200});
+        } else {
+          // unknown -> treat as file
+          addMediaBlock({type:'image',title:f.name,dataUrl,width:200});
         }
-    }
-</script>
+      }
+      elements.fileInput.value='';
+    });
 
-<!-- End of Biometric Visualization Modal -->
+    function fileToDataUrl(file){
+      return new Promise((res,rej)=>{
+        const r = new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error); r.readAsDataURL(file);
+      });
+    }
+
+    function probeDuration(dataUrl, type){
+      return new Promise((res,rej)=>{
+        const el = document.createElement(type);
+        el.preload='metadata';
+        el.src = dataUrl;
+        el.addEventListener('loadedmetadata',()=>{
+          let d = el.duration || 3; if(!isFinite(d)) d=3;
+          res(d);
+        });
+        el.addEventListener('error',()=>res(3));
+      });
+    }
+
+    // Waveform generation for audio using WebAudio
+    async function generateWaveformFromDataUrl(dataUrl, canvas){
+      try{
+        const resp = await fetch(dataUrl);
+        const ab = await resp.arrayBuffer();
+        const ac = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuf = await ac.decodeAudioData(ab.slice(0));
+        const raw = audioBuf.getChannelData(0);
+        drawWaveform(raw, canvas);
+      }catch(err){ console.warn('waveform err',err); }
+    }
+
+    function drawWaveform(samples, canvas){
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width, h=canvas.height; ctx.clearRect(0,0,w,h);
+      ctx.fillStyle='#062026'; ctx.fillRect(0,0,w,h);
+      ctx.strokeStyle = '#1ad3d6'; ctx.lineWidth=1;
+      const step = Math.ceil(samples.length / w);
+      ctx.beginPath();
+      for(let i=0;i<w;i++){
+        const start = i*step; let min=1,max=-1;
+        for(let j=0;j<step;j++){ const s = samples[start+j]; if(s<min) min=s; if(s>max) max=s; }
+        const y1 = ((1+min)/2)*h; const y2 = ((1+max)/2)*h;
+        ctx.moveTo(i,y1); ctx.lineTo(i,y2);
+      }
+      ctx.stroke();
+    }
+
+    // Video thumbnail extraction
+    function extractVideoThumbnail(dataUrl, atSec=0.1){
+      return new Promise((res,rej)=>{
+        const vid = document.createElement('video'); vid.crossOrigin='anonymous'; vid.preload='metadata'; vid.src = dataUrl;
+        vid.muted = true; vid.currentTime = atSec;
+        vid.addEventListener('loadeddata',()=>{
+          // some browsers need a small timeout
+          setTimeout(()=>{
+            try{
+              const c = document.createElement('canvas'); c.width=220; c.height=120; const ctx=c.getContext('2d');
+              ctx.drawImage(vid,0,0,c.width,c.height);
+              const data = c.toDataURL('image/png'); res(data);
+            }catch(e){ res(''); }
+          },120);
+        });
+        vid.addEventListener('error',()=>res(''));
+      });
+    }
+
+    // Charts
+    function drawChartPlaceholder(canvas, type='bar'){
+      const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle='#022428'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      const w = canvas.width, h = canvas.height; ctx.fillStyle='#1ad3d6';
+      const data = Array.from({length:6},()=>Math.random());
+      if(type==='bar'){
+        const bw = w / data.length;
+        data.forEach((v,i)=>{ ctx.fillRect(i*bw+8,h - v*h, bw-12, v*h); });
+      } else {
+        ctx.beginPath(); data.forEach((v,i)=>{ const x = i*(w/(data.length-1)); const y = h - v*h; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }); ctx.stroke();
+      }
+    }
+
+    // Panels
+    elements.togglePanelBtn.addEventListener('click',()=>elements.mediaPanel.classList.toggle('closed'));
+    elements.addBar.addEventListener('click',()=>{
+      addMediaBlock({type:'chart',title:'Bar Chart',meta:{chartType:'bar'},width:200});
+    });
+    elements.addLine.addEventListener('click',()=>{
+      addMediaBlock({type:'chart',title:'Line Graph',meta:{chartType:'line'},width:200});
+    });
+
+    // Save/load
+    elements.saveProject.addEventListener('click', saveProject);
+    elements.loadProject.addEventListener('click', ()=> elements.projectLoader.click());
+    elements.projectLoader.addEventListener('change', async (ev)=>{
+      const f = ev.target.files[0]; if(!f) return; const txt = await f.text(); loadProjectFromJson(txt);
+      elements.projectLoader.value='';
+    });
+
+    function saveProject(){
+      // pack project with dataUrls already stored in blocks
+      const p = {pxPerSecond: state.pxPerSecond, grid: state.grid, mediaBlocks: state.mediaBlocks};
+      const blob = new Blob([JSON.stringify(p, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'vitals-project.json'; a.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+
+    function loadProjectFromJson(jsonText){
+      try{
+        const p = JSON.parse(jsonText);
+        // clear existing
+        state.mediaBlocks = [];
+        elements.tracks.innerHTML=''; state.tracks=[]; ensureTrack(0);
+        if(p.pxPerSecond) state.pxPerSecond = p.pxPerSecond;
+        if(p.grid) state.grid = p.grid;
+        (p.mediaBlocks||[]).forEach(b=> addMediaBlock(b));
+        renderRuler();
+      }catch(e){ alert('Invalid project file'); }
+    }
+
+    // Keyboard shortcuts
+    window.addEventListener('keydown', (e)=>{
+      if(e.ctrlKey && e.key.toLowerCase()==='m'){ e.preventDefault(); elements.mediaPanel.classList.toggle('closed'); }
+      if(e.ctrlKey && e.key.toLowerCase()==='s'){ e.preventDefault(); saveProject(); }
+      if(e.ctrlKey && e.key.toLowerCase()==='o'){ e.preventDefault(); elements.projectLoader.click(); }
+      if(e.ctrlKey && e.key.toLowerCase()==='g'){ e.preventDefault(); state.grid.enabled = !state.grid.enabled; elements.gridStatus.textContent = state.grid.enabled? 'On':'Off'; }
+    });
+
+    // initialize
+    elements.gridStatus.textContent = state.grid.enabled? 'On':'Off';
+
+    // simple zoom in/out
+    document.getElementById('zoom-in').addEventListener('click',()=>{ state.pxPerSecond = Math.min(500, state.pxPerSecond*1.2); renderRuler(); });
+    document.getElementById('zoom-out').addEventListener('click',()=>{ state.pxPerSecond = Math.max(20, state.pxPerSecond/1.2); renderRuler(); });
+
+    // create initial sample block for demo
+    addMediaBlock({type:'chart',title:'Welcome Chart',width:240,meta:{chartType:'bar'}});
+
+    // Expose load/save helpers to console for easy testing
+    window._studio = {state, saveProject, loadProjectFromJson};
+  </script>
+</body>
+</html>
