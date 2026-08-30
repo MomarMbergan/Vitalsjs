@@ -191,7 +191,7 @@
     }
 
     #slideshow-controls button {
-        background: linear-gradient(180deg,#ff7043,#ff5722);
+        background: linear-gradient(180deg, #4CAF50, #45a049);
         color: white;
         border: none;
         padding: 8px 10px;
@@ -199,13 +199,26 @@
         font-size: 14px;
         cursor: pointer;
         box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        transition: transform 0.2s ease, filter 0.2s ease;
+    }
+
+    #slideshow-controls button:hover {
+        filter: brightness(1.1);
     }
 
     #slideshow-controls button.secondary {
-        background: linear-gradient(180deg,#607d8b,#455a64);
+        background: linear-gradient(180deg, #2ecc71, #27ae60);
     }
 
-    #slideshow-controls button:active { transform: scale(0.98); }
+    #slideshow-controls button:active { 
+        transform: scale(0.98); 
+    }
+
+    #slideshow-controls button img {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
 
     /* Small adjustments for mobile */
     @media (max-width: 480px) {
@@ -436,10 +449,10 @@
 
             <!-- Prominent control panel -->
             <div id="slideshow-controls" aria-label="Slideshow Controls">
-                <button id="rotateCW">▲ Rotate 90°</button>
-                <button id="rotateCCW" class="secondary">▼ Rotate -90°</button>
-                <button id="startCycle">Start Cycle</button>
-                <button id="stopCycle" class="secondary">Stop Cycle</button>
+                <button id="rotateCW"><img src="assets/img/20230516_104626.png" alt="Rotate 90°" title="Rotate 90°"></button>
+                <button id="rotateCCW" class="secondary"><img src="assets/img/20230516_104626.png" alt="Rotate -90°" title="Rotate -90°"></button>
+                <button id="startCycle"><img src="assets/img/20230516_104626.png" alt="Start Cycle" title="Start Cycle"></button>
+                <button id="stopCycle" class="secondary"><img src="assets/img/20230516_104626.png" alt="Stop Cycle" title="Stop Cycle"></button>
                 <small style="opacity:0.8; margin-top:4px; font-size:12px;">Space toggles cycle, ←/→ change image</small>
             </div>
         </div>
