@@ -115,8 +115,8 @@
         background-color: black;
         color: white;
     }
-	
-    #chart-canvas text{fill:#888}	
+    
+    #chart-canvas text{fill:#888}    
     #export100,#showascii,#snapshot{
         width: 70px;
         padding: 10px;
@@ -137,17 +137,21 @@
         filter: brightness(1.2);
     }
     
-    #export100{margin:auto}	
-    mjx-line{height: 7px !important;}	
+    #export100{margin:auto}    
+    mjx-line{height: 7px !important;}    
     #asciicontent{color:#000;background:#fff}
 
+    /* Slideshow container positioning */
     #slideshow-container {
         position: absolute;
     }
 
+    /* Ensure images rotate around their center and animate smoothly */
     #slideshow-container img {
         width: 100%;
         display: none;
+        transform-origin: 50% 50%;
+        transition: transform 0.35s ease;
     }
 
     .prev, .next {
@@ -168,7 +172,24 @@
     .next {
         right: 0;
     }
-    
+
+    /* Up and Down rotate buttons */
+    .up, .down {
+        cursor: pointer;
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 10px 14px;
+        background-color: rgba(0,0,0,0.5);
+        color: white;
+        font-size: 18px;
+        border-radius: 4px;
+        user-select: none;
+    }
+
+    .up { top: 8px; }
+    .down { bottom: 8px; }
+
     .min_d,.min{color:green}
     .max_d,.max{color:red;}
     .answer_d{color:yellow;}
@@ -260,11 +281,11 @@
                     <br>
                     <br> Online Biometric Spectrum Analyzer
 
-                    <br> The first Physics and Biometric Network for Security Systems based on Remote Health Diagnostics through Photoplethysmograph Spectrum Analysis with state-of-the-art PPG technologies and optical components on motion picture. The
+                    <br> The first Physics and Biometric Network for Security Systems based on Remote Health Diagnostics through Photoplethysmograph Spectrum Analysis with state-of-the-art PPG technol[...]
                     technology utilizes bio-sensors to analyze a person's skin for heart rate and cardiovascular assessments.
                     <br>  
 
-                    <br> It is based on a broad spectrum for analyzing health mathematical equations from photoplethysmography and sound. Once the metrics are calculated they are then channeled through a Neural Network for Diagnostics and Vitals mathematical
+                    <br> It is based on a broad spectrum for analyzing health mathematical equations from photoplethysmography and sound. Once the metrics are calculated they are then channeled throug[...]
                     equation recognition.
                     <br>
                     <br> Hemodynamic Mathematical Equations and Algorithms explaining the physics aspect for flow of blood in the blood vessels.
@@ -284,13 +305,13 @@
             <!-- About -->
             <article id="about">
                 <h2 class="major">About </h2>
-                <p>Introducing the first Biometric Neural Network in Remote Diagnostics with Thermal Resistance capabilities. Created to reduce Electromagnetic Fields in electronic microprocessors and electronic fuses utilizing SkyNets Biometric Sweep and
+                <p>Introducing the first Biometric Neural Network in Remote Diagnostics with Thermal Resistance capabilities. Created to reduce Electromagnetic Fields in electronic microprocessors and[...]
                     Spectrum Analysis. Skynet plans on completing production projects for Microsoft, Android, Apple and Web Applications.
                     <br>
-                    <br> Created with Security in mind. Skynet is great for administrative networks near nuclear plants or very hot demographic locations. It uses Plasmonics and Cryptology combined to create an Electronic Neutralization effect which can
-                    drop harmful temperatures while enumerating health or vital equations. With the internet era at its peak, we humans on earth may be causing Global Warming. Skynet Biometrics IDS and VPN are a set of applications that resolve the problem
+                    <br> Created with Security in mind. Skynet is great for administrative networks near nuclear plants or very hot demographic locations. It uses Plasmonics and Cryptology combined to[...]
+                    drop harmful temperatures while enumerating health or vital equations. With the internet era at its peak, we humans on earth may be causing Global Warming. Skynet Biometrics IDS an[...]
                     immediately.
-                    <br><br> Skynet offers Enterprise software solutions by Apple Development and their products have been tested and proven to work well with Skynet Cryptology scripts as an extra enhancement for neutralizing electronics through metallics,
+                    <br><br> Skynet offers Enterprise software solutions by Apple Development and their products have been tested and proven to work well with Skynet Cryptology scripts as an extra enh[...]
                     signal processing and hardware.
                     <br>
                     <br> SkyNet Enterprise Solutions allow custom device programming for employees or network solutions that can neutralize tempretures in data centers and server rooms.</p>
@@ -324,7 +345,7 @@
                     <li style="margin: 5px 0;">
                         <a href="#nn8" style="text-decoration: none; color: white; cursor: pointer;">Neutral Network 8</a>
                     </li>
-    		    <li style="margin: 5px 0;">
+     		    <li style="margin: 5px 0;">
                         <a href="#nsa" style="text-decoration: none; color: white; cursor: pointer;">Neural Spectrum Analysis</a>
                     </li>
 		    <li style="margin: 5px 0;">
@@ -377,7 +398,7 @@
     <div id="charts">
         <div>
             <img src="assets/img/print.webp" id="printbtn" alt="Print Chart" title="Print Current Chart">
-	    <img src="assets/img/print100.png" id="export100" alt="Export 100 Datasets" title="Export 100 Data Sets">
+    	    <img src="assets/img/print100.png" id="export100" alt="Export 100 Datasets" title="Export 100 Data Sets">
             <img src="assets/img/ascii2.png" id="showascii" alt="Show ASCII Report" title="Generate ASCII Report">
             <img src="assets/img/regression.png" id="snapshot" alt="Take Snapshot" title="Take Snapshot">
             
@@ -388,6 +409,9 @@
             <div id="slideshow-container">
                 <a class="prev">&#10094;</a>
                 <a class="next">&#10095;</a>
+                <!-- Up and Down buttons to rotate image -->
+                <a class="up" title="Rotate Clockwise">&#9650;</a>
+                <a class="down" title="Rotate Counter-Clockwise">&#9660;</a>
             </div>
         </div>
         
@@ -756,6 +780,27 @@
                 currentIndex = (currentIndex - 1 + totalImages) % totalImages;
                 showImage(currentIndex);
             });
+
+            // Rotation handlers: Up = clockwise (+90), Down = counter-clockwise (-90)
+            $('.up').click(function() {
+                var img = $(images[currentIndex]);
+                if (!img || img.length === 0) return;
+                var rot = parseInt(img.data('rotation') || 0, 10);
+                rot = (rot + 90) % 360;
+                img.css('transform', 'rotate(' + rot + 'deg)');
+                img.data('rotation', rot);
+            });
+
+            $('.down').click(function() {
+                var img = $(images[currentIndex]);
+                if (!img || img.length === 0) return;
+                var rot = parseInt(img.data('rotation') || 0, 10);
+                rot = (rot - 90) % 360;
+                if (rot < 0) rot += 360;
+                img.css('transform', 'rotate(' + rot + 'deg)');
+                img.data('rotation', rot);
+            });
+
         });
     </script>
 
