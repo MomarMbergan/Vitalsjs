@@ -176,6 +176,8 @@
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+<!-- JSZip to bundle all auto-download artifacts into one ZIP (avoids browser multiple-download blocking) -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
 <script>
 /* ============================
@@ -196,6 +198,8 @@ let eegData = [];   // EEG mock time series
 let currentMetrics = { freqFusion: 0, peakFusion: 0, coherence: 0 };
 
 const statusBadge = document.getElementById('statusBadge');
+
+let isSaving = false; // guard against overlapping auto-saves
 
 /* ============================
    Camera + flip + recorders
@@ -226,6 +230,7 @@ async function startCamera(){
     mediaSource = audioContext.createMediaStreamSource(mediaStream);
     const processor = audioContext.createScriptProcessor(4096, 1, 1);
     mediaSource.connect(processor);
+    // Do not connect to destination to avoid feedback if user expects muted playback
     processor.connect(audioContext.destination);
 
     processor.onaudioprocess = e => {
@@ -567,7 +572,7 @@ function updateChartsAndFusion(){
   const peakFusion = (isFinite(rPeak)?rPeak:0)*0.5 + (isFinite(ePeak)?ePeak:0)*0.5;
 
   let cross=0, rPow=0, ePow=0;
-  for(let i=0;i<K;i++){ const rv=rFFT[i]||0, ev=eFFT[i]||0; cross += rv*ev; rPow += rv*rv; ePow += ev*ev; }
+  for(let i=0;i<K;i++){ const rv = rFFT[i]||0, ev = eFFT[i]||0; cross += rv*ev; rPow += rv*rv; ePow += ev*ev; }
   const coherence = (cross*cross)/(rPow*ePow + 1e-9);
 
   currentMetrics = { freqFusion, peakFusion: parseFloat(peakFusion.toFixed(2)), coherence: parseFloat(coherence.toFixed(3)) };
@@ -610,7 +615,7 @@ requestAnimationFrame(mainLoop);
 /* ============================
    Screenshot capture (PNG)
    ============================ */
-async function captureDashboardPNG(customName=null){
+async function captureDashboardPNGBlob(){
   const target = document.getElementById('dashboardContainer');
   const canvas = await html2canvas(target, {
     useCORS:true, logging:false, scale:1,
@@ -618,9 +623,7 @@ async function captureDashboardPNG(customName=null){
     windowWidth:document.documentElement.scrollWidth,
     windowHeight:document.documentElement.scrollHeight
   });
-  const link = document.createElement('a');
-  const fname = customName || `dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
-  link.download = fname; link.href = canvas.toDataURL('image/png'); link.click();
+  return await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
 }
 
 /* ============================
@@ -628,7 +631,7 @@ async function captureDashboardPNG(customName=null){
    ============================ */
 function buildWAVFromPCM(chunks, sampleRate){
   try{
-    let total = chunks.reduce((a,b)=>a+b.length,0);
+    let total = chunks.reduce((a,b)=>a + b.length, 0);
     const pcm = new Float32Array(total); let offset = 0;
     for(const c of chunks){ pcm.set(c, offset); offset += c.length; }
     const bytes = new DataView(new ArrayBuffer(44 + pcm.length*2));
@@ -682,23 +685,7 @@ async function buildPayload(snapshotName, metrics, rDataArr, eegDataArr){
   const ua = navigator.userAgent;
   const screenRes = `${window.screen.width}x${window.screen.height}`;
 
-  return `
-Snapshot Filename: ${snapshotName}
-Timestamp: ${nowISO}
-Device Info:
-- IP Address: ${ip}
-- User Agent: ${ua}
-- Screen Resolution: ${screenRes}
-
-Fusion Metrics:
-- Frequency-Domain Fusion: ${metrics.freqFusion} Hz
-- Peak-Based Fusion: ${metrics.peakFusion} Hz
-- Cross-Spectral Coherence: ${metrics.coherence}
-
-Raw Data (last 128 samples):
-- rPPG: [${(rDataArr||[]).slice(-128).join(',')}]
-- EEG: [${(eegDataArr||[]).slice(-128).join(',')}]
-`.trim();
+  return `\nSnapshot Filename: ${snapshotName}\nTimestamp: ${nowISO}\nDevice Info:\n- IP Address: ${ip}\n- User Agent: ${ua}\n- Screen Resolution: ${screenRes}\n\nFusion Metrics:\n- Frequency-Domain Fusion: ${metrics.freqFusion} Hz\n- Peak-Based Fusion: ${metrics.peakFusion} Hz\n- Cross-Spectral Coherence: ${metrics.coherence}\n\nRaw Data (last 128 samples):\n- rPPG: [${(rDataArr||[]).slice(-128).join(',')}]\n- EEG: [${(eegDataArr||[]).slice(-128).join(',')}]\n`.trim();
 }
 
 /* ============================
@@ -729,62 +716,104 @@ function buildPCAPText(payloadText){
 }
 
 /* ============================
-   Unified save: PNG + PCAP + WAV + MP4/WebM
+   Unified save: ZIP (PNG + PCAP + WAV + MP4/WebM)
+   - Bundles artifacts into a single ZIP to avoid browser blocking of multiple automatic downloads
+   - Ensures recorder finalization before packaging
    ============================ */
-async function captureAndSaveAll(){
-  try{
-    const snapName = `dashboard_${new Date().toISOString().replace(/[:.]/g,'-')}.png`;
-    // PNG
-    await captureDashboardPNG(snapName);
+async function stopRecorderAndCollect(){
+  if(!avRecorder) return;
+  if(avRecorder.state !== 'recording') return;
+  // ensure latest dataavailable events are collected and wait for stop
+  await new Promise(resolve => {
+    const onData = e => { if(e.data && e.data.size) videoChunks.push(e.data); };
+    const onStop = () => { avRecorder.removeEventListener('dataavailable', onData); avRecorder.removeEventListener('stop', onStop); resolve(); };
+    avRecorder.addEventListener('dataavailable', onData);
+    avRecorder.addEventListener('stop', onStop);
+    try{ avRecorder.stop(); }catch(e){
+      // if stop throws, resolve anyway
+      avRecorder.removeEventListener('dataavailable', onData);
+      avRecorder.removeEventListener('stop', onStop);
+      resolve();
+    }
+  });
+}
 
-    // PCAP (await metadata)
-    const payload = await buildPayload(snapName, currentMetrics, rData, eegData);
-    const pcapText = buildPCAPText(payload);
-    const pcapBlob = new Blob([pcapText], { type: "text/plain" });
-    const pcapLink = document.createElement('a');
-    pcapLink.download = "SkyNet.pcap";
-    pcapLink.href = URL.createObjectURL(pcapBlob);
-    pcapLink.click();
+async function captureAndSaveAll(){
+  if(isSaving) return; // prevent overlapping saves
+  isSaving = true;
+  statusBadge.textContent = 'Saving...';
+  try{
+    const timestamp = new Date().toISOString().replace(/[:.]/g,'-');
+    const snapName = `dashboard_${timestamp}.png`;
+
+    // PNG blob
+    const pngBlob = await captureDashboardPNGBlob();
+
+    // Ensure audio/video finalized
+    await stopRecorderAndCollect();
 
     // WAV
     const wavBlob = buildWAVFromPCM(audioChunks, audioSampleRate);
-    const wavLink = document.createElement('a');
-    wavLink.download = "SkyNet.wav";
-    wavLink.href = URL.createObjectURL(wavBlob);
-    wavLink.click();
 
-    // MP4/WebM
-    if(avRecorder && avRecorder.state === "recording"){
-      const stopped = new Promise(resolve => { avRecorder.onstop = resolve; });
-      avRecorder.stop();
-      await stopped;
-    }
+    // Video blob (finalized)
     const mime = MediaRecorder.isTypeSupported("video/mp4;codecs=h264,aac") ? "video/mp4" : "video/webm";
     const avBlob = new Blob(videoChunks, { type: mime });
-    const mp4Link = document.createElement('a');
-    mp4Link.download = "SkyNet.mp4";
-    mp4Link.href = URL.createObjectURL(avBlob);
-    mp4Link.click();
 
-    // cleanup
-    setTimeout(()=>{
-      URL.revokeObjectURL(pcapLink.href);
-      URL.revokeObjectURL(wavLink.href);
-      URL.revokeObjectURL(mp4Link.href);
-    },3000);
+    // PCAP metadata
+    const payload = await buildPayload(snapName, currentMetrics, rData, eegData);
+    const pcapText = buildPCAPText(payload);
 
-    // resume recording for next cycle
+    // Bundle into ZIP using JSZip to avoid browser blocking multiple automatic downloads
+    try{
+      const zip = new JSZip();
+      zip.file(snapName, pngBlob);
+      zip.file('SkyNet.pcap', pcapText);
+      zip.file('SkyNet.wav', wavBlob);
+      const videoName = `SkyNet.${mime.includes('mp4') ? 'mp4' : 'webm'}`;
+      zip.file(videoName, avBlob);
+      // Optionally include a text manifest
+      zip.file('manifest.txt', `Created: ${new Date().toISOString()}\nFiles: ${snapName}, SkyNet.pcap, SkyNet.wav, ${videoName}`);
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      const zipName = `SkyNet_bundle_${timestamp}.zip`;
+      link.href = URL.createObjectURL(zipBlob);
+      link.download = zipName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(()=> URL.revokeObjectURL(link.href), 5000);
+    }catch(e){
+      // If JSZip fails or not available, fallback to individual downloads (may be blocked by browser)
+      console.warn('ZIP bundling failed, falling back to individual downloads', e);
+      const pngLink = document.createElement('a'); pngLink.download = snapName; pngLink.href = URL.createObjectURL(pngBlob); pngLink.click();
+      const pcapBlob = new Blob([pcapText], { type: 'text/plain' }); const pcapLink = document.createElement('a'); pcapLink.download = 'SkyNet.pcap'; pcapLink.href = URL.createObjectURL(pcapBlob); pcapLink.click();
+      const wavLink = document.createElement('a'); wavLink.download = 'SkyNet.wav'; wavLink.href = URL.createObjectURL(wavBlob); wavLink.click();
+      const avLink = document.createElement('a'); avLink.download = `SkyNet.${mime.includes('mp4')?'mp4':'webm'}`; avLink.href = URL.createObjectURL(avBlob); avLink.click();
+      setTimeout(()=>{
+        URL.revokeObjectURL(pngLink.href); URL.revokeObjectURL(pcapLink.href); URL.revokeObjectURL(wavLink.href); URL.revokeObjectURL(avLink.href);
+      },3000);
+    }
+
+    // resume recording for next cycle (recreate recorder)
     if(mediaStream){
       const recMime = MediaRecorder.isTypeSupported("video/mp4;codecs=h264,aac") ? "video/mp4;codecs=h264,aac" :
                       MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus") ? "video/webm;codecs=vp9,opus" :
                       "video/webm";
-      avRecorder = new MediaRecorder(mediaStream, { mimeType: recMime });
-      videoChunks = [];
-      avRecorder.ondataavailable = e => { if(e.data && e.data.size>0) videoChunks.push(e.data); };
-      avRecorder.start(1000);
+      try{
+        avRecorder = new MediaRecorder(mediaStream, { mimeType: recMime });
+        videoChunks = [];
+        avRecorder.ondataavailable = e => { if(e.data && e.data.size>0) videoChunks.push(e.data); };
+        avRecorder.start(1000);
+      }catch(e){
+        console.warn('Failed to restart recorder', e);
+      }
     }
   }catch(e){
     console.warn('captureAndSaveAll failed', e);
+  }finally{
+    isSaving = false;
+    statusBadge.textContent = 'Analyzing';
   }
 }
 
@@ -796,6 +825,7 @@ setInterval(async ()=>{
   countdown -= 1;
   document.getElementById('countdown').textContent = `Next auto-save: ${countdown}s`;
   if(countdown <= 0){
+    // reset countdown only when a save is triggered to avoid drift
     countdown = 60;
     try{ await captureAndSaveAll(); }catch(e){ console.warn(e); }
   }
@@ -832,5 +862,3 @@ window.addEventListener('load', ()=>{ if(window.MathJax?.typeset) MathJax.typese
 </script>
 </body>
 </html>
-
-
