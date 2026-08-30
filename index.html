@@ -438,10 +438,9 @@
             <div id="slideshow-controls" aria-label="Slideshow Controls">
                 <button id="rotateCW">▲ Rotate 90°</button>
                 <button id="rotateCCW" class="secondary">▼ Rotate -90°</button>
-                <button id="startCW">Start CW</button>
-                <button id="startCCW" class="secondary">Start CCW</button>
-                <button id="stopSpin" class="secondary">Stop</button>
-                <small style="opacity:0.8; margin-top:4px; font-size:12px;">Space toggles spin, ←/→ change image</small>
+                <button id="startCycle">Start Cycle</button>
+                <button id="stopCycle" class="secondary">Stop Cycle</button>
+                <small style="opacity:0.8; margin-top:4px; font-size:12px;">Space toggles cycle, ←/→ change image</small>
             </div>
         </div>
         
@@ -522,12 +521,12 @@
 
         // (Existing utility handlers omitted for brevity in this section)
 
-        // Slideshow functionality with rotation, continuous spin, and visible controls
+        // Slideshow functionality with rotation, continuous cycle, and visible controls
         $(document).ready(function() {
             var totalImages = 30;
             var currentIndex = 0;
-            // spinState holds interval id, speed step and active flag
-            var spinState = { intervalId: null, step: 3, direction: 1, active: false };
+            // cycleState holds interval id, speed step and active flag
+            var cycleState = { intervalId: null, step: 3, active: false };
 
             for (var i = 1; i <= totalImages; i++) {
                 var imgNumber = i.toString().padStart(2, '0');
@@ -552,48 +551,47 @@
                 return r;
             }
 
-            function stopSpin() {
-                if (spinState.intervalId) {
-                    clearInterval(spinState.intervalId);
-                    spinState.intervalId = null;
+            function stopCycle() {
+                if (cycleState.intervalId) {
+                    clearInterval(cycleState.intervalId);
+                    cycleState.intervalId = null;
                 }
-                spinState.active = false;
+                cycleState.active = false;
             }
 
-            function startSpin(direction) {
-                // stop any existing spin
-                stopSpin();
-                spinState.direction = direction;
-                spinState.active = true;
+            function startCycle() {
+                // stop any existing cycle
+                stopCycle();
+                cycleState.active = true;
                 var img = $(images[currentIndex]);
-                spinState.intervalId = setInterval(function() {
+                cycleState.intervalId = setInterval(function() {
                     var rot = parseFloat(img.data('rotation') || 0);
-                    rot = normalizeRotation(rot + spinState.direction * spinState.step);
+                    rot = normalizeRotation(rot + cycleState.step);
                     img.css('transform', 'rotate(' + rot + 'deg)');
                     img.data('rotation', rot);
                 }, 30); // smaller interval for smoother rotation
             }
 
-            function restartSpinForCurrentImage() {
-                if (!spinState.active) return;
-                // restart spinning on the new visible image with the same direction
-                startSpin(spinState.direction);
+            function restartCycleForCurrentImage() {
+                if (!cycleState.active) return;
+                // restart cycling on the new visible image
+                startCycle();
             }
 
             // Navigation
             $('.next').off('click').on('click', function() {
-                if (spinState.intervalId) stopSpin();
+                if (cycleState.intervalId) stopCycle();
                 currentIndex = (currentIndex + 1) % totalImages;
                 showImage(currentIndex);
-                // if spin was active before navigation, restart on the new image
-                if (spinState.active) restartSpinForCurrentImage();
+                // if cycle was active before navigation, restart on the new image
+                if (cycleState.active) restartCycleForCurrentImage();
             });
 
             $('.prev').off('click').on('click', function() {
-                if (spinState.intervalId) stopSpin();
+                if (cycleState.intervalId) stopCycle();
                 currentIndex = (currentIndex - 1 + totalImages) % totalImages;
                 showImage(currentIndex);
-                if (spinState.active) restartSpinForCurrentImage();
+                if (cycleState.active) restartCycleForCurrentImage();
             });
 
             // Step rotation
@@ -613,23 +611,20 @@
                 img.data('rotation', rot);
             });
 
-            // Continuous spin buttons
-            $('#startCW').click(function() {
-                startSpin(1);
+            // Continuous cycle buttons
+            $('#startCycle').click(function() {
+                startCycle();
             });
-            $('#startCCW').click(function() {
-                startSpin(-1);
-            });
-            $('#stopSpin').click(function() {
-                stopSpin();
+            $('#stopCycle').click(function() {
+                stopCycle();
             });
 
             // Keyboard shortcuts
             $(document).keydown(function(e) {
-                // Space toggles start/stop (default to CW when starting)
+                // Space toggles start/stop cycle
                 if (e.code === 'Space') {
                     e.preventDefault();
-                    if (spinState.active) stopSpin(); else startSpin(1);
+                    if (cycleState.active) stopCycle(); else startCycle();
                 }
                 // ArrowUp = rotate CW 90
                 if (e.code === 'ArrowUp') {
@@ -653,9 +648,9 @@
                 }
             });
 
-            // Make sure spin stops when page hidden
+            // Make sure cycle stops when page hidden
             document.addEventListener('visibilitychange', function() {
-                if (document.hidden) stopSpin();
+                if (document.hidden) stopCycle();
             });
 
         });
