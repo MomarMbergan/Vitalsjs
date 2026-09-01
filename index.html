@@ -317,11 +317,11 @@
                     <br>
                     <br> Online Biometric Spectrum Analyzer
 
-                    <br> The first Physics and Biometric Network for Security Systems based on Remote Health Diagnostics through Photoplethysmograph Spectrum Analysis with state-of-the-art PPG technol[...]
+                    <br> The first Physics and Biometric Network for Security Systems based on Remote Health Diagnostics through Photoplethysmograph Spectrum Analysis with state-of-the-art PPG te[...]
                     technology utilizes bio-sensors to analyze a person's skin for heart rate and cardiovascular assessments.
                     <br>  
 
-                    <br> It is based on a broad spectrum for analyzing health mathematical equations from photoplethysmography and sound. Once the metrics are calculated they are then channeled throug[...]
+                    <br> It is based on a broad spectrum for analyzing health mathematical equations from photoplethysmography and sound. Once the metrics are calculated they are then channeled t[...]
                     equation recognition.
                     <br>
                     <br> Hemodynamic Mathematical Equations and Algorithms explaining the physics aspect for flow of blood in the blood vessels.
@@ -341,13 +341,13 @@
             <!-- About -->
             <article id="about">
                 <h2 class="major">About </h2>
-                <p>Introducing the first Biometric Neural Network in Remote Diagnostics with Thermal Resistance capabilities. Created to reduce Electromagnetic Fields in electronic microprocessors and[...]
+                <p>Introducing the first Biometric Neural Network in Remote Diagnostics with Thermal Resistance capabilities. Created to reduce Electromagnetic Fields in electronic microprocessor[...]
                     Spectrum Analysis. Skynet plans on completing production projects for Microsoft, Android, Apple and Web Applications.
                     <br>
-                    <br> Created with Security in mind. Skynet is great for administrative networks near nuclear plants or very hot demographic locations. It uses Plasmonics and Cryptology combined to[...]
-                    drop harmful temperatures while enumerating health or vital equations. With the internet era at its peak, we humans on earth may be causing Global Warming. Skynet Biometrics IDS an[...]
+                    <br> Created with Security in mind. Skynet is great for administrative networks near nuclear plants or very hot demographic locations. It uses Plasmonics and Cryptology combin[...]
+                    drop harmful temperatures while enumerating health or vital equations. With the internet era at its peak, we humans on earth may be causing Global Warming. Skynet Biometrics I[...]
                     immediately.
-                    <br><br> Skynet offers Enterprise software solutions by Apple Development and their products have been tested and proven to work well with Skynet Cryptology scripts as an extra enh[...]
+                    <br><br> Skynet offers Enterprise software solutions by Apple Development and their products have been tested and proven to work well with Skynet Cryptology scripts as an extr[...]
                     signal processing and hardware.
                     <br>
                     <br> SkyNet Enterprise Solutions allow custom device programming for employees or network solutions that can neutralize tempretures in data centers and server rooms.</p>
@@ -381,7 +381,7 @@
                     <li style="margin: 5px 0;">
                         <a href="#nn8" style="text-decoration: none; color: white; cursor: pointer;">Neutral Network 8</a>
                     </li>
-     		    <li style="margin: 5px 0;">
+      		    <li style="margin: 5px 0;">
                         <a href="#nsa" style="text-decoration: none; color: white; cursor: pointer;">Neural Spectrum Analysis</a>
                     </li>
 		    <li style="margin: 5px 0;">
@@ -453,7 +453,7 @@
                 <button id="rotateCCW" class="secondary"><img src="assets/img/20230516_104626.png" alt="Rotate -90°" title="Rotate -90°"></button>
                 <button id="startCycle"><img src="assets/img/20230516_104626.png" alt="Start Cycle" title="Start Cycle"></button>
                 <button id="stopCycle" class="secondary"><img src="assets/img/20230516_104626.png" alt="Stop Cycle" title="Stop Cycle"></button>
-                <small style="opacity:0.8; margin-top:4px; font-size:12px;">Space toggles cycle, ←/→ change image</small>
+                <small style="opacity:0.8; margin-top:4px; font-size:12px;">Space toggles cycle,   /  change image</small>
             </div>
         </div>
         
@@ -479,7 +479,16 @@
         <div id="container"></div> 
     </div>
     
-    <!-- BG -->
+    <!-- WADL (NASA SSC) viewer -->
+    <div id="wadl-viewer" style="position:fixed; right:12px; bottom:12px; width:420px; max-height:70vh; overflow:auto; background:rgba(0,0,0,0.85); color:#0f0; padding:10px; border-radius:8px; z-index:9999;">
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+            <button id="loadWadl" style="flex:1; padding:8px; background:#0066cc; color:#fff; border:none; border-radius:4px; cursor:pointer;">Load NASA WADL</button>
+            <button id="clearWadl" style="padding:8px; background:#444; color:#fff; border:none; border-radius:4px; cursor:pointer;">Clear</button>
+        </div>
+        <pre id="wadlOutput" style="white-space:pre; font-size:12px; line-height:1.3; background:#000; color:#0f0; padding:8px; border-radius:6px; max-height:56vh; overflow:auto;">WADL output will appear here.</pre>
+        <small style="color:#9f9; display:block; margin-top:6px;">Note: remote server must allow cross-origin requests. If fetch fails due to CORS, run locally: <code>curl https://sscweb.gsfc.nasa.gov/WS/sscr/2/application.wadl | xmllint --format -</code></small>
+    </div>
+
     <div id="chartsContainer">
         <!-- Canvas elements will be dynamically added here -->
     </div>
@@ -531,6 +540,75 @@
         function hideLoading() {
             document.getElementById('printLoading').classList.remove('active');
         }
+
+        // WADL fetch / pretty-print
+        async function fetchAndFormatWadl() {
+            const out = document.getElementById('wadlOutput');
+            const url = 'https://sscweb.gsfc.nasa.gov/WS/sscr/2/application.wadl';
+            out.textContent = 'Loading...';
+            showLoading();
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + res.statusText);
+                const text = await res.text();
+                // Parse XML
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(text, 'application/xml');
+                const pe = xml.querySelector('parsererror');
+                if (pe) {
+                    out.textContent = 'XML parse error:\n' + pe.textContent;
+                    return;
+                }
+                // Pretty format (simple serializer with indentation)
+                function formatXml(node, level = 0) {
+                    let indent = '  '.repeat(level);
+                    let txt = '';
+                    if (node.nodeType === 9) { // DOCUMENT_NODE
+                        for (let i = 0; i < node.childNodes.length; i++) txt += formatXml(node.childNodes[i], level);
+                        return txt;
+                    }
+                    if (node.nodeType === 1) { // ELEMENT_NODE
+                        txt += indent + '<' + node.nodeName;
+                        for (let i = 0; i < node.attributes.length; i++) {
+                            let a = node.attributes[i];
+                            txt += ' ' + a.name + '="' + a.value.replace(/"/g, '&quot;') + '"';
+                        }
+                        txt += '>';
+                        if (node.childNodes.length === 0) {
+                            txt += '</' + node.nodeName + '>\n';
+                        } else {
+                            // check if children contain element nodes
+                            let hasElement = false;
+                            for (let i = 0; i < node.childNodes.length; i++) if (node.childNodes[i].nodeType === 1) hasElement = true;
+                            if (hasElement) {
+                                txt += '\n';
+                                for (let i = 0; i < node.childNodes.length; i++) txt += formatXml(node.childNodes[i], level + 1);
+                                txt += indent + '</' + node.nodeName + '>\n';
+                            } else {
+                                let textContent = node.textContent.trim();
+                                txt += textContent + '</' + node.nodeName + '>\n';
+                            }
+                        }
+                        return txt;
+                    }
+                    if (node.nodeType === 3) { // TEXT_NODE
+                        let s = node.nodeValue.trim();
+                        if (s.length === 0) return '';
+                        return indent + s + '\n';
+                    }
+                    return '';
+                }
+                const formatted = formatXml(xml);
+                out.textContent = formatted;
+            } catch (err) {
+                out.textContent = 'Fetch/Parse error: ' + err.message + '\nIf this is a CORS issue, run locally: curl https://sscweb.gsfc.nasa.gov/WS/sscr/2/application.wadl | xmllint --format -';
+            } finally {
+                hideLoading();
+            }
+        }
+
+        document.getElementById('loadWadl').addEventListener('click', fetchAndFormatWadl);
+        document.getElementById('clearWadl').addEventListener('click', function(){ document.getElementById('wadlOutput').textContent = 'WADL output will appear here.' });
 
         // (Existing utility handlers omitted for brevity in this section)
 
