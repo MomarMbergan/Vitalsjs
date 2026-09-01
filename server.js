@@ -1,25 +1,37 @@
-/**
- * Vitalsjs Server Entry Point
- * Biology application server
- */
+const express = require('express');
+const fetch = (...args) => import('node-fetch').then(m => m.default(...args));
+const app = express();
+const REMOTE = 'https://sscweb.gsfc.nasa.gov/WS/sscr/2/application.wadl';
+const CACHE_TTL_MS = parseInt(process.env.WADL_CACHE_TTL_MS || '60000', 10); // default 60s
+let cache = { data: null, fetchedAt: 0 };
 
-const http = require('http');
-
-const PORT = process.env.PORT || 3000;
-
-// Create HTTP server
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({
-    message: 'Vitalsjs Server',
-    description: 'Biology application',
-    version: '1.0.0'
-  }));
+app.get('/wadl', async (req, res) => {
+  const force = req.query.force === '1' || req.query.force === 'true';
+  const now = Date.now();
+  if(!force && cache.data && (now - cache.fetchedAt) < CACHE_TTL_MS){
+    res.set('Content-Type', 'application/xml');
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('X-Cache', 'HIT');
+    return res.send(cache.data);
+  }
+  try {
+    const r = await fetch(REMOTE);
+    const txt = await r.text();
+    cache.data = txt;
+    cache.fetchedAt = Date.now();
+    res.set('Content-Type', 'application/xml');
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('X-Cache', 'MISS');
+    res.send(txt);
+  } catch (err) {
+    res.status(502).send('Proxy error: ' + err.message);
+  }
 });
 
-// Start server
-server.listen(PORT, () => {
-  console.log(`Vitalsjs server is running on port ${PORT}`);
+// health
+app.get('/health', (req, res) => {
+  res.json({ ok: true, cachedAt: cache.fetchedAt || null, ttlMs: CACHE_TTL_MS });
 });
 
-module.exports = server;
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`WADL proxy listening on http://localhost:${port}/wadl (TTL=${CACHE_TTL_MS}ms)`));
