@@ -47,11 +47,22 @@
         
         function hideLoading() {
             document.getElementById('printLoading').classList.remove('active');
+            document.getElementById('printLoading').style.display = 'none';
         }
 
         // (Existing utility handlers omitted for brevity in this section)
 
         // Slideshow functionality with rotation, continuous cycle, and visible controls
+        
+        // Hide loading indicator when page fully loads
+        window.addEventListener('load', function() {
+            hideLoading();
+        });
+        
+        // Also hide if DOM is ready (faster fallback)
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(hideLoading, 500);
+        });
     </script>
 
     <script>
