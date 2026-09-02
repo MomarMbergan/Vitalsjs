@@ -11,13 +11,149 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
 <link rel="stylesheet" href="assets/css/main.css" />
 <link rel="stylesheet" href="src/main.css">
-<link rel="stylesheet" href="camera-fullscreen.css" />
 <link rel="icon" type="image/png" href="logo.png">
 <style>
     body {
         font-weight: bold;
     }
-    /* ... rest unchanged ... */
+    
+    .logo {
+        padding: 2px;
+        border: none !important;
+        margin: auto;
+    }
+    
+    .logo_img img {
+        border-radius: 100px;
+        max-width: 100%;
+        height: auto;
+    }
+    
+    @media (max-width: 768px) {
+        .logo_img img {
+            max-width: 80%;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .logo_img img {
+            max-width: 60%;
+        }
+    }
+    
+    main {
+        font-weight: bold;
+    }
+    
+    nav ul li a {
+        font-weight: bold;
+    }
+    
+    article h2,
+    article p {
+        font-weight: bold;
+    }
+    
+    article ul li,
+    article ol li {
+        font-weight: bold;
+    }
+    
+    table th,
+    table td {
+        font-weight: bold;
+    }
+    
+    .button,
+    input[type="submit"],
+    input[type="reset"] {
+        font-weight: bold;
+    }
+    
+    .backcanvas {
+        position: absolute;
+        top: 0;
+        opacity: .5;
+        z-index: -1;
+    }
+    
+    .soundon {
+        color: #000;
+    }
+    
+    .btn {
+        display: flex;
+        padding: 5px;
+    }
+    
+    .btn div {
+        height: 50px;
+        line-height: 50px;
+    } 
+    
+    .chart-container {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-around;
+        width: 100%;
+        height: 300px;
+        border: 1px solid #ccc;
+    }
+    
+    .bar {
+        width: 10px;
+        background-color: #4CAF50;
+        margin-right: 1px;
+    }
+    
+    #charts {
+        display: none
+    }
+    
+    #main article .close {
+        background-color: black;
+        color: white;
+    }
+
+    #chart-canvas text{fill:#888}	
+    #export100,#showascii,#snapshot{width: 70px;
+        padding: 10px;
+        margin-bottom: 5px;}
+    #export100{margin:auto}	
+    mjx-line{height: 7px !important;}	
+    #asciicontent{color:#000;background:#fff}
+
+    #slideshow-container {
+        position: absolute;
+    }
+
+    #slideshow-container img {
+        width: 100%;
+        display: none;
+    }
+
+    .prev, .next {
+        cursor: pointer;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        padding: 16px;
+        background-color: rgba(0, 0, 0, 0.5);
+        color: white;
+        font-size: 18px;
+    }
+
+    .prev {
+        left: 0;
+    }
+
+    .next {
+        right: 0;
+    }
+    .min_d,.min{color:green}
+    .max_d,.max{color:red;}
+    .answer_d{color:yellow;}
+    #alleqs{display:none}
 </style>
 <noscript>
     <link rel="stylesheet" href="assets/css/noscript.css" />
@@ -37,7 +173,224 @@
   background-repeat: no-repeat; 
   background-size: cover; ">
 
-<!-- (file trimmed for injection example) -->
+        <!-- Header -->
+        <header id="header">
+            <div class="logo">
+                <span class="logo_img"><img src="logo.png" alt="" /></span>
+            </div>
+            <div class="content">
+                <div class="inner">
+                    <div class="logo">
+                        <a href="https://security.vpnskynet.com"> <span class="logo_img"><img src="skynet.png" alt="" /></span></a>
+                    </div>
+                    <h1>SKYNET <br> BIOMETRIC NETWORK</h1>
+                </div>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="#" id="startCharts">Start</a></li>
+                    <li><a href="./debo/index.html">Vitals</a></li>
+                    <li><a href="https://github.com/lightning417techa/shazamIt">Database</a></li>
+                    <li><a href="EEG.html">EEG</a></li>
+                    <li><a href="IDscan.html">Cryptology</a></li>
+                    <li><a href="#demo">Systems</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <!-- Main -->
+        <div id="main">
+
+            <!-- Work test-->
+            <article id="solution">
+                <h2 class="major"></h2>
+                <span class="image main"> </span>
+                <h2 class="major">Solutions</h2>
+                <p>Biometric Network Walter Reed Army Medical Center VPNSKYNET.COM
+                    <br> Google License ID: 7794509480175003688
+                    <br> Apple License ID: JZ32M5P69N
+                    <br> Walter Reed Army Medical Center
+                    <br> Bethesda, MD 20814
+
+                    <br> Director: Dr Edmond M.D
+                    <br> Doc@vpnskynet.com
+                    <br> Admin: Stewart
+                    <br> Oracle@vpnskynet.com
+                    <br> Nuclear Admin: Jeng
+                    <br> DJ@vpnskynet.com
+                    <br> Bio-Engineer :Mbergan
+                    <br> Neo@vpnskynet.com
+
+                    <br>
+                    <br> Online Biometric Spectrum Analyzer
+
+                    <br> The first Physics and Biometric Network for Security Systems based on Remote Health Diagnostics through Photoplethysmograph Spectrum Analysis with state-of-the-art PPG technology utilizes bio-sensors to analyze a person's skin for heart rate and cardiovascular assessments.
+                    <br>  
+
+                    <br> It is based on a broad spectrum for analyzing health mathematical equations from photoplethysmography and sound. Once the metrics are calculated they are then channeled through machine learning for equation recognition.
+                    <br>
+                    <br> Hemodynamic Mathematical Equations and Algorithms explaining the physics aspect for flow of blood in the blood vessels.
+
+                    <br> Cardiology Mathematical Equations and Algorithms that measure what causes disorders of the heart and the cardiovascular system.
+                    <br> Renal Mathematical Equations and Algorithms that assist in the maintaining of data into kidney diseases and failure.
+                    <br>
+                    <br> Electrocardiography Mathematical Equations and Algorithms to process the production of an electrocardiogram.
+
+                    <br> Maternal and Pediatric Mathematical equations and analysis into the health of mothers, infants and children.
+                    <br>
+                    <br> Gamma Sterilization Mathematical Equations and signal processing for radioactive and gamma Spectrum Analysis. (Nuclear Physics) ( Chemotherapy) (Solar)
+
+                    <br> Over 200 + Health Diagnostic Capabilities.</p>
+
+            </article>
+
+            <!-- About -->
+            <article id="about">
+                <h2 class="major">About </h2>
+                <p>Introducing the first Biometric Neural Network in Remote Diagnostics with Thermal Resistance capabilities. Created to reduce Electromagnetic Fields in electronic microprocessor systems for Spectrum Analysis. Skynet plans on completing production projects for Microsoft, Android, Apple and Web Applications.
+                    <br>
+                    <br> Created with Security in mind. Skynet is great for administrative networks near nuclear plants or very hot demographic locations. It uses Plasmonics and Cryptology combined algorithms to drop harmful temperatures while enumerating health or vital equations. With the internet era at its peak, we humans on earth may be causing Global Warming. Skynet Biometrics is designed to help reverse this immediately.
+                    <br><br> Skynet offers Enterprise software solutions by Apple Development and their products have been tested and proven to work well with Skynet Cryptology scripts as an extended layer of signal processing and hardware.
+                    <br>
+                    <br> SkyNet Enterprise Solutions allow custom device programming for employees or network solutions that can neutralize tempretures in data centers and server rooms.</p>
+            </article>
+
+            <!-- Contact -->
+            <article id="contact">
+                <h2 class="major">Contact</h2>
+                <p>SkyNet</p>
+                <p>Walter Reed Army Medical Center</p>
+                <p>8901 Rockville Pike</p>
+                <p>Bethesda, MD 20889</p>
+                <p>USA</p>
+                <p>443-960-6776</p>
+            </article>
+
+            <!-- Elements -->
+            <article id="demo" style="color: white;">
+                <h2 class="major">Systems</h2>
+                <p>Neural Network</p>
+                <ul style="list-style-type: none; padding: 0;">
+                    <li style="margin: 5px 0;">
+                        <a href="#nn1" style="text-decoration: none; color: white; cursor: pointer;">Neutral Network 1</a>
+                    </li>
+                    <li style="margin: 5px 0;">
+                        <a href="#nn2" style="text-decoration: none; color: white; cursor: pointer;">Neutral Network 2</a>
+                    </li>
+                    <li style="margin: 5px 0;">
+                        <a href="#nn5" style="text-decoration: none; color: white; cursor: pointer;">Neutral Network 5</a>
+                    </li>
+                    <li style="margin: 5px 0;">
+                        <a href="#nn8" style="text-decoration: none; color: white; cursor: pointer;">Neutral Network 8</a>
+                    </li>
+    		    <li style="margin: 5px 0;">
+                        <a href="#nsa" style="text-decoration: none; color: white; cursor: pointer;">Neural Spectrum Analysis</a>
+                    </li>
+    		    <li style="margin: 5px 0;">
+                        <a href="#bsa" style="text-decoration: none; color: white; cursor: pointer;">Bioengineering Spectrum Analysis</a>
+                    </li>
+    		    <li style="margin: 5px 0;">
+                        <a href="#bga" style="text-decoration: none; color: white; cursor: pointer;">BioSpectrum Glossary</a>
+                    </li>
+                </ul>
+            </article>
+
+            <article id="nn1" style="color: black; width:100vw; background-color:white;">
+                <object data-src="demo/mnist.html" width="100%" height="600px"></object>
+            </article>
+
+            <article id="nn2" style="color: black; width:100vw; background-color:white;">
+                <object data-src="demo/cifar10.html" width="100%" height="600px"></object>
+            </article>
+
+            <article id="nn5" style="color: black; width:100vw; background-color:white;">
+                <object data-src="demo/autoencoder.html" width="100%" height="600px"></object>
+            </article>
+
+            <article id="nn8" style="color: black; width:100vw; background-color:white;">
+                <object data-src="demo/image_regression.html" width="100%" height="600px"></object>
+            </article>
+
+            <article id="nsa" style="color: black; width:100vw; background-color:white;">
+                <object data-src="charts/nsa/index.html" width="100%" height="600px"></object>
+            </article>
+            <article id="bsa" style="color: black; width:100vw; background-color:white;">
+                <object data-src="charts/bsa/index.html" width="100%" height="600px"></object>
+            </article>
+            <article id="bga" style="color: black; width:100vw; background-color:white;">
+                <object data-src="charts/bg/index.html" width="100%" height="600px"></object>
+            </article>
+        </div>
+
+        <!-- Footer -->
+        <footer id="footer">
+            <p class="copyright" style="font-size: 16px;">Copyright &copy; Walter Reed Army Medical Center
+                <a href="https://html5up.net"></a>
+            </p>
+        </footer>
+
+    </div>
+    
+    <div id="charts">
+        <div>
+            <img src="assets/img/print.webp" id="printbtn">
+            <img src="assets/img/print100.png" id="export100">
+            <img src="assets/img/ascii2.png" id="showascii">
+            <img src="assets/img/regression.png" id="snapshot"> 
+            <div id="imageGallery"></div>
+            <video id='video'></video>
+            <video id="multivideo" autoplay playsinline></video>
+
+            <div id="slideshow-container">
+                <a class="prev">&#10094;</a>
+                <a class="next">&#10095;</a>
+            </div>
+        </div>
+    </div>
+    
+    <div>
+        <canvas id="output-canvas"></canvas>
+    </div>
+
+    <div id="solar-nuclear-photovoltaic-chart"></div>
+    <p id="solar-nuclear-photovoltaic-resolution"></p>
+    <p id="solar-nuclear-photovoltaic-delay"></p>
+    <p id="solar-nuclear-photovoltaic-frame-fps"></p>
+    <p id="solar-nuclear-photovoltaic-frame-time"></p>
+    <p id="solar-nuclear-photovoltaic-video-time"></p>
+    <p id="solar-nuclear-photovoltaic-signal"></p>
+    <p id="solar-nuclear-photovoltaic-signal-window"></p>
+    <p id="gdval"></p>
+    <p id="lonval"></p>
+    <p id="latval"></p>
+
+    <div id="chart100d"><svg id="chart-canvas" style="width:100%;height:700px" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet"></svg></div>
+    <div id="container"></div> 
+
+    <!-- BG -->
+    <div id="chartsContainer">
+    </div>
+    <div id="asciicontent">
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="assets/js/jquery.min.js"></script>
+    <script src="assets/js/browser.min.js"></script>
+    <script src="assets/js/breakpoints.min.js"></script>
+    <script src="assets/js/util.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@nasaworldwind/worldwind@0.11.0/build/dist/worldwind.min.js" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/gh/muaz-khan/MultiStreamsMixer/MultiStreamsMixer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pcap-parser@0.2.1/lib/pcap-parser.min.js"></script> 
+    <script src="src/brain.js"></script> 
+    <script src="src/main.js?v=0u"></script>
+    <script src="src/mreal-time-line-chart.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <script>
         // Helper function to show loading indicator
@@ -50,10 +403,6 @@
             document.getElementById('printLoading').style.display = 'none';
         }
 
-        // (Existing utility handlers omitted for brevity in this section)
-
-        // Slideshow functionality with rotation, continuous cycle, and visible controls
-        
         // Hide loading indicator when page fully loads
         window.addEventListener('load', function() {
             hideLoading();
@@ -77,6 +426,73 @@
         };
     </script>
 
-    <script src="camera-fullscreen.js"></script>
+    <script>
+        document.getElementById('printbtn').addEventListener('click', () => {
+            const element = document.getElementById('solar-nuclear-photovoltaic-chart');
+            html2pdf().from(element).save();
+        });
+
+        let box = document.getElementById('nn1')
+        let closeBtns = box.querySelectorAll('.close');
+
+        closeBtns.forEach(function(closeBtn) {
+            closeBtn.style.color = '#37a000';
+        });
+
+        $(document).ready(function() {
+            var totalImages = 30;
+            var currentIndex = 0;
+
+            for (var i = 1; i <= totalImages; i++) {
+                var imgNumber = i.toString().padStart(2, '0');
+                $('#slideshow-container').append('<img src="assets/img/Geometrical ' + imgNumber + '.png" alt="Geometrical ' + imgNumber + '">');
+            }
+
+            var images = $('#slideshow-container img');
+
+            function showImage(index) {
+                images.hide();
+                $(images[index]).show();
+            }
+
+            showImage(currentIndex);
+
+            $('.next').click(function() {
+                currentIndex = (currentIndex + 1) % totalImages;
+                showImage(currentIndex);
+            });
+
+            $('.prev').click(function() {
+                currentIndex = (currentIndex - 1 + totalImages) % totalImages;
+                showImage(currentIndex);
+            });
+        });
+        
+        document.getElementById('showascii').addEventListener('click', () => {
+            var alleqs = document.getElementById('alleqs');
+            alleqs.style.display="block";
+            html2pdf().from(alleqs).save();
+        });
+    </script>
+
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+    <div id="alleqs">
+        $$ Cholesterol $$
+        $$Low Density Lipoprotein Cholesterol$$
+        $$LDL$$
+        $$chol-((\frac{TG}{5})+(HDL))$$
+    </div>
 </body>
 </html>
