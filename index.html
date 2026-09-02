@@ -13,8 +13,36 @@
 <link rel="stylesheet" href="src/main.css">
 <link rel="icon" type="image/png" href="logo.png">
 <style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+    }
+
     body {
         font-weight: bold;
+    }
+    
+    #wrapper {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: url(bg.webp) center/cover no-repeat;
+        background-color: #cccccc;
+        overflow: hidden;
+    }
+
+    #main {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
     }
     
     .logo {
@@ -124,32 +152,96 @@
     #asciicontent{color:#000;background:#fff}
 
     #slideshow-container {
-        position: absolute;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #000;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
     }
 
     #slideshow-container img {
-        width: 100%;
+        max-width: 90vw;
+        max-height: 90vh;
+        width: auto;
+        height: auto;
         display: none;
+        animation: spinContinuous 8s linear infinite;
+        transform-origin: center;
+    }
+
+    @keyframes spinContinuous {
+        0% {
+            transform: rotate(0deg) scale(1);
+        }
+        50% {
+            transform: rotate(180deg) scale(1);
+        }
+        100% {
+            transform: rotate(360deg) scale(1);
+        }
+    }
+
+    @keyframes spinReverse {
+        0% {
+            transform: rotate(360deg) scale(1);
+        }
+        50% {
+            transform: rotate(180deg) scale(1);
+        }
+        100% {
+            transform: rotate(0deg) scale(1);
+        }
+    }
+
+    #slideshow-container img.spin-reverse {
+        animation: spinReverse 8s linear infinite;
     }
 
     .prev, .next {
         cursor: pointer;
-        position: absolute;
+        position: fixed;
         top: 50%;
         transform: translateY(-50%);
         padding: 16px;
-        background-color: rgba(0, 0, 0, 0.5);
+        background-color: rgba(0, 0, 0, 0.7);
         color: white;
-        font-size: 18px;
+        font-size: 24px;
+        z-index: 1001;
+        border-radius: 3px;
+        user-select: none;
+    }
+
+    .prev:hover, .next:hover {
+        background-color: rgba(0, 0, 0, 0.9);
     }
 
     .prev {
-        left: 0;
+        left: 20px;
     }
 
     .next {
-        right: 0;
+        right: 20px;
     }
+
+    .slideshow-counter {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        z-index: 1001;
+        font-size: 14px;
+    }
+
     .min_d,.min{color:green}
     .max_d,.max{color:red;}
     .answer_d{color:yellow;}
@@ -167,11 +259,7 @@
     <div class="print-loading" id="printLoading">Processing...</div>
 
     <!-- Wrapper -->
-    <div id="wrapper" style=" background:url(bg.webp); background-color: #cccccc; 
-  height: 100%; 
-  background-position: center; 
-  background-repeat: no-repeat; 
-  background-size: cover; ">
+    <div id="wrapper">
 
         <!-- Header -->
         <header id="header">
@@ -224,10 +312,10 @@
                     <br>
                     <br> Online Biometric Spectrum Analyzer
 
-                    <br> The first Physics and Biometric Network for Security Systems based on Remote Health Diagnostics through Photoplethysmograph Spectrum Analysis with state-of-the-art PPG technology utilizes bio-sensors to analyze a person's skin for heart rate and cardiovascular assessments.
+                    <br> The first Physics and Biometric Network for Security Systems based on Remote Health Diagnostics through Photoplethysmograph Spectrum Analysis with state-of-the-art PPG technol[...]
                     <br>  
 
-                    <br> It is based on a broad spectrum for analyzing health mathematical equations from photoplethysmography and sound. Once the metrics are calculated they are then channeled through machine learning for equation recognition.
+                    <br> It is based on a broad spectrum for analyzing health mathematical equations from photoplethysmography and sound. Once the metrics are calculated they are then channeled throug[...]
                     <br>
                     <br> Hemodynamic Mathematical Equations and Algorithms explaining the physics aspect for flow of blood in the blood vessels.
 
@@ -247,10 +335,10 @@
             <!-- About -->
             <article id="about">
                 <h2 class="major">About </h2>
-                <p>Introducing the first Biometric Neural Network in Remote Diagnostics with Thermal Resistance capabilities. Created to reduce Electromagnetic Fields in electronic microprocessor systems for Spectrum Analysis. Skynet plans on completing production projects for Microsoft, Android, Apple and Web Applications.
+                <p>Introducing the first Biometric Neural Network in Remote Diagnostics with Thermal Resistance capabilities. Created to reduce Electromagnetic Fields in electronic microprocessor syst[...]
                     <br>
-                    <br> Created with Security in mind. Skynet is great for administrative networks near nuclear plants or very hot demographic locations. It uses Plasmonics and Cryptology combined algorithms to drop harmful temperatures while enumerating health or vital equations. With the internet era at its peak, we humans on earth may be causing Global Warming. Skynet Biometrics is designed to help reverse this immediately.
-                    <br><br> Skynet offers Enterprise software solutions by Apple Development and their products have been tested and proven to work well with Skynet Cryptology scripts as an extended layer of signal processing and hardware.
+                    <br> Created with Security in mind. Skynet is great for administrative networks near nuclear plants or very hot demographic locations. It uses Plasmonics and Cryptology combined al[...]
+                    <br><br> Skynet offers Enterprise software solutions by Apple Development and their products have been tested and proven to work well with Skynet Cryptology scripts as an extended [...]
                     <br>
                     <br> SkyNet Enterprise Solutions allow custom device programming for employees or network solutions that can neutralize tempretures in data centers and server rooms.</p>
             </article>
@@ -344,6 +432,7 @@
             <div id="slideshow-container">
                 <a class="prev">&#10094;</a>
                 <a class="next">&#10095;</a>
+                <div class="slideshow-counter"><span id="currentImageIndex">1</span> / <span id="totalImageIndex">30</span></div>
             </div>
         </div>
     </div>
@@ -442,6 +531,7 @@
         $(document).ready(function() {
             var totalImages = 30;
             var currentIndex = 0;
+            var autoAdvanceTimer;
 
             for (var i = 1; i <= totalImages; i++) {
                 var imgNumber = i.toString().padStart(2, '0');
@@ -449,22 +539,61 @@
             }
 
             var images = $('#slideshow-container img');
+            $('#totalImageIndex').text(totalImages);
 
             function showImage(index) {
                 images.hide();
-                $(images[index]).show();
+                var $currentImg = $(images[index]);
+                $currentImg.show();
+                
+                // Update counter
+                $('#currentImageIndex').text(index + 1);
+                
+                // Alternate spin direction for each image
+                if (index % 2 === 0) {
+                    $currentImg.removeClass('spin-reverse');
+                } else {
+                    $currentImg.addClass('spin-reverse');
+                }
+            }
+
+            function startAutoAdvance() {
+                autoAdvanceTimer = setInterval(function() {
+                    currentIndex = (currentIndex + 1) % totalImages;
+                    showImage(currentIndex);
+                }, 5000); // Change image every 5 seconds
+            }
+
+            function stopAutoAdvance() {
+                clearInterval(autoAdvanceTimer);
             }
 
             showImage(currentIndex);
+            startAutoAdvance();
 
             $('.next').click(function() {
+                stopAutoAdvance();
                 currentIndex = (currentIndex + 1) % totalImages;
                 showImage(currentIndex);
+                startAutoAdvance();
             });
 
             $('.prev').click(function() {
+                stopAutoAdvance();
                 currentIndex = (currentIndex - 1 + totalImages) % totalImages;
                 showImage(currentIndex);
+                startAutoAdvance();
+            });
+
+            // Keyboard navigation
+            $(document).keydown(function(e) {
+                if ($('#slideshow-container').is(':visible')) {
+                    if (e.keyCode === 37) { // Left arrow
+                        $('.prev').click();
+                    } else if (e.keyCode === 39) { // Right arrow
+                        $('.next').click();
+                    }
+                }
             });
         });
         
