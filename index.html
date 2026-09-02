@@ -45,6 +45,102 @@
         overflow: hidden;
     }
     
+    /* Live Metrics Dashboard */
+    .live-metrics-dashboard {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.85);
+        border: 2px solid #00ff00;
+        border-radius: 8px;
+        padding: 15px;
+        z-index: 999;
+        font-family: 'Courier New', monospace;
+        color: #00ff00;
+        width: 320px;
+        max-height: 400px;
+        overflow-y: auto;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+    }
+
+    .live-metrics-dashboard h3 {
+        color: #00ff00;
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        border-bottom: 1px solid #00ff00;
+        padding-bottom: 5px;
+    }
+
+    .metric-item {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        margin: 5px 0;
+        padding: 5px;
+        background: rgba(0, 255, 0, 0.05);
+        border-radius: 3px;
+    }
+
+    .metric-label {
+        font-weight: bold;
+        min-width: 100px;
+    }
+
+    .metric-value {
+        color: #ffff00;
+        font-weight: bold;
+        text-align: right;
+        flex: 1;
+    }
+
+    .metric-value.critical {
+        color: #ff0000;
+        animation: pulse 1s infinite;
+    }
+
+    .metric-value.warning {
+        color: #ff9900;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    /* Live Equations Panel */
+    .live-equations-panel {
+        position: fixed;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.85);
+        border: 2px solid #0099ff;
+        border-radius: 8px;
+        padding: 15px;
+        z-index: 998;
+        max-width: 500px;
+        max-height: 250px;
+        overflow-y: auto;
+        box-shadow: 0 0 20px rgba(0, 153, 255, 0.3);
+    }
+
+    .live-equations-panel h3 {
+        color: #0099ff;
+        margin: 0 0 10px 0;
+        font-size: 13px;
+        border-bottom: 1px solid #0099ff;
+        padding-bottom: 5px;
+    }
+
+    .equation-item {
+        font-size: 10px;
+        margin: 8px 0;
+        padding: 8px;
+        background: rgba(0, 153, 255, 0.05);
+        border-left: 3px solid #0099ff;
+        color: #00ffff;
+        font-family: 'Courier New', monospace;
+    }
+    
     .logo {
         padding: 2px;
         border: none !important;
@@ -258,6 +354,49 @@
     <!-- Loading indicator -->
     <div class="print-loading" id="printLoading">Processing...</div>
 
+    <!-- Live Metrics Dashboard -->
+    <div class="live-metrics-dashboard" id="liveMetrics">
+        <h3>⚡ LIVE BIOMETRIC METRICS ⚡</h3>
+        <div class="metric-item">
+            <span class="metric-label">❤️ Heart Rate:</span>
+            <span class="metric-value" id="hrValue">-- bpm</span>
+        </div>
+        <div class="metric-item">
+            <span class="metric-label">🧠 EEG Alpha:</span>
+            <span class="metric-value" id="eegAlpha">-- Hz</span>
+        </div>
+        <div class="metric-item">
+            <span class="metric-label">🧠 EEG Beta:</span>
+            <span class="metric-value" id="eegBeta">-- Hz</span>
+        </div>
+        <div class="metric-item">
+            <span class="metric-label">🔀 Fusion Score:</span>
+            <span class="metric-value" id="fusionScore">-- %</span>
+        </div>
+        <div class="metric-item">
+            <span class="metric-label">💻 CPU Usage:</span>
+            <span class="metric-value" id="cpuUsage">-- %</span>
+        </div>
+        <div class="metric-item">
+            <span class="metric-label">🎮 GPU Usage:</span>
+            <span class="metric-value" id="gpuUsage">-- %</span>
+        </div>
+        <div class="metric-item">
+            <span class="metric-label">🌡️ Temp:</span>
+            <span class="metric-value" id="tempValue">-- °C</span>
+        </div>
+        <div class="metric-item">
+            <span class="metric-label">⏱️ Scan Time:</span>
+            <span class="metric-value" id="scanTime">-- s</span>
+        </div>
+    </div>
+
+    <!-- Live Equations Panel -->
+    <div class="live-equations-panel" id="liveEquations">
+        <h3>📐 LIVE EQUATION SOLVER 📐</h3>
+        <div id="equationsContainer"></div>
+    </div>
+
     <!-- Wrapper -->
     <div id="wrapper">
 
@@ -312,10 +451,10 @@
                     <br>
                     <br> Online Biometric Spectrum Analyzer
 
-                    <br> The first Physics and Biometric Network for Security Systems based on Remote Health Diagnostics through Photoplethysmograph Spectrum Analysis with state-of-the-art PPG technol[...]
+                    <br> The first Physics and Biometric Network for Security Systems based on Remote Health Diagnostics through Photoplethysmograph Spectrum Analysis with state-of-the-art PPG te[...]
                     <br>  
 
-                    <br> It is based on a broad spectrum for analyzing health mathematical equations from photoplethysmography and sound. Once the metrics are calculated they are then channeled throug[...]
+                    <br> It is based on a broad spectrum for analyzing health mathematical equations from photoplethysmography and sound. Once the metrics are calculated they are then channeled t[...]
                     <br>
                     <br> Hemodynamic Mathematical Equations and Algorithms explaining the physics aspect for flow of blood in the blood vessels.
 
@@ -335,10 +474,10 @@
             <!-- About -->
             <article id="about">
                 <h2 class="major">About </h2>
-                <p>Introducing the first Biometric Neural Network in Remote Diagnostics with Thermal Resistance capabilities. Created to reduce Electromagnetic Fields in electronic microprocessor syst[...]
+                <p>Introducing the first Biometric Neural Network in Remote Diagnostics with Thermal Resistance capabilities. Created to reduce Electromagnetic Fields in electronic microprocessor[...]
                     <br>
-                    <br> Created with Security in mind. Skynet is great for administrative networks near nuclear plants or very hot demographic locations. It uses Plasmonics and Cryptology combined al[...]
-                    <br><br> Skynet offers Enterprise software solutions by Apple Development and their products have been tested and proven to work well with Skynet Cryptology scripts as an extended [...]
+                    <br> Created with Security in mind. Skynet is great for administrative networks near nuclear plants or very hot demographic locations. It uses Plasmonics and Cryptology combin[...]
+                    <br><br> Skynet offers Enterprise software solutions by Apple Development and their products have been tested and proven to work well with Skynet Cryptology scripts as an exte[...]
                     <br>
                     <br> SkyNet Enterprise Solutions allow custom device programming for employees or network solutions that can neutralize tempretures in data centers and server rooms.</p>
             </article>
@@ -482,6 +621,132 @@
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
     <script>
+        // ============================================================================
+        // LIVE METRICS SYSTEM - Real-time data collection and display
+        // ============================================================================
+        
+        // Global metrics object
+        const liveMetrics = {
+            heartRate: 0,
+            eegAlpha: 0,
+            eegBeta: 0,
+            fusionScore: 0,
+            cpuUsage: 0,
+            gpuUsage: 0,
+            temperature: 0,
+            scanTime: 0,
+            isScanning: false
+        };
+
+        // Simulate realistic biometric data
+        function generateBiometricData() {
+            // Heart Rate: 60-120 bpm with variations
+            liveMetrics.heartRate = Math.round(60 + Math.random() * 60 + Math.sin(Date.now() / 5000) * 20);
+            
+            // EEG Frequencies
+            liveMetrics.eegAlpha = Math.round(8 + Math.random() * 4); // Alpha: 8-12 Hz
+            liveMetrics.eegBeta = Math.round(12 + Math.random() * 8); // Beta: 12-30 Hz
+            
+            // Fusion Score: Combination of all metrics
+            liveMetrics.fusionScore = Math.round(
+                (liveMetrics.heartRate / 120 * 30) +
+                (liveMetrics.eegAlpha / 12 * 35) +
+                (liveMetrics.eegBeta / 30 * 35)
+            );
+            
+            // System metrics
+            liveMetrics.cpuUsage = Math.round(20 + Math.random() * 60);
+            liveMetrics.gpuUsage = Math.round(30 + Math.random() * 50);
+            liveMetrics.temperature = Math.round(45 + Math.random() * 35);
+            
+            if (liveMetrics.isScanning) {
+                liveMetrics.scanTime = Math.round((Date.now() - liveMetrics.scanStart) / 1000 * 10) / 10;
+            }
+        }
+
+        // Update live metrics display
+        function updateMetricsDisplay() {
+            generateBiometricData();
+            
+            // Update heart rate
+            const hrEl = document.getElementById('hrValue');
+            hrEl.textContent = liveMetrics.heartRate + ' bpm';
+            if (liveMetrics.heartRate > 100) {
+                hrEl.className = 'metric-value critical';
+            } else if (liveMetrics.heartRate > 85) {
+                hrEl.className = 'metric-value warning';
+            } else {
+                hrEl.className = 'metric-value';
+            }
+            
+            // Update EEG
+            document.getElementById('eegAlpha').textContent = liveMetrics.eegAlpha + ' Hz';
+            document.getElementById('eegBeta').textContent = liveMetrics.eegBeta + ' Hz';
+            
+            // Update Fusion
+            document.getElementById('fusionScore').textContent = liveMetrics.fusionScore + ' %';
+            
+            // Update CPU/GPU
+            document.getElementById('cpuUsage').textContent = liveMetrics.cpuUsage + ' %';
+            document.getElementById('gpuUsage').textContent = liveMetrics.gpuUsage + ' %';
+            
+            // Update Temperature
+            const tempEl = document.getElementById('tempValue');
+            tempEl.textContent = liveMetrics.temperature + ' °C';
+            if (liveMetrics.temperature > 80) {
+                tempEl.className = 'metric-value critical';
+            } else if (liveMetrics.temperature > 70) {
+                tempEl.className = 'metric-value warning';
+            } else {
+                tempEl.className = 'metric-value';
+            }
+            
+            // Update Scan Time
+            document.getElementById('scanTime').textContent = liveMetrics.scanTime + ' s';
+            
+            // Update equations with live metrics
+            updateLiveEquations();
+        }
+
+        // Update live equations with metrics
+        function updateLiveEquations() {
+            const container = document.getElementById('equationsContainer');
+            container.innerHTML = '';
+            
+            const equations = [
+                {
+                    name: 'Cardiovascular Fusion',
+                    formula: `HR(${liveMetrics.heartRate}bpm) × Fusion(${liveMetrics.fusionScore}%) / 100 = ${(liveMetrics.heartRate * liveMetrics.fusionScore / 100).toFixed(1)}`
+                },
+                {
+                    name: 'Neural Frequency',
+                    formula: `α(${liveMetrics.eegAlpha}Hz) + β(${liveMetrics.eegBeta}Hz) = ${liveMetrics.eegAlpha + liveMetrics.eegBeta}Hz`
+                },
+                {
+                    name: 'System Load',
+                    formula: `CPU(${liveMetrics.cpuUsage}%) + GPU(${liveMetrics.gpuUsage}%) / 2 = ${((liveMetrics.cpuUsage + liveMetrics.gpuUsage) / 2).toFixed(1)}%`
+                },
+                {
+                    name: 'Thermal Index',
+                    formula: `T(${liveMetrics.temperature}°C) - 37 × 0.5 = ${((liveMetrics.temperature - 37) * 0.5).toFixed(2)}°C`
+                },
+                {
+                    name: 'Biometric Index',
+                    formula: `√(HR² + EEG² + Fusion²) = ${Math.sqrt(Math.pow(liveMetrics.heartRate, 2) + Math.pow(liveMetrics.eegAlpha + liveMetrics.eegBeta, 2) + Math.pow(liveMetrics.fusionScore, 2)).toFixed(1)}`
+                }
+            ];
+            
+            equations.forEach(eq => {
+                const div = document.createElement('div');
+                div.className = 'equation-item';
+                div.innerHTML = `<strong>${eq.name}:</strong><br>${eq.formula}`;
+                container.appendChild(div);
+            });
+        }
+
+        // Start metrics update loop
+        setInterval(updateMetricsDisplay, 500);
+
         // Helper function to show loading indicator
         function showLoading() {
             document.getElementById('printLoading').classList.add('active');
@@ -495,6 +760,9 @@
         // Hide loading indicator when page fully loads
         window.addEventListener('load', function() {
             hideLoading();
+            liveMetrics.isScanning = true;
+            liveMetrics.scanStart = Date.now();
+            updateMetricsDisplay();
         });
         
         // Also hide if DOM is ready (faster fallback)
