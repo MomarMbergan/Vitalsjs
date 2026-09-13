@@ -240,9 +240,45 @@
     }
 
     #chart-canvas text{fill:#888}	
-    #export100,#showascii,#snapshot{width: 70px;
-        padding: 10px;
-        margin-bottom: 5px;}
+    
+    /* Button Container and Styling */
+    .button-toolbar {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        align-items: center;
+    }
+    
+    .button-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+    }
+    
+    .button-item img {
+        width: 70px;
+        height: auto;
+        transition: transform 0.2s;
+    }
+    
+    .button-item img:hover {
+        transform: scale(1.1);
+    }
+    
+    .button-label {
+        color: white;
+        font-size: 12px;
+        font-weight: bold;
+        text-align: center;
+        min-width: 70px;
+    }
+    
+    #printbtn {width: 70px; padding: 10px; margin-bottom: 5px;}	
+    #export100 {width: 70px; padding: 10px; margin-bottom: 5px;}	
+    #showascii {width: 70px; padding: 10px; margin-bottom: 5px;}	
+    #snapshot {width: 70px; padding: 10px; margin-bottom: 5px;}
     #export100{margin:auto}	
     mjx-line{height: 7px !important;}	
     #asciicontent{color:#000;background:#fff}
@@ -586,10 +622,26 @@
     
     <div id="charts">
         <div>
-            <img src="assets/img/print.webp" id="printbtn">
-            <img src="assets/img/print100.png" id="export100">
-            <img src="assets/img/ascii2.png" id="showascii">
-            <img src="assets/img/regression.png" id="snapshot"> 
+            <!-- Toolbar with labeled buttons -->
+            <div class="button-toolbar">
+                <div class="button-item">
+                    <img src="assets/img/print.webp" id="printbtn" alt="Print Chart">
+                    <span class="button-label">Line</span>
+                </div>
+                <div class="button-item">
+                    <img src="assets/img/print100.png" id="export100" alt="Export Equations">
+                    <span class="button-label">Equations</span>
+                </div>
+                <div class="button-item">
+                    <img src="assets/img/ascii2.png" id="showascii" alt="Show ASCII">
+                    <span class="button-label">ASCII</span>
+                </div>
+                <div class="button-item">
+                    <img src="assets/img/regression.png" id="snapshot" alt="Snapshot">
+                    <span class="button-label">Snapshot</span>
+                </div>
+            </div>
+            
             <div id="imageGallery"></div>
             <video id='video'></video>
             <video id="multivideo" autoplay playsinline></video>
@@ -834,7 +886,9 @@
             console.log('[Export100] Triggering agent print mode...');
             
             // Capture current metrics for agent
-            PrintPreferencesManager.captureCurrentMetrics();
+            if (typeof PrintPreferencesManager !== 'undefined') {
+                PrintPreferencesManager.captureCurrentMetrics();
+            }
             
             // Show loading indicator
             showLoading();
