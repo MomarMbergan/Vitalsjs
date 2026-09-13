@@ -826,6 +826,26 @@
             closeBtn.style.color = '#37a000';
         });
 
+        // ============================================================================
+        // #export100 BUTTON - AGENT MODE TRIGGER
+        // ============================================================================
+        // When #export100 is clicked, redirect to agent print mode with current metrics
+        document.getElementById('export100').addEventListener('click', function() {
+            console.log('[Export100] Triggering agent print mode...');
+            
+            // Capture current metrics for agent
+            PrintPreferencesManager.captureCurrentMetrics();
+            
+            // Show loading indicator
+            showLoading();
+            
+            // Redirect to agent print mode after brief delay
+            setTimeout(function() {
+                console.log('[Export100] Redirecting to ?agent=print');
+                window.location.href = '?agent=print';
+            }, 500);
+        });
+
         $(document).ready(function() {
             var totalImages = 30;
             var currentIndex = 0;
