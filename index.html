@@ -585,29 +585,29 @@
             </article>
 
             <article id="nn1" style="color: black; width:100vw; background-color:white;">
-                <object data-src="demo/mnist.html" width="100%" height="600px"></object>
+                <object data="demo/mnist.html" width="100%" height="600px"></object>
             </article>
 
             <article id="nn2" style="color: black; width:100vw; background-color:white;">
-                <object data-src="demo/cifar10.html" width="100%" height="600px"></object>
+                <object data="demo/cifar10.html" width="100%" height="600px"></object>
             </article>
 
             <article id="nn5" style="color: black; width:100vw; background-color:white;">
-                <object data-src="demo/autoencoder.html" width="100%" height="600px"></object>
+                <object data="demo/autoencoder.html" width="100%" height="600px"></object>
             </article>
 
             <article id="nn8" style="color: black; width:100vw; background-color:white;">
-                <object data-src="demo/image_regression.html" width="100%" height="600px"></object>
+                <object data="demo/image_regression.html" width="100%" height="600px"></object>
             </article>
 
             <article id="nsa" style="color: black; width:100vw; background-color:white;">
-                <object data-src="charts/nsa/index.html" width="100%" height="600px"></object>
+                <object data="charts/nsa/index.html" width="100%" height="600px"></object>
             </article>
             <article id="bsa" style="color: black; width:100vw; background-color:white;">
-                <object data-src="charts/bsa/index.html" width="100%" height="600px"></object>
+                <object data="charts/bsa/index.html" width="100%" height="600px"></object>
             </article>
             <article id="bga" style="color: black; width:100vw; background-color:white;">
-                <object data-src="charts/bg/index.html" width="100%" height="600px"></object>
+                <object data="charts/bg/index.html" width="100%" height="600px"></object>
             </article>
         </div>
 
@@ -752,39 +752,49 @@
             
             // Update heart rate
             const hrEl = document.getElementById('hrValue');
-            hrEl.textContent = liveMetrics.heartRate + ' bpm';
-            if (liveMetrics.heartRate > 100) {
-                hrEl.className = 'metric-value critical';
-            } else if (liveMetrics.heartRate > 85) {
-                hrEl.className = 'metric-value warning';
-            } else {
-                hrEl.className = 'metric-value';
+            if (hrEl) {
+                hrEl.textContent = liveMetrics.heartRate + ' bpm';
+                if (liveMetrics.heartRate > 100) {
+                    hrEl.className = 'metric-value critical';
+                } else if (liveMetrics.heartRate > 85) {
+                    hrEl.className = 'metric-value warning';
+                } else {
+                    hrEl.className = 'metric-value';
+                }
             }
             
             // Update EEG
-            document.getElementById('eegAlpha').textContent = liveMetrics.eegAlpha + ' Hz';
-            document.getElementById('eegBeta').textContent = liveMetrics.eegBeta + ' Hz';
+            const eegAlphaEl = document.getElementById('eegAlpha');
+            const eegBetaEl = document.getElementById('eegBeta');
+            if (eegAlphaEl) eegAlphaEl.textContent = liveMetrics.eegAlpha + ' Hz';
+            if (eegBetaEl) eegBetaEl.textContent = liveMetrics.eegBeta + ' Hz';
             
             // Update Fusion
-            document.getElementById('fusionScore').textContent = liveMetrics.fusionScore + ' %';
+            const fusionEl = document.getElementById('fusionScore');
+            if (fusionEl) fusionEl.textContent = liveMetrics.fusionScore + ' %';
             
             // Update CPU/GPU
-            document.getElementById('cpuUsage').textContent = liveMetrics.cpuUsage + ' %';
-            document.getElementById('gpuUsage').textContent = liveMetrics.gpuUsage + ' %';
+            const cpuEl = document.getElementById('cpuUsage');
+            const gpuEl = document.getElementById('gpuUsage');
+            if (cpuEl) cpuEl.textContent = liveMetrics.cpuUsage + ' %';
+            if (gpuEl) gpuEl.textContent = liveMetrics.gpuUsage + ' %';
             
             // Update Temperature
             const tempEl = document.getElementById('tempValue');
-            tempEl.textContent = liveMetrics.temperature + ' °C';
-            if (liveMetrics.temperature > 80) {
-                tempEl.className = 'metric-value critical';
-            } else if (liveMetrics.temperature > 70) {
-                tempEl.className = 'metric-value warning';
-            } else {
-                tempEl.className = 'metric-value';
+            if (tempEl) {
+                tempEl.textContent = liveMetrics.temperature + ' °C';
+                if (liveMetrics.temperature > 80) {
+                    tempEl.className = 'metric-value critical';
+                } else if (liveMetrics.temperature > 70) {
+                    tempEl.className = 'metric-value warning';
+                } else {
+                    tempEl.className = 'metric-value';
+                }
             }
             
             // Update Scan Time
-            document.getElementById('scanTime').textContent = liveMetrics.scanTime + ' s';
+            const scanEl = document.getElementById('scanTime');
+            if (scanEl) scanEl.textContent = liveMetrics.scanTime + ' s';
             
             // Update equations with live metrics
             updateLiveEquations();
@@ -793,6 +803,7 @@
         // Update live equations with metrics
         function updateLiveEquations() {
             const container = document.getElementById('equationsContainer');
+            if (!container) return;
             container.innerHTML = '';
             
             const equations = [
@@ -831,12 +842,15 @@
 
         // Helper function to show loading indicator
         function showLoading() {
-            document.getElementById('printLoading').classList.add('active');
+            const el = document.getElementById('printLoading');
+            if (el) el.classList.add('active');
         }
         
         function hideLoading() {
-            document.getElementById('printLoading').classList.remove('active');
-            document.getElementById('printLoading').style.display = 'none';
+            const el = document.getElementById('printLoading');
+            if (!el) return;
+            el.classList.remove('active');
+            el.style.display = 'none';
         }
 
         // Hide loading indicator when page fully loads
@@ -866,39 +880,46 @@
     </script>
 
     <script>
-        document.getElementById('printbtn').addEventListener('click', () => {
-            const element = document.getElementById('solar-nuclear-photovoltaic-chart');
-            html2pdf().from(element).save();
-        });
+        const printBtn = document.getElementById('printbtn');
+        if (printBtn) {
+            printBtn.addEventListener('click', () => {
+                const element = document.getElementById('solar-nuclear-photovoltaic-chart');
+                html2pdf().from(element).save();
+            });
+        }
 
-        let box = document.getElementById('nn1')
-        let closeBtns = box.querySelectorAll('.close');
-
-        closeBtns.forEach(function(closeBtn) {
-            closeBtn.style.color = '#37a000';
-        });
+        const box = document.getElementById('nn1');
+        if (box) {
+            const closeBtns = box.querySelectorAll('.close');
+            closeBtns.forEach(function(closeBtn) {
+                closeBtn.style.color = '#37a000';
+            });
+        }
 
         // ============================================================================
         // #export100 BUTTON - AGENT MODE TRIGGER
         // ============================================================================
         // When #export100 is clicked, redirect to agent print mode with current metrics
-        document.getElementById('export100').addEventListener('click', function() {
-            console.log('[Export100] Triggering agent print mode...');
-            
-            // Capture current metrics for agent
-            if (typeof PrintPreferencesManager !== 'undefined') {
-                PrintPreferencesManager.captureCurrentMetrics();
-            }
-            
-            // Show loading indicator
-            showLoading();
-            
-            // Redirect to agent print mode after brief delay
-            setTimeout(function() {
-                console.log('[Export100] Redirecting to ?agent=print');
-                window.location.href = '?agent=print';
-            }, 500);
-        });
+        const export100Btn = document.getElementById('export100');
+        if (export100Btn) {
+            export100Btn.addEventListener('click', function() {
+                console.log('[Export100] Triggering agent print mode...');
+                
+                // Capture current metrics for agent
+                if (typeof PrintPreferencesManager !== 'undefined') {
+                    PrintPreferencesManager.captureCurrentMetrics();
+                }
+                
+                // Show loading indicator
+                showLoading();
+                
+                // Redirect to agent print mode after brief delay
+                setTimeout(function() {
+                    console.log('[Export100] Redirecting to ?agent=print');
+                    window.location.href = '?agent=print';
+                }, 500);
+            });
+        }
 
         $(document).ready(function() {
             var totalImages = 30;
@@ -969,11 +990,15 @@
             });
         });
         
-        document.getElementById('showascii').addEventListener('click', () => {
-            var alleqs = document.getElementById('alleqs');
-            alleqs.style.display="block";
-            html2pdf().from(alleqs).save();
-        });
+        const showAsciiBtn = document.getElementById('showascii');
+        if (showAsciiBtn) {
+            showAsciiBtn.addEventListener('click', () => {
+                var alleqs = document.getElementById('alleqs');
+                if (!alleqs) return;
+                alleqs.style.display="block";
+                html2pdf().from(alleqs).save();
+            });
+        }
     </script>
 
     <script>
