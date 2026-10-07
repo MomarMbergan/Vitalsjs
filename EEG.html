@@ -698,7 +698,25 @@ async function buildPayload(snapshotName, metrics, rDataArr, eegDataArr){
   const ua = navigator.userAgent;
   const screenRes = `${window.screen.width}x${window.screen.height}`;
 
-  return `\nSnapshot Filename: ${snapshotName}\nTimestamp: ${nowISO}\nDevice Info:\n- IP Address: ${ip}\n- User Agent: ${ua}\n- Screen Resolution: ${screenRes}\n\nFusion Metrics:\n- Frequency-Domain Fusion: ${metrics.freqFusion} Hz\n- Peak-Based Fusion: ${metrics.peakFusion} Hz\n- Cross-Spectral Coherence: ${metrics.coherence}\n\nRaw Data (last 128 samples):\n- rPPG: [${(rDataArr||[]).slice(-128).join(',')}]\n- EEG: [${(eegDataArr||[]).slice(-128).join(',')}]\n`.trim();
+  return `
+Snapshot Filename: ${snapshotName}
+Timestamp: ${nowISO}
+Device Info:
+- IP Address: ${ip}
+- User Agent: ${ua}
+- Screen Resolution: ${screenRes}
+
+Fusion Metrics:
+- Frequency-Domain Fusion: ${metrics.freqFusion}
+- Peak-Based Fusion: ${metrics.peakFusion}
+- Cross-Spectral Coherence: ${metrics.coherence}
+
+rPPG Samples (last 20):
+${rDataArr.slice(-20).map(v => Number(v).toFixed(4)).join(', ')}
+
+EEG Samples (last 20):
+${eegDataArr.slice(-20).map(v => Number(v).toFixed(4)).join(', ')}
+`.trim();
 }
 
 /* ============================
@@ -730,7 +748,7 @@ function buildPCAPText(payloadText){
 
 /* ============================
    Unified save: ZIP (PNG + PCAP + WAV + MP4/WebM)
-   - Bundles artifacts into a single ZIP to avoid browser blocking of multiple automatic downloads
+   - Bundles artifacts into a single ZIP to avoid browser blocking multiple automatic downloads
    - Ensures recorder finalization before packaging
    ============================ */
 async function stopRecorderAndCollect(){
@@ -749,6 +767,10 @@ async function stopRecorderAndCollect(){
       resolve();
     }
   });
+
+  if(!videoChunks.length) {
+    console.warn('No video chunks collected before save.');
+  }
 }
 
 async function captureAndSaveAll(){
@@ -778,6 +800,7 @@ async function captureAndSaveAll(){
 
     // Bundle into ZIP using JSZip to avoid browser blocking multiple automatic downloads
     try{
+      if(!window.JSZip) throw new Error('JSZip unavailable');
       const zip = new JSZip();
       zip.file(snapName, pngBlob);
       zip.file('SkyNet.pcap', pcapText);
@@ -799,13 +822,28 @@ async function captureAndSaveAll(){
     }catch(e){
       // If JSZip fails or not available, fallback to individual downloads (may be blocked by browser)
       console.warn('ZIP bundling failed, falling back to individual downloads', e);
-      const pngLink = document.createElement('a'); pngLink.download = snapName; pngLink.href = URL.createObjectURL(pngBlob); pngLink.click();
-      const pcapBlob = new Blob([pcapText], { type: 'text/plain' }); const pcapLink = document.createElement('a'); pcapLink.download = 'SkyNet.pcap'; pcapLink.href = URL.createObjectURL(pcapBlob); pcapLink.click();
-      const wavLink = document.createElement('a'); wavLink.download = 'SkyNet.wav'; wavLink.href = URL.createObjectURL(wavBlob); wavLink.click();
-      const avLink = document.createElement('a'); avLink.download = `SkyNet.${mime.includes('mp4')?'mp4':'webm'}`; avLink.href = URL.createObjectURL(avBlob); avLink.click();
-      setTimeout(()=>{
-        URL.revokeObjectURL(pngLink.href); URL.revokeObjectURL(pcapLink.href); URL.revokeObjectURL(wavLink.href); URL.revokeObjectURL(avLink.href);
-      },3000);
+
+      const pcapBlob = new Blob([pcapText], { type: 'text/plain' });
+      const files = [
+        { name: snapName, blob: pngBlob },
+        { name: 'SkyNet.pcap', blob: pcapBlob },
+        { name: 'SkyNet.wav', blob: wavBlob },
+        { name: `SkyNet.${mime.includes('mp4') ? 'mp4' : 'webm'}`, blob: avBlob }
+      ];
+
+      const urls = [];
+      for (const f of files) {
+        const a = document.createElement('a');
+        const u = URL.createObjectURL(f.blob);
+        urls.push(u);
+        a.href = u;
+        a.download = f.name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+
+      setTimeout(() => urls.forEach(u => URL.revokeObjectURL(u)), 5000);
     }
 
     // resume recording for next cycle (recreate recorder)
