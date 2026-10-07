@@ -122,6 +122,7 @@
     <button class="icon-btn" id="btnAnnotations" title="Toggle annotations">✳️</button>
     <button class="icon-btn" id="btnSpectra" title="Toggle spectra">📈</button>
     <button class="icon-btn" id="btnSnapshot" title="Capture snapshot">📸</button>
+    <button class="icon-btn" id="btnDownloadPending" title="Download pending autosave ZIP">⬇️</button>
   </div>
   <div id="panelHandle" title="Open/close controls">›</div>
 
@@ -213,6 +214,8 @@ let currentMetrics = { freqFusion: 0, peakFusion: 0, coherence: 0 };
 const statusBadge = document.getElementById('statusBadge');
 
 let isSaving = false; // guard against overlapping auto-saves
+let pendingZipBlob = null;
+let pendingZipName = '';
 
 /* ============================
    Camera + flip + recorders
@@ -746,22 +749,32 @@ function buildPCAPText(payloadText){
   ].join("\n");
 }
 
+function triggerDownload(blob, fileName){
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=> URL.revokeObjectURL(link.href), 5000);
+}
+
 /* ============================
    Unified save: ZIP (PNG + PCAP + WAV + MP4/WebM)
-   - Bundles artifacts into a single ZIP to avoid browser blocking multiple automatic downloads
-   - Ensures recorder finalization before packaging
    ============================ */
 async function stopRecorderAndCollect(){
   if(!avRecorder) return;
   if(avRecorder.state !== 'recording') return;
-  // ensure latest dataavailable events are collected and wait for stop
   await new Promise(resolve => {
     const onData = e => { if(e.data && e.data.size) videoChunks.push(e.data); };
-    const onStop = () => { avRecorder.removeEventListener('dataavailable', onData); avRecorder.removeEventListener('stop', onStop); resolve(); };
+    const onStop = () => {
+      avRecorder.removeEventListener('dataavailable', onData);
+      avRecorder.removeEventListener('stop', onStop);
+      resolve();
+    };
     avRecorder.addEventListener('dataavailable', onData);
     avRecorder.addEventListener('stop', onStop);
     try{ avRecorder.stop(); }catch(e){
-      // if stop throws, resolve anyway
       avRecorder.removeEventListener('dataavailable', onData);
       avRecorder.removeEventListener('stop', onStop);
       resolve();
@@ -773,80 +786,51 @@ async function stopRecorderAndCollect(){
   }
 }
 
-async function captureAndSaveAll(){
-  if(isSaving) return; // prevent overlapping saves
+async function captureAndSaveAll(opts = { userGesture: false }){
+  if(isSaving) return;
   isSaving = true;
   statusBadge.textContent = 'Saving...';
+
   try{
     const timestamp = new Date().toISOString().replace(/[:.]/g,'-');
     const snapName = `dashboard_${timestamp}.png`;
 
-    // PNG blob
     const pngBlob = await captureDashboardPNGBlob();
-
-    // Ensure audio/video finalized
     await stopRecorderAndCollect();
 
-    // WAV
     const wavBlob = buildWAVFromPCM(audioChunks, audioSampleRate);
 
-    // Video blob (finalized)
     const mime = MediaRecorder.isTypeSupported("video/mp4;codecs=h264,aac") ? "video/mp4" : "video/webm";
     const avBlob = new Blob(videoChunks, { type: mime });
 
-    // PCAP metadata
     const payload = await buildPayload(snapName, currentMetrics, rData, eegData);
     const pcapText = buildPCAPText(payload);
 
-    // Bundle into ZIP using JSZip to avoid browser blocking multiple automatic downloads
-    try{
-      if(!window.JSZip) throw new Error('JSZip unavailable');
-      const zip = new JSZip();
-      zip.file(snapName, pngBlob);
-      zip.file('SkyNet.pcap', pcapText);
-      zip.file('SkyNet.wav', wavBlob);
-      const videoName = `SkyNet.${mime.includes('mp4') ? 'mp4' : 'webm'}`;
-      zip.file(videoName, avBlob);
-      // Optionally include a text manifest
-      zip.file('manifest.txt', `Created: ${new Date().toISOString()}\nFiles: ${snapName}, SkyNet.pcap, SkyNet.wav, ${videoName}`);
+    if(!window.JSZip) throw new Error('JSZip unavailable');
 
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const link = document.createElement('a');
-      const zipName = `SkyNet_bundle_${timestamp}.zip`;
-      link.href = URL.createObjectURL(zipBlob);
-      link.download = zipName;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(()=> URL.revokeObjectURL(link.href), 5000);
-    }catch(e){
-      // If JSZip fails or not available, fallback to individual downloads (may be blocked by browser)
-      console.warn('ZIP bundling failed, falling back to individual downloads', e);
+    const zip = new JSZip();
+    zip.file(snapName, pngBlob);
+    zip.file('SkyNet.pcap', pcapText);
+    zip.file('SkyNet.wav', wavBlob);
+    const videoName = `SkyNet.${mime.includes('mp4') ? 'mp4' : 'webm'}`;
+    zip.file(videoName, avBlob);
+    zip.file('manifest.txt', `Created: ${new Date().toISOString()}\nFiles: ${snapName}, SkyNet.pcap, SkyNet.wav, ${videoName}`);
 
-      const pcapBlob = new Blob([pcapText], { type: 'text/plain' });
-      const files = [
-        { name: snapName, blob: pngBlob },
-        { name: 'SkyNet.pcap', blob: pcapBlob },
-        { name: 'SkyNet.wav', blob: wavBlob },
-        { name: `SkyNet.${mime.includes('mp4') ? 'mp4' : 'webm'}`, blob: avBlob }
-      ];
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const zipName = `SkyNet_bundle_${timestamp}.zip`;
 
-      const urls = [];
-      for (const f of files) {
-        const a = document.createElement('a');
-        const u = URL.createObjectURL(f.blob);
-        urls.push(u);
-        a.href = u;
-        a.download = f.name;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }
-
-      setTimeout(() => urls.forEach(u => URL.revokeObjectURL(u)), 5000);
+    if(opts.userGesture){
+      triggerDownload(zipBlob, zipName);
+      statusBadge.textContent = 'Bundle downloaded';
+    }else{
+      pendingZipBlob = zipBlob;
+      pendingZipName = zipName;
+      statusBadge.textContent = 'ZIP ready - click ⬇️';
     }
-
-    // resume recording for next cycle (recreate recorder)
+  }catch(e){
+    console.warn('captureAndSaveAll failed', e);
+    statusBadge.textContent = 'Save failed';
+  }finally{
     if(mediaStream){
       const recMime = MediaRecorder.isTypeSupported("video/mp4;codecs=h264,aac") ? "video/mp4;codecs=h264,aac" :
                       MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus") ? "video/webm;codecs=vp9,opus" :
@@ -860,11 +844,11 @@ async function captureAndSaveAll(){
         console.warn('Failed to restart recorder', e);
       }
     }
-  }catch(e){
-    console.warn('captureAndSaveAll failed', e);
-  }finally{
+
     isSaving = false;
-    statusBadge.textContent = 'Analyzing';
+    setTimeout(()=>{
+      if(statusBadge.textContent !== 'ZIP ready - click ⬇️') statusBadge.textContent = 'Analyzing';
+    }, 1200);
   }
 }
 
@@ -876,13 +860,27 @@ setInterval(async ()=>{
   countdown -= 1;
   document.getElementById('countdown').textContent = `Next auto-save: ${countdown}s`;
   if(countdown <= 0){
-    // reset countdown only when a save is triggered to avoid drift
     countdown = 60;
-    try{ await captureAndSaveAll(); }catch(e){ console.warn(e); }
+    try{ await captureAndSaveAll({ userGesture:false }); }catch(e){ console.warn(e); }
   }
 }, 1000);
 
-document.getElementById('btnSnapshot').addEventListener('click', async ()=>{ await captureAndSaveAll(); });
+document.getElementById('btnSnapshot').addEventListener('click', async ()=>{
+  await captureAndSaveAll({ userGesture:true });
+});
+
+document.getElementById('btnDownloadPending').addEventListener('click', ()=>{
+  if(!pendingZipBlob){
+    statusBadge.textContent = 'No pending ZIP';
+    setTimeout(()=> statusBadge.textContent = 'Analyzing', 1200);
+    return;
+  }
+  triggerDownload(pendingZipBlob, pendingZipName || `SkyNet_bundle_${Date.now()}.zip`);
+  pendingZipBlob = null;
+  pendingZipName = '';
+  statusBadge.textContent = 'ZIP downloaded';
+  setTimeout(()=> statusBadge.textContent = 'Analyzing', 1200);
+});
 
 /* ============================
    UI hooks: smoothing / fft / toggles
@@ -900,15 +898,12 @@ document.getElementById('btnEEG').addEventListener('click', ()=>{
   eegChart.options.scales.y.min = -200; eegChart.options.scales.y.max = 200; eegChart.update();
 });
 document.getElementById('btnAnnotations').addEventListener('click', ()=>{
-  // Toggle annotation intensity (example - shadow blur)
-  // For simplicity, flip a class or property; here we just toggle status text
   statusBadge.textContent = statusBadge.textContent === 'Analyzing' ? 'Annotations' : 'Analyzing';
 });
 document.getElementById('btnSpectra').addEventListener('click', ()=>{
   // Force immediate FFT update (handled by loop)
 });
 
-/* MathJax typeset on load */
 window.addEventListener('load', ()=>{ if(window.MathJax?.typeset) MathJax.typeset(); });
 </script>
 </body>
